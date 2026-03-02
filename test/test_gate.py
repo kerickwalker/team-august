@@ -68,7 +68,7 @@ def main():
             now = time.time()
             if now - t_last_print >= 0.5:
                 if gate.detected:
-                    print(f"% Gate FOUND  area={gate.gate_area:.0f}px  "
+                    print(f"% Gate FOUND  width={gate.gate_width_px}px  "
                           f"cx={gate.gate_cx}  steeringErr={gate.steeringError():+.3f}")
                 else:
                     print("% Gate not found")
