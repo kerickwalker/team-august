@@ -31,8 +31,8 @@ from datetime import datetime
 class SGate:
 
     # --- HSV thresholds for orange (tune with calibrate_hsv.py) ---
-    hsv_lower = np.array([5,  120, 80],  dtype=np.uint8)
-    hsv_upper = np.array([25, 255, 255], dtype=np.uint8)
+    hsv_lower = np.array([3, 120, 80], dtype=np.uint8)
+    hsv_upper = np.array([30, 255, 255], dtype=np.uint8)
 
     # --- Contour filter parameters ---
     min_area        = 500    # px² — ignore specks smaller than this

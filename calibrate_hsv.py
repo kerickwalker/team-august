@@ -72,7 +72,7 @@ def main():
     hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
 
     # Seed trackbars with sgate.py defaults for orange
-    build_controls(h_lo=5, h_hi=25, s_lo=120, s_hi=255, v_lo=80, v_hi=255)
+    build_controls(h_lo=3, h_hi=30, s_lo=120, s_hi=255, v_lo=80, v_hi=255)
 
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))
 
