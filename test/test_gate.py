@@ -2,14 +2,14 @@
 
 # Standalone field test for gate detection (sgate.py).
 # No MQTT or robot connection required — opens the camera stream directly.
+# Runs headless — the final annotated frame is saved to test/ on exit.
 #
 # Usage:
 #   python3 test/test_gate.py <robot-ip>
 #   python3 test/test_gate.py 10.197.217.81
 #
 # Keys:
-#   q — quit
-#   s — save current annotated frame to test/
+#   Ctrl+C — quit
 
 import sys
 import os
@@ -45,44 +45,46 @@ def main():
         sys.exit(1)
     h, w = frame.shape[:2]
     print(f"% Stream live — {w}x{h}")
-    print("% Press q to quit, s to save current frame")
+    print("% Running headless — press Ctrl+C to stop and save final frame")
 
-    save_dir = os.path.dirname(__file__)  # save into test/
+    save_dir    = os.path.dirname(__file__)  # save into test/
     frame_count = 0
+    last_frame  = None
     t_last_print = time.time()
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("% Lost stream")
-            break
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("% Lost stream")
+                break
 
-        frame_count += 1
-        gate.detect(frame)
-        gate.paint(frame)
+            frame_count += 1
+            gate.detect(frame)
+            gate.paint(frame)
+            last_frame = frame
 
-        # Print detection status to terminal at ~2 Hz
-        now = time.time()
-        if now - t_last_print >= 0.5:
-            if gate.detected:
-                print(f"% Gate FOUND  area={gate.gate_area:.0f}px  "
-                      f"cx={gate.gate_cx}  steeringErr={gate.steeringError():+.3f}")
-            else:
-                print("% Gate not found")
-            t_last_print = now
+            # Print detection status to terminal at ~2 Hz
+            now = time.time()
+            if now - t_last_print >= 0.5:
+                if gate.detected:
+                    print(f"% Gate FOUND  area={gate.gate_area:.0f}px  "
+                          f"cx={gate.gate_cx}  steeringErr={gate.steeringError():+.3f}")
+                else:
+                    print("% Gate not found")
+                t_last_print = now
 
-        cv.imshow("Gate detection test  (q=quit  s=save)", frame)
-        key = cv.waitKey(1) & 0xFF
-        if key == ord('q'):
-            break
-        if key == ord('s'):
-            ts  = datetime.now().strftime('%Y_%b_%d_%H%M%S')
-            fn  = os.path.join(save_dir, f"gate_{ts}_{frame_count:04d}.jpg")
-            cv.imwrite(fn, frame)
-            print(f"% Saved {fn}")
+    except KeyboardInterrupt:
+        pass
+
+    # Save the final annotated frame
+    if last_frame is not None:
+        ts = datetime.now().strftime('%Y_%b_%d_%H%M%S')
+        fn = os.path.join(save_dir, f"gate_{ts}_{frame_count:04d}.jpg")
+        cv.imwrite(fn, last_frame)
+        print(f"% Saved final frame to {fn}")
 
     cap.release()
-    cv.destroyAllWindows()
     gate.terminate()
     print(f"% Done — {frame_count} frames processed, {gate.detCnt} with gate detected")
 
