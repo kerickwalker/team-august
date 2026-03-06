@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# Standalone field test for gate detection (sgate.py).
+# Standalone field test for gate detection (sgate.py) and vision-based
+# white line detection (svline.py).
 # No MQTT or robot connection required — opens the camera stream directly.
 # Runs headless — the final annotated frame is saved to test/ on exit.
 #
@@ -17,9 +18,10 @@ import time
 import cv2 as cv
 from datetime import datetime
 
-# Allow importing sgate from the parent directory
+# Allow importing modules from the parent directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from sgate import gate
+from svline import vline
 
 
 def main():
@@ -37,6 +39,7 @@ def main():
         sys.exit(1)
 
     gate.setup()
+    vline.setup()
 
     # Read one frame to confirm stream is live and print resolution
     ret, frame = cap.read()
@@ -47,9 +50,9 @@ def main():
     print(f"% Stream live — {w}x{h}")
     print("% Running headless — press Ctrl+C to stop and save final frame")
 
-    save_dir    = os.path.dirname(__file__)  # save into test/
-    frame_count = 0
-    last_frame  = None
+    save_dir     = os.path.dirname(__file__)  # save into test/
+    frame_count  = 0
+    last_frame   = None
     t_last_print = time.time()
 
     try:
@@ -62,16 +65,23 @@ def main():
             frame_count += 1
             gate.detect(frame)
             gate.paint(frame)
+            vline.detect(frame)
+            vline.paint(frame)
             last_frame = frame
 
             # Print detection status to terminal at ~2 Hz
             now = time.time()
             if now - t_last_print >= 0.5:
                 if gate.detected:
-                    print(f"% Gate FOUND  width={gate.gate_width_px}px  "
+                    print(f"% Gate  FOUND  width={gate.gate_width_px}px  "
                           f"cx={gate.gate_cx}  steeringErr={gate.steeringError():+.3f}")
                 else:
-                    print("% Gate not found")
+                    print("% Gate  not found")
+                if vline.lineValid:
+                    print(f"% Line  FOUND  offset={vline.lineOffset:+.3f}  "
+                          f"conf={vline.lineValidCnt}/20")
+                else:
+                    print(f"% Line  not found  conf={vline.lineValidCnt}/20")
                 t_last_print = now
 
     except KeyboardInterrupt:
@@ -86,7 +96,9 @@ def main():
 
     cap.release()
     gate.terminate()
-    print(f"% Done — {frame_count} frames processed, {gate.detCnt} with gate detected")
+    vline.terminate()
+    print(f"% Done — {frame_count} frames processed")
+    print(f"%         gate detections: {gate.detCnt}  line detections: {vline.detCnt}")
 
 
 if __name__ == "__main__":
