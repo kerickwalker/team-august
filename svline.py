@@ -10,7 +10,7 @@ class SVLine:
     brightness_threshold = 180   # 0-255; white line on black ground is high contrast
 
     # --- ROI: bottom fraction of the image to search for the nearest line ---
-    roi_fraction = 0.25          # use the bottom 25% of the frame
+    roi_fraction = 0.5          # use the bottom 50% of the frame
 
     # --- Detection results (updated each detect() call) ---
     lineValid     = False        # True if a white line was found in the ROI
@@ -28,7 +28,7 @@ class SVLine:
 
     ##########################################################
 
-    def setup(self, brightness_threshold=180, roi_fraction=0.25):
+    def setup(self, brightness_threshold=180, roi_fraction=0.5):
         self.brightness_threshold = brightness_threshold
         self.roi_fraction         = roi_fraction
         print("% SVLine:: ready")
