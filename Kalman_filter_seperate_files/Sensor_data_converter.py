@@ -27,6 +27,11 @@ def _rk4_step_scalar(value: float, dt_s: float, deriv_value: float) -> float:
 	return value + (dt_s / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
 
+def _trapezoid_step_scalar(value: float, dt_s: float, prev_deriv: float, curr_deriv: float) -> float:
+	"""Integrate sampled derivative using trapezoidal rule (Tustin)."""
+	return value + 0.5 * dt_s * (prev_deriv + curr_deriv)
+
+
 @dataclass
 class _InternalState:
 	pos_x_enc_m: float = 0.0
@@ -34,6 +39,8 @@ class _InternalState:
 	pos_z_enc_m: float = 0.0
 	vel_acc_mps: float = 0.0
 	vel_acc_initialized: bool = False
+	prev_acc_forward_mps2: Optional[float] = None
+	acc_bias_mps2: float = 0.0
 	yaw_gyro_rad: float = 0.0
 	pitch_gyro_rad: float = 0.0
 	prev_yaw_mag_rad: Optional[float] = None
@@ -49,7 +56,7 @@ class SensorDataConverter:
 	4.  yaw_s1                          (magnetometer yaw)
 	5.  pitch_s1                        (accelerometer pitch)
 	6.  pos_x_s2, pos_y_s2, pos_z_s2   (encoder + yaw + pitch dead reckoning)
-	7.  velocity_s2                     (accel integrated speed via RK4)
+	7.  velocity_s2                     (accel integrated speed via trapezoidal rule)
 	8.  angular_velocity_s2             (yaw rate from gyro + pitch)
 	9.  yaw_s2                          (gyro integrated yaw with pitch correction)
 	10. pitch_s2                        (gyro integrated pitch)
@@ -72,12 +79,24 @@ class SensorDataConverter:
 		"pitch_s2",
 	]
 
-	def __init__(self, wheel_radius_m: float, gravity_mps2: float = 9.80665) -> None:
+	def __init__(
+		self,
+		wheel_radius_m: float,
+		gravity_mps2: float = 9.80665,
+		velocity_correction_gain: float = 0.30,
+		accel_bias_adapt_gain: float = 0.01,
+	) -> None:
 		if wheel_radius_m <= 0.0:
 			raise ValueError("wheel_radius_m must be > 0")
+		if velocity_correction_gain < 0.0:
+			raise ValueError("velocity_correction_gain must be >= 0")
+		if accel_bias_adapt_gain < 0.0:
+			raise ValueError("accel_bias_adapt_gain must be >= 0")
 
 		self.wheel_radius_m = float(wheel_radius_m)
 		self.gravity_mps2 = float(gravity_mps2)
+		self.velocity_correction_gain = float(velocity_correction_gain)
+		self.accel_bias_adapt_gain = float(accel_bias_adapt_gain)
 		self.state = _InternalState()
 
 	def reset(self) -> None:
@@ -126,6 +145,7 @@ class SensorDataConverter:
 		mag_xyz: Sequence[float],
 		encoder_input_mode: str = "linear_mps",
 		pitch_for_yaw_rad: Optional[float] = None,
+		pitch_for_velocity_rad: Optional[float] = None,
 		yaw_for_position_rad: Optional[float] = None,
 		pitch_for_position_rad: Optional[float] = None,
 	) -> Dict[str, float]:
@@ -180,12 +200,34 @@ class SensorDataConverter:
 		self.state.pos_y_enc_m += horizontal * math.sin(yaw_used_for_position)
 		self.state.pos_z_enc_m += distance_m * math.sin(pitch_used_for_position)
 
-		# Remove gravity projection from body-x accel before RK4 integration.
+		# Remove gravity projection from body-x accel before speed integration.
 		if not self.state.vel_acc_initialized:
 			self.state.vel_acc_mps = velocity_s1
 			self.state.vel_acc_initialized = True
-		acc_forward_mps2 = self.gravity_compensated_forward_accel_mps2(ax, pitch_s1)
-		vel2 = _rk4_step_scalar(self.state.vel_acc_mps, dt_s, acc_forward_mps2)
+		pitch_used_for_velocity = pitch_s2 if pitch_for_velocity_rad is None else float(pitch_for_velocity_rad)
+		acc_forward_mps2 = self.gravity_compensated_forward_accel_mps2(ax, pitch_used_for_velocity)
+
+		# Adapt accel bias from encoder-vs-integrated speed error to limit long-term drift.
+		vel_err = velocity_s1 - self.state.vel_acc_mps
+		if dt_s > 1e-6:
+			self.state.acc_bias_mps2 -= self.accel_bias_adapt_gain * (vel_err / dt_s)
+		acc_forward_corrected_mps2 = acc_forward_mps2 - self.state.acc_bias_mps2
+
+		if self.state.prev_acc_forward_mps2 is None:
+			# First sample has no previous derivative; use Euler bootstrap once.
+			vel2 = self.state.vel_acc_mps + dt_s * acc_forward_corrected_mps2
+		else:
+			vel2 = _trapezoid_step_scalar(
+				self.state.vel_acc_mps,
+				dt_s,
+				self.state.prev_acc_forward_mps2,
+				acc_forward_corrected_mps2,
+			)
+
+		# Light complementary correction anchors drift without replacing accel integration.
+		vel2 += self.velocity_correction_gain * dt_s * (velocity_s1 - vel2)
+
+		self.state.prev_acc_forward_mps2 = acc_forward_corrected_mps2
 		self.state.vel_acc_mps = vel2
 
 		sample = {
