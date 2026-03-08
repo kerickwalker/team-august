@@ -47,3 +47,13 @@ class CSVDataLoader:
                 vector = np.array([[float(row[col])] for col in columns], dtype=float)
                 measurements.append(vector)
         return measurements
+
+    def load_timestamps(self, csv_path: str, time_column: str = "t_s") -> List[float]:
+        """Load timestamp values from CSV for variable-step filtering."""
+
+        timestamps: List[float] = []
+        with open(csv_path, "r", newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                timestamps.append(float(row[time_column]))
+        return timestamps
