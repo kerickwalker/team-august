@@ -1,2 +1,3 @@
 # Ignore all JPEG images
 *.jpg
+venv/
