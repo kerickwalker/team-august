@@ -248,8 +248,16 @@ class SPose:
             print("% SPose:: got a too short configuration message '{msg}'")
         elif topic == "T0/enc":
           # Encoder data: timestamp encoder_left encoder_right
-          # Currently just acknowledging receipt, not storing
-          pass
+          gg = msg.split(" ")
+          if len(gg) >= 3:
+            t0 = float(gg[0])
+            enc_left = int(gg[1])
+            enc_right = int(gg[2])
+            # print(f"% Encoder: t={t0:.3f} left={enc_left} right={enc_right}")
+            # Optionally: store to self if needed
+            # self.last_enc = (t0, enc_left, enc_right)
+          else:
+            print(f"% SPose:: got malformed encoder message '{msg}'")
         else:
           used = False
         return used

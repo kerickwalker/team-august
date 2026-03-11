@@ -16,3 +16,22 @@
 # UService:: setup of Teensy 0 modules finished OK.
 # SRobot::setRobotName (section robot0) new robot name August
 # STeensy[0]:: time glitch of 1090.604 sec, 19.1 secs after app start, maybe an NTP update
+# UMqtt:: (data) Connection lost (cause: (null))
+Failed to publish message, return code -3
+Failed to publish message, return code -3
+Failed to publish message, return code -3
+Failed to publish message, return code -3
+# 1773247233.6767 MQTT (data) reconnect (2026-03-11 17:40:33.676)
+# 1773247233.6767 MQTT (data) reconnected (2026-03-11 17:40:33.676)
+Failed to publish message, return code -3
+# Teensy[0]::message queue compare err: '!sub livn 10
+' != ';29!sub pose 5
+'
+# signal_callback_handler: setting stopNowRequest to true
+# --------- terminating -----------
+# STeensy: close USB
+# UMqtt:: client shutdown
+# UMqttIn:: client shutdown
+# UService:: Trying to save robot.ini (crashes sometimes)
+# UService:: configuration saved to robot.ini
+# ---- Teensy_interface has ended (nicely) ----

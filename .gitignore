@@ -9,11 +9,9 @@ venv/
 
 # Build output directories
 # Ignore only log folders/files inside build, but include all other build contents
-build/log*/
 **/build/log*/
 
 # Common compiled artifacts
-*.hex
 *.elf
 *.map
 *.o
