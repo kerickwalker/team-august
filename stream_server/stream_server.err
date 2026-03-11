@@ -1,0 +1,29 @@
+[0:00:12.405717084] [854] [1;32m INFO [1;37mCamera [1;34mcamera_manager.cpp:340 [0mlibcamera v0.6.0+rpt20251202
+[0:00:12.443739880] [1070] [1;32m INFO [1;37mIPAProxy [1;34mipa_proxy.cpp:180 [0mUsing tuning file /usr/share/libcamera/ipa/rpi/vc4/ov5647.json
+[0:00:12.450881862] [1070] [1;32m INFO [1;37mCamera [1;34mcamera_manager.cpp:223 [0mAdding camera '/base/soc/i2c0mux/i2c@1/ov5647@36' for pipeline handler rpi/vc4
+[0:00:12.450946584] [1070] [1;32m INFO [1;37mRPI [1;34mvc4.cpp:445 [0mRegistered camera /base/soc/i2c0mux/i2c@1/ov5647@36 to Unicam device /dev/media2 and ISP device /dev/media0
+[0:00:12.450979047] [1070] [1;32m INFO [1;37mRPI [1;34mpipeline_base.cpp:1111 [0mUsing configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+[0:00:12.458528288] [854] [1;32m INFO [1;37mCamera [1;34mcamera.cpp:1215 [0mconfiguring streams: (0) 820x616-XBGR8888/SMPTE170M/Rec709/None/Full (1) 1296x972-SGBRG10_CSI2P/RAW
+[0:00:12.458975454] [1070] [1;32m INFO [1;37mRPI [1;34mvc4.cpp:620 [0mSensor: /base/soc/i2c0mux/i2c@1/ov5647@36 - Selected sensor format: 1296x972-SGBRG10_1X10/RAW - Selected unicam format: 1296x972-pGAA/RAW
+127.0.0.1 - - [11/Mar/2026 14:19:39] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 49006): [Errno 32] Broken pipe
+127.0.0.1 - - [11/Mar/2026 14:20:44] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 58712): [Errno 104] Connection reset by peer
+127.0.0.1 - - [11/Mar/2026 14:23:00] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 57926): [Errno 104] Connection reset by peer
+127.0.0.1 - - [11/Mar/2026 14:25:11] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 32804): [Errno 104] Connection reset by peer
+127.0.0.1 - - [11/Mar/2026 14:26:05] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 55774): [Errno 32] Broken pipe
+127.0.0.1 - - [11/Mar/2026 14:26:32] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 58210): [Errno 104] Connection reset by peer
+127.0.0.1 - - [11/Mar/2026 14:26:55] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 46698): [Errno 104] Connection reset by peer
+127.0.0.1 - - [11/Mar/2026 14:27:04] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 52098): [Errno 104] Connection reset by peer
+127.0.0.1 - - [11/Mar/2026 14:27:26] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 56982): [Errno 104] Connection reset by peer
+127.0.0.1 - - [11/Mar/2026 14:28:04] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 49498): [Errno 104] Connection reset by peer
+127.0.0.1 - - [11/Mar/2026 14:28:13] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 53436): [Errno 104] Connection reset by peer

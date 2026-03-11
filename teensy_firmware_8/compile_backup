@@ -1,0 +1,2 @@
+#!/bin/bash
+arduino-cli compile --fqbn teensy:avr:teensy41 --build-path build ../teensy_firmware_8

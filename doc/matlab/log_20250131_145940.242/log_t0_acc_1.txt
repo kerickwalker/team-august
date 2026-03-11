@@ -1,0 +1,3 @@
+% Accelerometer logfile (IMU1)
+% 1 	Time (sec)
+% 2-4 	Accelerometer (x,y,z)

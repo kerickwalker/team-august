@@ -1,0 +1,23 @@
+# Legacy VCS metadata
+.svn/
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build output directories
+**/build/
+
+# Common compiled artifacts
+*.hex
+*.elf
+*.map
+*.o
+*.a
+
+# Runtime/temp files
+*.tmp
+*.swp
+*.log
