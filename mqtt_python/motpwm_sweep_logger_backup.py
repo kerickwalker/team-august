@@ -16,8 +16,7 @@ import math
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 from paho.mqtt import client as mqtt_client
 
@@ -52,7 +51,6 @@ class SweepLogger:
 
         self.lock = threading.Lock()
         self.connected = False
-        self.master_confirmed = False
 
         self.last_bat_v = float("nan")
         self.last_enc_left = float("nan")
@@ -60,7 +58,6 @@ class SweepLogger:
 
         self.test_active = False
         self.samples: List[Sample] = []
-        self.alive_id = str(datetime.now())
 
     @staticmethod
     def _make_client(client_id: str):
@@ -77,7 +74,6 @@ class SweepLogger:
             client.subscribe("robobot/drive/T0/hbt")
             client.subscribe("robobot/drive/T0/vel")
             client.subscribe("robobot/drive/T0/enc")
-            client.subscribe("robobot/drive/master")
         else:
             print(f"[mqtt] connect failed rc={rc}")
 
@@ -98,12 +94,6 @@ class SweepLogger:
                         self.last_bat_v = float(parts[4])
                     except ValueError:
                         pass
-                return
-
-            if topic.endswith("/master"):
-                # Format observed: "<unix_time> <master_id>"
-                if len(parts) >= 2:
-                    self.master_confirmed = parts[1] == self.alive_id
                 return
 
             if topic.endswith("/enc"):
@@ -163,37 +153,13 @@ class SweepLogger:
         payload = f"rc {linvel:.4f} {turnrate:.4f}"
         self.client.publish("robobot/cmd/ti", payload)
 
-    def send_alive(self) -> None:
-        self.client.publish("robobot/cmd/ti", f"alive {self.alive_id}")
-
-    def wait_for_master(self, timeout_s: float) -> bool:
-        t0 = time.time()
-        while time.time() - t0 < timeout_s:
-            with self.lock:
-                if self.master_confirmed:
-                    return True
-            self.send_alive()
-            time.sleep(0.1)
-        with self.lock:
-            return self.master_confirmed
-
-    def run_test(
-        self,
-        duration_s: float,
-        keepalive: Optional[Callable[[], None]] = None,
-        keepalive_period_s: float = 0.1,
-    ) -> List[Sample]:
+    def run_test(self, duration_s: float) -> List[Sample]:
         with self.lock:
             self.samples = []
             self.test_active = True
 
         t0 = time.time()
-        next_keepalive_t = t0
         while time.time() - t0 < duration_s:
-            now = time.time()
-            if keepalive is not None and now >= next_keepalive_t:
-                keepalive()
-                next_keepalive_t = now + keepalive_period_s
             time.sleep(0.01)
 
         with self.lock:
@@ -215,47 +181,25 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Sweep motor input and log outputs")
     parser.add_argument("--host", default="localhost", help="MQTT host")
     parser.add_argument("--port", type=int, default=1883, help="MQTT port")
-    parser.add_argument(
-        "--pwm-values",
-        default="-4096,-3584,-3072,-2560,-2048,-1536,-1024,-512,0,512,1024,1536,2048,2560,3072,3584,4096",
-        help="Comma-separated PWM-like values for straight-line sweeps (left=right)",
-    )
-    parser.add_argument("--left-values", default=None, help="Comma-separated left PWM-like values (used with --full-grid)")
-    parser.add_argument("--right-values", default=None, help="Comma-separated right PWM-like values (used with --full-grid)")
-    parser.add_argument("--full-grid", action="store_true", help="Run full left/right combination grid instead of straight-line sweep")
+    parser.add_argument("--left-values", default="-2000,-1000,0,1000,2000", help="Comma-separated left PWM-like values")
+    parser.add_argument("--right-values", default="-2000,-1000,0,1000,2000", help="Comma-separated right PWM-like values")
     parser.add_argument("--duration", type=float, default=1.5, help="Command duration per test [s]")
     parser.add_argument("--settle", type=float, default=0.5, help="Pause after stop between tests [s]")
     parser.add_argument("--measure-tail", type=float, default=0.6, help="Use last N seconds for summary averages")
     parser.add_argument("--max-pwm", type=float, default=4096.0, help="Input full-scale value")
-    parser.add_argument("--max-linvel", type=float, default=1.0, help="Linear velocity at full-scale input [m/s]")
+    parser.add_argument("--max-linvel", type=float, default=0.35, help="Linear velocity at full-scale input [m/s]")
     parser.add_argument("--wheelbase", type=float, default=0.22, help="Wheel base [m]")
-    parser.add_argument("--master-timeout", type=float, default=4.0, help="Wait up to N seconds for master claim")
     parser.add_argument("--output", default="motpwm_sweep_summary.csv", help="Output CSV path")
     args = parser.parse_args()
 
-    pwm_values = parse_csv_floats(args.pwm_values)
-    if not pwm_values:
-        print("No PWM sweep values provided")
+    left_values = parse_csv_floats(args.left_values)
+    right_values = parse_csv_floats(args.right_values)
+    if not left_values or not right_values:
+        print("No sweep values provided")
         return 1
-
-    if args.full_grid:
-        left_values = parse_csv_floats(args.left_values) if args.left_values is not None else list(pwm_values)
-        right_values = parse_csv_floats(args.right_values) if args.right_values is not None else list(pwm_values)
-        if not left_values or not right_values:
-            print("No left/right sweep values provided")
-            return 1
-        test_pairs = itertools.product(left_values, right_values)
-    else:
-        # Straight-line test: same PWM for both sides to avoid turning tests.
-        test_pairs = ((pwm, pwm) for pwm in pwm_values)
 
     logger = SweepLogger(args.host, args.port)
     logger.connect()
-    logger.send_alive()
-    if logger.wait_for_master(args.master_timeout):
-        print("[mqtt] master confirmed")
-    else:
-        print("[mqtt] warning: master not confirmed; motion commands may be ignored")
 
     # Stop first to start from a known state.
     logger.send_rc(0.0, 0.0)
@@ -265,7 +209,7 @@ def main() -> int:
     test_id = 0
 
     try:
-        for left_pwm, right_pwm in test_pairs:
+        for left_pwm, right_pwm in itertools.product(left_values, right_values):
             left_pwm = max(-args.max_pwm, min(args.max_pwm, left_pwm))
             right_pwm = max(-args.max_pwm, min(args.max_pwm, right_pwm))
 
@@ -280,10 +224,7 @@ def main() -> int:
             )
 
             logger.send_rc(linvel, turnrate)
-            samples = logger.run_test(
-                args.duration,
-                keepalive=lambda lv=linvel, tr=turnrate: (logger.send_alive(), logger.send_rc(lv, tr)),
-            )
+            samples = logger.run_test(args.duration)
 
             # Stop between tests.
             logger.send_rc(0.0, 0.0)

@@ -8,7 +8,9 @@ __pycache__/
 venv/
 
 # Build output directories
-**/build/
+# Ignore only log folders/files inside build, but include all other build contents
+build/log*/
+**/build/log*/
 
 # Common compiled artifacts
 *.hex
@@ -21,3 +23,7 @@ venv/
 *.tmp
 *.swp
 *.log
+log_*.txt
+
+# Ignore all JPEG images
+*.jpg
