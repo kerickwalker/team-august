@@ -1,0 +1,82 @@
+# UService:: created directory log_20260206_154952.160/
+# UService:: no logging at start
+# UMqtt:: Waiting for (drive) Mosquitto (1)
+# UMqtt:: Waiting for (drive) Mosquitto (2)
+# UMqtt:: Waiting for (drive) Mosquitto (3)
+# UMqtt:: Waiting for (drive) Mosquitto (4)
+# UMqtt:: Waiting for (drive) Mosquitto (5)
+# UMqtt:: Waiting for (drive) Mosquitto (6)
+# UMqtt:: connection to MQTT broker on tcp://localhost:1883 established
+# UMqttIn:: connection to MQTT broker on tcp://localhost:1883 established
+# STeensy:: opening to USB /dev/ttyACM0
+# STeensy:: just connected 
+# SRobot:: (t0) found IP 0: wlan0 10.197.219.211
+# SGpiod::setup GPIO disabled (in robot.ini)
+# UService:: setup of Teensy 0 modules finished OK.
+# SRobot::setRobotName (section robot0) new robot name Arthur
+# STeensy[0]:: time glitch of 1893.758 sec, 20.3 secs after app start, maybe an NTP update
+# 1770391314.1575 UMqttIn:: Connection lost (rc=(null)) at 2026-02-06 16:21:54.157
+# 1770391318.2136 MQTT (cmd) reconnect (2026-02-06 16:21:58.213)
+# 1770391318.2136 MQTT (cmd) reconnected (2026-02-06 16:21:58.213)
+# Started logging
+# MQTT decode:: (err=0) new master '2026-02-06 16:30:06.981990'
+# CMixer::setVelocity: vel=0.200 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# Flush of logfiles to disk took 0.000085 sec
+# UService::run: master lost (2026-02-06 16:30:06.981990), no alive in 4.07 sec
+# UService:: should probably stop the robot, but ignored for now.
+# MQTT decode:: (err=0) new master '2026-02-06 16:30:28.195273'
+# Started logging
+# CMixer::setVelocity: vel=0.200 (m/s), turnrate=0.500 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# Flush of logfiles to disk took 0.000087 sec
+# UService::run: master lost (2026-02-06 16:30:28.195273), no alive in 4.06 sec
+# UService:: should probably stop the robot, but ignored for now.
+# MQTT decode:: (err=0) new master '2026-02-06 16:33:40.367280'
+# Started logging
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# Flush of logfiles to disk took 0.004405 sec
+# UService::run: master lost (2026-02-06 16:33:40.367280), no alive in 4.08 sec
+# UService:: should probably stop the robot, but ignored for now.
+# MQTT decode:: (err=0) new master '2026-02-06 16:34:15.135768'
+# Started logging
+# CMixer::setVelocity: vel=0.200 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# Flush of logfiles to disk took 0.000135 sec
+# UService::run: master lost (2026-02-06 16:34:15.135768), no alive in 4.07 sec
+# UService:: should probably stop the robot, but ignored for now.
+# MQTT decode:: (err=0) new master '2026-02-06 16:34:50.972320'
+# Started logging
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# Flush of logfiles to disk took 0.000111 sec
+# UService::run: master lost (2026-02-06 16:34:50.972320), no alive in 4.03 sec
+# UService:: should probably stop the robot, but ignored for now.
+# MQTT decode:: (err=0) new master '2026-02-06 16:35:35.445491'
+# Started logging
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# Flush of logfiles to disk took 0.000134 sec
+# UService::run: master lost (2026-02-06 16:35:35.445491), no alive in 4.06 sec
+# UService:: should probably stop the robot, but ignored for now.
+# MQTT decode:: (err=0) new master '2026-02-06 16:36:17.638706'
+# Started logging
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# Flush of logfiles to disk took 0.000118 sec
+# UService::run: master lost (2026-02-06 16:36:17.638706), no alive in 4.06 sec
+# UService:: should probably stop the robot, but ignored for now.
+# MQTT decode:: (err=0) new master '2026-02-06 16:36:34.617471'
+# Started logging
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)

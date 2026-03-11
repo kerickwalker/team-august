@@ -1,0 +1,38 @@
+% Service logfile
+% 1 	Time (sec)
+% 2 	Message
+1770214538.5137 msg: # Mqtt data connection established
+1770214538.7150 msg: # Mqtt cmd connection established
+1770214538.7259 msg: Teensy connection just opened
+1770214532.1060 Setup finished OK=1
+1770214539.0237 msg: # SCurrent: subscribed to Teensy data
+1770214539.0237 msg: # SDistForce: subscribed to Teensy data
+1770214539.0237 msg: # SEdge: subscribed to Teensy data
+1770214539.0237 msg: # SEncoder: subscribed to Teensy data (pose and/or vel)
+1770214539.0237 msg: # SImu: subscribed to Teensy data (gyro and acc)
+1770214539.0237 msg: # SRobot:: subscribed to HBT
+1770214539.0237 msg: # STeensy: subscribed to Teensy data (id -> dname)
+1770386287.2471 msg: 1770386287.2471 NTP time glitch of 171726.984 sec, maybe an NTP update
+
+1770386287.2925 msg: # SCurrent: subscribed to Teensy data
+1770386287.2925 msg: # SDistForce: subscribed to Teensy data
+1770386287.2925 msg: # SEdge: subscribed to Teensy data
+1770386287.2925 msg: # SRobot:: subscribed to HBT
+1770386287.2925 msg: # STeensy: subscribed to Teensy data (id -> dname)
+1770386328.8451 new Master: (0) 2026-02-06 14:58:48.828247
+1770386328.8451 Log command: robobot/cmd/ti log 1
+1770386329.2348 Mixer order: robobot/cmd/ti rc 0.25 0.0
+1770386331.3367 Mixer order: robobot/cmd/ti rc 0.1 0.5
+1770386334.4410 Mixer order: robobot/cmd/ti rc 0 0
+1770386338.6518 Mixer order: robobot/cmd/ti rc 0 0
+1770386338.7259 Mixer order: robobot/cmd/ti rc 0 0
+1770386338.7668 Log command: robobot/cmd/ti log 0
+1770214538.8223 Lost Master, alive since 2026-02-06 14:58:48.828247
+1770386393.8866 Unused command: robobot/cmd/ti 1770386393.8865 log 1
+1770386393.8878 Shutdown: robobot/cmd/shutdown 1770386393.8865 GPIO button
+1770386393.8878 Got power off from (to teensy 0) 1770386393.8865 GPIO button
+1770386393.8878 send power off to teensy
+1770386413.4487 msg: 1770386413.4487 NTP time glitch of 18.812 sec, maybe an NTP update
+
+1770386414.7519 msg: # STeensy: close USB
+1770386414.3588 All terminated; closing logfile

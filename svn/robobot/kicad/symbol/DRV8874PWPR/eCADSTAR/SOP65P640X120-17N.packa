@@ -1,0 +1,13 @@
+(unit MM)
+
+(package "DRV8874PWPR"
+    (type UNDEF)
+    (uver 2)
+    (cuser "SamacSys")
+    (uuser "SamacSys")
+    (utime 2020-01-24-14:20:54)
+    (mountForm default
+        (footprintRef "SOP65P640X120-17N")
+        (spec "System")
+    )
+)

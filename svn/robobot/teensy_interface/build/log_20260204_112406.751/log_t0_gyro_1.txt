@@ -1,0 +1,4 @@
+% Gyro logfile (IMU1)
+% 1 	Time (sec)
+% 2-4 	Gyro (x,y,z)
+% Gyro offset 0 0 0

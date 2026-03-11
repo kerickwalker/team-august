@@ -1,0 +1,4 @@
+% Pose and velocity (log_20260202_220144.763/log_t0_encoder_velocity.txt) for Teensy 0
+% 1 	Time (sec)
+% 2-3 	Velocity motor 1..2 (m/s or rad/s) m/s if use Teensy, else rad/sec motor vel, see robot.ini
+% 4-5 	Update number (encoder, velocity) - mostly debug

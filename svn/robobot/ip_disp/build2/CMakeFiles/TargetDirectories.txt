@@ -1,0 +1,3 @@
+/home/chr/aaa/svn/robobot/ip_disp/build2/CMakeFiles/ip_disp.dir
+/home/chr/aaa/svn/robobot/ip_disp/build2/CMakeFiles/edit_cache.dir
+/home/chr/aaa/svn/robobot/ip_disp/build2/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,69 @@
+% mqtt logfile, enabled=true
+% broker=tcp://localhost:1883
+% context=drive
+% client id=tif_cmd
+% system=robobot/ (top level ID)
+% function=cmd/ (next level name)
+% 1 	Time (sec)
+% 2 	Quality of service 0=max once, 1=at least once, 2=once, S=subscribe
+% 3 	'Topic'
+% 4 	Message / payload
+1770200583.8312 0 drive robobot/cmd/ti log 1
+1770200584.3118 0 drive robobot/cmd/T0 enc0
+1770200584.3527 0 drive robobot/cmd/T0 confw 0.074 0.074 19 92 0.23
+1770200584.3527 0 drive robobot/cmd/T0 confi
+1770200584.3528 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200584.5915 0 drive robobot/cmd/T0 lip 1
+1770200584.5917 0 drive robobot/cmd/T0 sub livn 10
+1770200584.6120 0 drive robobot/cmd/T0 liwi
+1770200584.6322 0 drive robobot/cmd/T0 leds 16 30 30 0
+1770200584.6324 0 drive robobot/cmd/T0 leds 16 0 0 30
+1770200584.6325 0 drive robobot/cmd/ti rc 0.25 0.0
+1770200584.6327 0 drive robobot/cmd/T0 servo 1 100 300
+1770200584.6456 0 'robobot/teensy_interface/alive' 1770200584.6455 2026-02-04 11:23:04.645
+1770200584.8328 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200585.3344 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200585.8355 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200586.3367 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200586.6541 0 'robobot/teensy_interface/alive' 1770200586.6541 2026-02-04 11:23:06.654
+1770200586.7351 0 drive robobot/cmd/ti rc 0.1 0.5
+1770200586.7352 0 drive robobot/cmd/T0 servo 1 -800 1000
+1770200586.8385 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200587.3429 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200587.8440 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200588.3452 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200588.6623 0 'robobot/teensy_interface/alive' 1770200588.6622 2026-02-04 11:23:08.662
+1770200588.8462 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200589.3472 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200589.8483 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200589.9386 0 drive robobot/cmd/ti rc 0 0
+1770200589.9386 0 drive robobot/cmd/T0 servo 1 0 1000
+1770200590.3500 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200590.3540 0 drive robobot/cmd/T0 leds 16 0 64 0
+1770200590.6704 0 'robobot/teensy_interface/alive' 1770200590.6703 2026-02-04 11:23:10.670
+1770200590.7464 0 drive robobot/cmd/T0 leds 16 0 30 30
+1770200590.8511 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200591.3504 0 drive robobot/cmd/T0 leds 16 0 64 0
+1770200591.3522 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200591.7432 0 drive robobot/cmd/T0 leds 16 0 30 30
+1770200591.8533 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200592.1456 0 drive robobot/cmd/T0 leds 16 0 64 0
+1770200592.3546 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200592.5482 0 drive robobot/cmd/T0 leds 16 0 30 30
+1770200592.6788 0 'robobot/teensy_interface/alive' 1770200592.6787 2026-02-04 11:23:12.678
+1770200592.8556 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200592.9414 0 drive robobot/cmd/T0 leds 16 0 64 0
+1770200593.3441 0 drive robobot/cmd/T0 leds 16 0 30 30
+1770200593.3567 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200593.7473 0 drive robobot/cmd/T0 leds 16 0 64 0
+1770200593.8582 0 drive robobot/cmd/ti alive 2026-02-04 11:23:03.813786
+1770200594.1399 0 drive robobot/cmd/T0 leds 16 0 30 30
+1770200594.2403 0 drive robobot/cmd/T0 leds 16 0 0 0
+1770200594.2403 0 drive robobot/cmd/ti rc 0 0
+1770200594.2404 0 drive robobot/cmd/T0 servo 1 0 0
+1770200594.3108 0 drive robobot/cmd/ti rc 0 0
+1770200594.3310 0 drive robobot/cmd/T0 stop
+1770200594.3311 0 drive robobot/cmd/T0 leds 14 0 0 0
+1770200594.3415 0 drive robobot/cmd/T0 leds 15 0 0 0
+1770200594.3416 0 drive robobot/cmd/T0 leds 16 0 0 0
+1770200661.3614 Failed (-1) to connect to to MQTT server at 2026-02-04 11:24:21.361

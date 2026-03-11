@@ -1,0 +1,46 @@
+# 20260202_171124.423 UService::setup: Started
+# UMqtt:: Waiting for Mosquitto (1) localhost
+# UMqtt:: off_by_mqtt connected to MQTT broker localhost
+# Listening to MQTT)
+# at 2026-02-03 12:59:16.316 UMqtt:: Connection lost
+#     cause: (null)
+# At 2026-02-03 12:59:16.323; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770119956.3230 alive at 2026-02-03 12:59:16.323# At 2026-02-03 12:59:19.332; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770119959.3326 alive at 2026-02-03 12:59:19.332# At 2026-02-03 12:59:22.336; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770119962.3363 alive at 2026-02-03 12:59:22.336# 1770119965.3404 MQTT reconnect (2026-02-03 12:59:25.340)
+# 1770119965.3404 MQTT reconnected (2026-02-03 12:59:25.340)
+# At 2026-02-03 12:59:25.340; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770119965.3404 alive at 2026-02-03 12:59:25.340# at 2026-02-03 13:04:50.662 UMqtt:: Connection lost
+#     cause: (null)
+# at 2026-02-03 13:04:52.270 Interrupted by signal 15
+# --------- terminating -----------
+# UMqtt:: client shutdown
+# end of service terminate
+# 20260203_130507.942 UService::setup: Started
+# UMqtt:: off_by_mqtt connected to MQTT broker localhost
+# Listening to MQTT)
+# at 2026-02-03 13:06:01.594 UMqtt:: Connection lost
+#     cause: (null)
+# At 2026-02-03 13:06:03.194; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770120363.1943 alive at 2026-02-03 13:06:03.194# at 2026-02-03 13:06:03.219 Interrupted by signal 15
+# --------- terminating -----------
+# UMqtt:: client shutdown
+# end of service terminate
+# 20260203_131849.638 UService::setup: Started
+# UMqtt:: off_by_mqtt connected to MQTT broker localhost
+# Listening to MQTT)
+# at 2026-02-04 10:53:25.244 UMqtt:: Connection lost
+#     cause: (null)
+# At 2026-02-04 10:53:25.250; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770198805.2504 alive at 2026-02-04 10:53:25.250# At 2026-02-04 10:53:28.264; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770198808.2640 alive at 2026-02-04 10:53:28.264# At 2026-02-04 10:53:31.269; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770198811.2692 alive at 2026-02-04 10:53:31.269# 1770198814.2755 MQTT reconnect (2026-02-04 10:53:34.275)
+# 1770198814.2755 MQTT reconnected (2026-02-04 10:53:34.275)
+# At 2026-02-04 10:53:34.275; failed (rc=-3) to publish robobot/off_by_mqtt/alive 1770198814.2755 alive at 2026-02-04 10:53:34.275# at 2026-02-04 10:58:33.458 UMqtt:: Connection lost
+#     cause: (null)
+# 1770199114.8380 MQTT reconnect (2026-02-04 10:58:34.838)
+# at 2026-02-04 10:58:35.381 Interrupted by signal 15
+# --------- terminating -----------
+# UMqtt:: client shutdown
+# end of service terminate
+# 20260220_145807.313 UService::setup: Started
+# UMqtt:: off_by_mqtt connected to MQTT broker localhost
+# Listening to MQTT)
+# at 2026-02-20 15:50:07.137 UMqtt:: Connection lost
+#     cause: (null)
+# at 2026-02-20 15:50:08.560 Interrupted by signal 15
+# --------- terminating -----------
+# UMqtt:: client shutdown
+# end of service terminate

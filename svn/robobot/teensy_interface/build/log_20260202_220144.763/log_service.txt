@@ -1,0 +1,10 @@
+% Service logfile
+% 1 	Time (sec)
+% 2 	Message
+1770066116.1712 msg: # Mqtt data connection established
+1770066116.3731 msg: # Mqtt cmd connection established
+1770066116.3837 msg: # STeensy[0]::openToTeensy open '/dev/ttyACM0' failed errno=2:
+1770066116.6838 msg: # STeensy[0]::openToTeensy open '/dev/ttyACM1' failed errno=2:
+1770066116.9840 msg: # STeensy[0]::openToTeensy open '/dev/ttyACM0' failed errno=2:
+1770066117.2842 msg: # STeensy[0]::openToTeensy open '/dev/ttyACM1' failed errno=2:
+1770066126.4642 All terminated; closing logfile

@@ -1,0 +1,6 @@
+% Encoder logfile
+% 1 	Time (sec)
+% 2-3 	encoder position m1, m2 (ticks)
+% 4-5 	encoder velocity v1, v2 (rad/sec for motor before gear)
+% 6 	encoder posion update count
+% 7 	encoder velocity update count

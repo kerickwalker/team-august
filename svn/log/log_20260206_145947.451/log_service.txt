@@ -1,0 +1,289 @@
+% IP display service for Teensy
+% Version  1234 2026-02-01 08:46:32
+% 1 	Time (sec) from system
+% 2 	Number of users on Linux system
+% 3 	CPU temperature (deg C)
+% 4 	% (to help import to Matlab)
+% 5 	Message string (possibly more lines)
+1770386397.6948 0 0.0 % Fri Feb  6 02:59:57 PM CET 2026
+
+1770386397.6950 0 29.2 % 
+1770386397.7274 0 29.2 %  14:59:57 up 0 min,  1 user,  load average: 1.38, 0.31, 0.10
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local    tty1     -                14:59    2.00s  0.10s  0.10s -bash
+
+1770386400.7277 1 30.7 % 
+1770386403.7516 1 29.2 % 
+1770386406.7717 1 30.2 % 
+1770394059.0079 1 29.2 % 
+1770394062.0274 1 30.2 % 
+1770394065.0469 1 31.6 % 
+1770394071.3083 1 30.7 % 
+1770394074.3473 1 30.7 %  17:07:54 up 0 min,  2 users,  load average: 0.99, 0.36, 0.13
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local    pts/0    10.209.189.60    17:07    2.00s  0.08s  0.08s -bash
+local    tty1     -                14:59    2:07m  0.10s  0.10s -bash
+
+1770394077.3475 2 31.6 % 
+1770394080.3668 2 30.7 % 
+1770394089.4830 2 32.1 % 
+1770394116.8017 2 33.1 % 
+1770394122.8787 2 32.1 % 
+1770394125.9189 2 33.1 % 
+1770394128.9563 2 32.1 % 
+1770394131.9938 2 33.1 % 
+1770394135.0308 2 34.1 % 
+1770394150.2202 2 35.5 % 
+1770394153.2555 2 34.1 % 
+1770394162.3665 2 35.0 % 
+1770394168.4396 2 36.0 % 
+1770394171.4751 2 35.0 % 
+1770394186.6367 2 36.0 % 
+1770394198.7719 2 37.0 % 
+1770394198.7947 2 37.0 %  17:09:58 up 3 min,  3 users,  load average: 0.37, 0.32, 0.14
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    1:02   0.22s  0.22s -bash
+local    tty1     -                14:59    2:10m  0.10s  0.10s -bash
+
+1770394220.0248 3 38.0 % 
+1770394223.0615 3 37.0 % 
+1770394232.1765 3 38.0 % 
+1770394235.2169 3 37.0 % 
+1770394241.2893 3 38.0 % 
+1770394244.3292 3 38.9 % 
+1770394247.3648 3 37.5 % 
+1770394250.4008 3 38.5 % 
+1770394250.4224 3 38.5 %  17:10:50 up 3 min,  4 users,  load average: 0.60, 0.41, 0.18
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    1:54   0.22s  0.22s -bash
+local    tty1     -                14:59    2:10m  0.10s  0.10s -bash
+
+1770394256.4464 4 39.4 % 
+1770394268.5722 4 40.4 % 
+1770394292.8627 4 41.4 % 
+1770394304.9825 4 40.4 % 
+1770394308.0173 4 42.4 % 
+1770394320.1491 4 41.4 % 
+1770394323.1711 4 42.4 % 
+1770394329.2290 4 43.3 % 
+1770394338.3229 4 41.9 % 
+1770394341.3580 4 42.8 % 
+1770394350.4692 4 41.4 % 
+1770394353.5100 4 42.8 % 
+1770394371.7287 4 41.4 % 
+1770394374.7679 4 42.4 % 
+1770394383.8907 4 43.3 % 
+1770394389.9658 4 42.4 % 
+1770394396.0357 4 43.8 % 
+1770394405.1517 4 42.8 % 
+1770394408.1881 4 41.9 % 
+1770394411.2227 4 42.8 % 
+1770394414.2622 4 43.8 % 
+1770394423.3809 4 42.4 % 
+1770394426.4161 4 43.8 % 
+1770394429.4561 4 42.8 % 
+1770394438.5549 4 43.8 % 
+1770394447.6533 4 42.4 % 
+1770394453.7308 4 44.3 % 
+1770394456.7502 4 42.8 % 
+1770394459.7865 4 43.8 % 
+1770394462.8227 4 42.8 % 
+1770394471.9336 4 44.3 % 
+1770394474.9686 4 42.4 % 
+1770394478.0048 4 43.8 % 
+1770394484.1210 4 43.8 %  17:14:44 up 7 min,  5 users,  load average: 0.75, 0.62, 0.32
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local    pts/1    10.209.189.246   17:14    3.00s  0.07s  0.07s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    2:36   0.25s  0.25s -bash
+local    tty1     -                14:59    2:14m  0.10s  0.10s -bash
+
+1770394490.1786 5 43.8 %  17:14:50 up 7 min,  6 users,  load average: 0.69, 0.61, 0.32
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local    pts/2    10.209.198.45    17:14    3.00s  0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    9.00s  0.07s  0.07s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    2:42   0.25s  0.25s -bash
+local    tty1     -                14:59    2:14m  0.10s  0.10s -bash
+
+1770394493.1789 6 44.8 % 
+1770394496.2204 6 43.8 % 
+1770394499.2645 6 43.8 %  17:14:59 up 8 min,  7 users,  load average: 0.58, 0.59, 0.31
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local    pts/3    10.209.247.127   17:14    1.00s  0.08s  0.08s -bash
+local    pts/2    10.209.198.45    17:14   12.00s  0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    0.00s  0.07s  0.07s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    2:51   0.25s  0.25s -bash
+local    tty1     -                14:59    2:15m  0.10s  0.10s -bash
+
+1770394502.2648 7 45.8 % 
+1770394505.2901 7 46.7 % 
+1770394514.3678 7 47.7 % 
+1770394532.5255 7 49.2 % 
+1770394535.5511 7 47.2 % 
+1770394547.1295 7 48.2 % 
+1770394553.1796 7 50.1 % 
+1770394562.2984 7 50.1 %  17:16:02 up 9 min,  8 users,  load average: 1.26, 0.78, 0.39
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.189.246   17:15           0.00s  0.03s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14    9.00s  0.09s  0.09s -bash
+local    pts/2    10.209.198.45    17:14   25.00s  0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    1:03  52.25s   ?    /bin/sh -c gzip
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    3:54   0.25s  0.25s -bash
+local    tty1     -                14:59    2:16m  0.10s  0.10s -bash
+
+1770394565.2986 8 51.1 % 
+1770394571.3586 8 49.2 % 
+1770394577.4220 8 50.1 % 
+1770394577.4483 8 50.1 %  17:16:17 up 9 min,  9 users,  load average: 1.60, 0.87, 0.43
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.198.45    17:16           0.00s  0.02s sshd-session: local [priv]
+local             10.209.189.246   17:15           0.00s  0.03s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14   24.00s  0.09s  0.09s -bash
+local    pts/2    10.209.198.45    17:14   40.00s  0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    1:18   1:02    ?    /bin/sh -c gzip
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    4:09   0.25s  0.25s -bash
+local    tty1     -                14:59    2:16m  0.10s  0.10s -bash
+
+1770394589.5471 9 51.6 % 
+1770394598.6539 9 53.6 % 
+1770394604.7243 9 51.6 % 
+1770394607.7500 9 50.1 % 
+1770394610.8146 9 50.1 %  17:16:50 up 9 min,  8 users,  load average: 1.52, 0.94, 0.47
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.198.45    17:16           0.00s  0.02s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14    6.00s  0.11s   ?    scp -r local@10.197.216.233:~ .
+local    pts/2    10.209.198.45    17:14    1:13   0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    7.00s  0.08s  0.08s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    4:42   0.25s  0.25s -bash
+local    tty1     -                14:59    2:16m  0.10s  0.10s -bash
+
+1770394613.8155 8 53.1 % 
+1770394613.8850 8 53.1 %  17:16:53 up 9 min,  9 users,  load average: 2.12, 1.08, 0.52
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.197.216.233   17:16           0.00s  0.04s sshd-session: local [priv]
+local             10.209.198.45    17:16           0.00s  0.02s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14    2.00s  1.80s  0.58s scp -r local@10.197.216.233:~ .
+local    pts/2    10.209.198.45    17:14    1:16   0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14   10.00s  0.08s  0.08s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    4:45   0.25s  0.25s -bash
+local    tty1     -                14:59    2:16m  0.10s  0.10s -bash
+
+1770394616.8857 9 54.0 % 
+1770394619.9511 9 55.5 % 
+1770394622.9977 9 54.5 % 
+1770394632.1341 9 55.5 % 
+1770394638.1912 9 54.5 % 
+1770394641.2274 9 56.0 % 
+1770394644.2541 9 54.5 % 
+1770394644.2806 9 54.5 %  17:17:24 up 10 min,  8 users,  load average: 3.11, 1.41, 0.65
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.197.216.233   17:16           0.00s  0.04s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14   33.00s 24.52s  9.65s scp -r local@10.197.216.233:~ .
+local    pts/2    10.209.198.45    17:14    1:47   0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14   41.00s  0.08s  0.08s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    5:16   0.25s  0.25s -bash
+local    tty1     -                14:59    2:17m  0.10s  0.10s -bash
+
+1770394653.3572 8 56.5 % 
+1770394656.4114 8 55.0 % 
+1770394659.4345 8 53.6 % 
+1770394662.4566 8 52.6 % 
+1770394674.6210 8 52.6 %  17:17:54 up 10 min,  9 users,  load average: 4.45, 1.91, 0.84
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.198.45    17:17           0.00s  0.02s sshd-session: local [priv]
+local             10.197.216.233   17:16           0.00s  0.04s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14    1:03  34.22s 13.60s scp -r local@10.197.216.233:~ .
+local    pts/2    10.209.198.45    17:14    2:17   0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    1:11   0.08s  0.08s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    5:46   0.25s  0.25s -bash
+local    tty1     -                14:59    2:17m  0.10s  0.10s -bash
+
+1770394701.9063 9 53.6 % 
+1770394714.0823 9 53.6 %  17:18:34 up 11 min,  8 users,  load average: 4.47, 2.25, 1.00
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.198.45    17:17           0.00s  0.03s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14    1:43   0.09s  0.09s -bash
+local    pts/2    10.209.198.45    17:14    2:57   0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    2.00s  0.12s  0.12s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    6:26   0.25s  0.25s -bash
+local    tty1     -                14:59    2:18m  0.10s  0.10s -bash
+
+1770394717.0826 8 54.5 % 
+1770394720.1087 8 53.6 % 
+1770394729.2272 8 54.5 % 
+1770394738.3472 8 53.6 % 
+1770394741.4310 8 53.6 %  17:19:01 up 12 min,  7 users,  load average: 3.26, 2.15, 1.00
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local    pts/3    10.209.247.127   17:14    2:10   0.09s  0.09s -bash
+local    pts/2    10.209.198.45    17:14    3:24   0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    5.00s  0.22s  0.22s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    6:53   0.25s  0.25s -bash
+local    tty1     -                14:59    2:19m  0.10s  0.10s -bash
+
+1770394744.4313 7 52.6 % 
+1770394747.4814 7 54.0 % 
+1770394759.6052 7 53.1 % 
+1770394765.6667 7 51.6 % 
+1770394771.7518 7 53.1 % 
+1770394774.7906 7 52.1 % 
+1770394789.9593 7 53.1 % 
+1770394789.9880 7 53.1 %  17:19:49 up 12 min,  8 users,  load average: 1.81, 1.92, 0.99
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.198.45    17:19           0.00s  0.04s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14    0.00s  0.09s  0.09s -bash
+local    pts/2    10.209.198.45    17:14    4:12   0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14    3.00s  0.33s  0.33s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    7:41   0.25s  0.25s -bash
+local    tty1     -                14:59    2:19m  0.10s  0.10s -bash
+
+1770394805.1580 8 51.6 % 
+1770394808.1998 8 52.6 % 
+1770394820.3636 8 51.6 % 
+1770394826.4627 8 51.6 %  17:20:26 up 13 min,  9 users,  load average: 1.13, 1.74, 0.96
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+local             10.209.189.246   17:20           0.00s  0.05s sshd-session: local [priv]
+local             10.209.198.45    17:19           0.00s  0.04s sshd-session: local [priv]
+local    pts/3    10.209.247.127   17:14   26.00s  0.11s  0.11s -bash
+local    pts/2    10.209.198.45    17:14    4:49   0.07s  0.07s -bash
+local    pts/1    10.209.189.246   17:14   26.00s  0.37s  0.37s -bash
+local             10.209.189.60    17:10           0.00s  0.05s sshd-session: local [priv]
+local             10.209.189.60    17:09           0.00s  0.05s sshd-session: local [priv]
+local    pts/0    10.209.189.60    17:07    8:18   0.25s  0.25s -bash
+local    tty1     -                14:59    2:20m  0.10s  0.10s -bash
+
+1770394829.4631 9 52.6 % 
+1770394832.4888 9 51.6 % 
+1770394835.5233 9 53.1 % 
+1770394838.5471 9 51.6 % 
+1770394844.6219 9 52.6 % 
+1770394847.6486 9 54.5 % 
+1770394850.6831 9 56.0 % 
+1770394853.7149 9 55.0 % 
+1770394856.7427 9 56.5 % 
+1770394859.7706 9 55.5 % 

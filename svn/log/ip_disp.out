@@ -1,0 +1,577 @@
+# UService:: created directory log_20260203_130458.140/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: Waiting for Mosquitto (7)
+# UMqtt:: Waiting for Mosquitto (8)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Tue Feb  3 01:05:08 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# number of users changed from 1 to 2
+# at 2026-02-03 13:05:48.158 MQTT connection lost, cause (null)
+# 1770120359.2083 MQTT reconnect (2026-02-03 13:05:59.208)
+# 1770120359.2083 MQTT reconnected (2026-02-03 13:05:59.208)
+# at 2026-02-03 13:06:01.593 MQTT connection lost, cause (null)
+# 1770120362.4491 MQTT reconnect (2026-02-03 13:06:02.449)
+# at 2026-02-03 13:06:03.218 Interrupted by signal 15
+# --------- terminating -----------
+# Gpio::run terminated
+# UMqtt:: client shutdown
+# UService:: Trying to save robot.ini (crashes sometimes)
+# UService:: configuration saved to robot.ini
+# UService:: logfile closed
+# UService:: created directory log_20260203_130609.023/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: Waiting for Mosquitto (7)
+# UMqtt:: Waiting for Mosquitto (8)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Tue Feb  3 01:06:19 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-03 13:06:53.001 MQTT connection lost, cause (null)
+# 1770120422.6535 MQTT reconnect (2026-02-03 13:07:02.653)
+# 1770120422.6535 MQTT reconnected (2026-02-03 13:07:02.653)
+# number of users changed from 1 to 2
+# number of users changed from 2 to 1
+# 1770121079.4964 GPIO:: pin 13 value changed to 1
+# 1770121079.7077 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1770121107.1971 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Tue Feb  3 01:18:31 PM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260203_131839.887/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: Waiting for Mosquitto (7)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Tue Feb  3 01:18:49 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# 1770121145.2351 GPIO:: pin 13 value changed to 1
+# 1770121145.3104 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1770121145.3873 GPIO:: pin 13 value changed to 1
+# 1770121145.4935 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# at 2026-02-04 10:53:25.243 MQTT connection lost, cause (null)
+# 1770198815.2294 MQTT reconnect (2026-02-04 10:53:35.229)
+# 1770198815.2294 MQTT reconnected (2026-02-04 10:53:35.229)
+# 1770198830.8990 GPIO:: pin 13 value changed to 1
+# 1770198831.6094 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1770199078.4115 GPIO:: pin 13 value changed to 1
+# 1770199078.5929 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# at 2026-02-04 10:58:33.453 MQTT connection lost, cause (null)
+# at 2026-02-04 10:58:35.379 Interrupted by signal 15
+# --------- terminating -----------
+# Gpio::run terminated
+# UMqtt:: client shutdown
+# UService:: Trying to save robot.ini (crashes sometimes)
+# UService:: configuration saved to robot.ini
+# UService:: logfile closed
+# UService:: created directory log_20260204_105841.106/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: Waiting for Mosquitto (7)
+# UMqtt:: Waiting for Mosquitto (8)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Wed Feb  4 10:58:51 AM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-04 16:38:38.186 MQTT connection lost, cause (null)
+# 1770219528.5824 MQTT reconnect (2026-02-04 16:38:48.582)
+# 1770219528.5824 MQTT reconnected (2026-02-04 16:38:48.582)
+# number of users changed from 1 to 2
+# 1770219999.0697 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Wed Feb  4 04:46:45 PM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260213_152859.769/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Fri Feb 13 03:29:07 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-16 12:45:18.458 MQTT connection lost, cause (null)
+# 1771242327.6242 MQTT reconnect (2026-02-16 12:45:27.624)
+# 1771242327.6242 MQTT reconnected (2026-02-16 12:45:27.624)
+# 1771242333.6112 GPIO:: pin 13 value changed to 1
+# 1771242333.8672 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771242351.4115 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+# at 2026-02-16 12:45:57.387 Interrupted by signal 15
+# UService:: created directory log_20260216_124600.492/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Mon Feb 16 12:46:08 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-16 12:50:01.561 MQTT connection lost, cause (null)
+# 1771242613.2203 MQTT reconnect (2026-02-16 12:50:13.220)
+# 1771242613.2203 MQTT reconnected (2026-02-16 12:50:13.220)
+# number of users changed from 1 to 2
+# number of users changed from 2 to 3
+# number of users changed from 3 to 4
+# number of users changed from 4 to 5
+# number of users changed from 5 to 6
+# number of users changed from 6 to 7
+# number of users changed from 7 to 6
+# number of users changed from 6 to 5
+# number of users changed from 5 to 4
+# 1771246496.7354 GPIO:: pin 13 value changed to 1
+# 1771246496.9162 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771247180.6169 GPIO:: pin 13 value changed to 1
+# 1771247180.7525 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771249453.7506 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Mon Feb 16 02:44:18 PM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260216_144422.780/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Mon Feb 16 02:44:30 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-16 14:46:14.467 MQTT connection lost, cause (null)
+# number of users changed from 1 to 2
+# 1771249586.2974 MQTT reconnect (2026-02-16 14:46:26.297)
+# 1771249586.2974 MQTT reconnected (2026-02-16 14:46:26.297)
+# number of users changed from 2 to 3
+# 1771250096.4635 GPIO:: pin 13 value changed to 1
+# 1771250096.5991 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# number of users changed from 3 to 4
+# number of users changed from 4 to 5
+# number of users changed from 5 to 6
+# number of users changed from 6 to 5
+# number of users changed from 5 to 4
+# 1771251490.3274 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Mon Feb 16 03:18:14 PM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260216_151819.435/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Mon Feb 16 03:18:27 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-16 15:25:21.730 MQTT connection lost, cause (null)
+# 1771251933.3676 MQTT reconnect (2026-02-16 15:25:33.367)
+# 1771251933.3676 MQTT reconnected (2026-02-16 15:25:33.367)
+# number of users changed from 1 to 2
+# 1771252165.7510 GPIO:: pin 13 value changed to 1
+# 1771252165.8715 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771252371.8969 GPIO:: pin 13 value changed to 1
+# 1771252371.9873 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771252394.9234 GPIO:: pin 13 value changed to 1
+# 1771252395.0289 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# number of users changed from 2 to 1
+# 1771253693.4156 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+# at 2026-02-16 15:54:59.395 Interrupted by signal 15
+# UService:: created directory log_20260216_155502.523/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Mon Feb 16 03:55:10 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-20 09:40:00.363 MQTT connection lost, cause (null)
+# 1771576812.2499 MQTT reconnect (2026-02-20 09:40:12.249)
+# 1771576812.2499 MQTT reconnected (2026-02-20 09:40:12.249)
+# number of users changed from 1 to 2
+# 1771577206.5023 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+# at 2026-02-20 09:46:52.541 Interrupted by signal 15
+# UService:: created directory log_20260220_094655.610/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Fri Feb 20 09:47:03 AM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-20 09:52:51.437 MQTT connection lost, cause (null)
+# 1771577583.3062 MQTT reconnect (2026-02-20 09:53:03.306)
+# 1771577583.3062 MQTT reconnected (2026-02-20 09:53:03.306)
+# number of users changed from 1 to 2
+# 1771578861.7228 GPIO:: pin 13 value changed to 1
+# 1771578862.2048 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771578863.1861 GPIO:: pin 13 value changed to 1
+# 1771578864.7683 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771578864.9807 GPIO:: pin 13 value changed to 1
+# 1771578865.0410 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771578865.5895 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+# at 2026-02-20 10:14:31.623 Interrupted by signal 15
+# UService:: created directory log_20260220_101434.782/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Fri Feb 20 10:14:42 AM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-20 10:45:06.506 MQTT connection lost, cause (null)
+# 1771580718.3560 MQTT reconnect (2026-02-20 10:45:18.356)
+# 1771580718.3560 MQTT reconnected (2026-02-20 10:45:18.356)
+# number of users changed from 1 to 2
+# number of users changed from 2 to 3
+# 1771583572.5223 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Fri Feb 20 11:32:57 AM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260220_113301.742/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Fri Feb 20 11:33:09 AM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-20 11:34:30.099 MQTT connection lost, cause (null)
+# 1771583682.0658 MQTT reconnect (2026-02-20 11:34:42.065)
+# 1771583682.0658 MQTT reconnected (2026-02-20 11:34:42.065)
+# number of users changed from 1 to 2
+# number of users changed from 2 to 3
+# 1771585117.7250 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Fri Feb 20 11:58:42 AM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260220_130009.904/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Fri Feb 20 01:00:17 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-20 13:11:31.498 MQTT connection lost, cause (null)
+# 1771589503.4063 MQTT reconnect (2026-02-20 13:11:43.406)
+# 1771589503.4063 MQTT reconnected (2026-02-20 13:11:43.406)
+# number of users changed from 1 to 2
+# number of users changed from 2 to 1
+# number of users changed from 1 to 2
+# number of users changed from 2 to 1
+# number of users changed from 1 to 2
+# number of users changed from 2 to 1
+# number of users changed from 1 to 2
+# number of users changed from 2 to 1
+# number of users changed from 1 to 2
+# number of users changed from 2 to 1
+# 1771591319.5898 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Fri Feb 20 01:42:04 PM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260220_134208.767/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Fri Feb 20 01:42:16 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-20 14:01:52.130 MQTT connection lost, cause (null)
+# 1771592524.0140 MQTT reconnect (2026-02-20 14:02:04.014)
+# 1771592524.0140 MQTT reconnected (2026-02-20 14:02:04.014)
+# number of users changed from 1 to 2
+# number of users changed from 2 to 3
+# number of users changed from 3 to 4
+# number of users changed from 4 to 5
+# number of users changed from 5 to 4
+# number of users changed from 4 to 5
+# number of users changed from 5 to 4
+# number of users changed from 4 to 5
+# number of users changed from 5 to 6
+# number of users changed from 6 to 7
+# number of users changed from 7 to 6
+# number of users changed from 6 to 5
+# number of users changed from 5 to 6
+# number of users changed from 6 to 7
+# number of users changed from 7 to 6
+# number of users changed from 6 to 7
+# number of users changed from 7 to 8
+# number of users changed from 8 to 7
+# 1771595868.3857 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+# at 2026-02-20 14:57:54.375 Interrupted by signal 15
+# UService:: created directory log_20260220_155023.113/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Fri Feb 20 03:50:30 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# number of users changed from 1 to 2
+# number of users changed from 2 to 3
+# number of users changed from 3 to 4
+# number of users changed from 4 to 5
+# number of users changed from 5 to 6
+# number of users changed from 6 to 7
+# number of users changed from 7 to 8
+# number of users changed from 8 to 9
+# number of users changed from 9 to 10
+# number of users changed from 10 to 9
+# number of users changed from 9 to 8
+# number of users changed from 8 to 9
+# number of users changed from 9 to 10
+# number of users changed from 10 to 8
+# number of users changed from 8 to 7
+# number of users changed from 7 to 6
+# 1771602575.6944 GPIO:: pin 13 value changed to 1
+# 1771602575.8752 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771602607.0257 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Fri Feb 20 04:50:13 PM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260223_132813.527/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Mon Feb 23 01:28:21 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-23 13:32:43.350 MQTT connection lost, cause (null)
+# 1771849973.8198 MQTT reconnect (2026-02-23 13:32:53.819)
+# 1771849973.8198 MQTT reconnected (2026-02-23 13:32:53.819)
+# 1771850845.8015 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Mon Feb 23 01:47:29 PM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260223_134734.873/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Mon Feb 23 01:47:42 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# at 2026-02-23 13:49:44.411 MQTT connection lost, cause (null)
+# 1771850996.3037 MQTT reconnect (2026-02-23 13:49:56.303)
+# 1771850996.3037 MQTT reconnected (2026-02-23 13:49:56.303)
+# number of users changed from 1 to 2
+# number of users changed from 2 to 3
+# number of users changed from 3 to 2
+# number of users changed from 2 to 3
+# 1771853178.4447 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Mon Feb 23 02:26:24 PM CET 2026
+ip_disp terminated
+# UService:: created directory log_20260223_142628.056/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Mon Feb 23 02:26:35 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# number of users changed from 1 to 2
+# at 2026-02-23 14:28:20.714 MQTT connection lost, cause (null)
+# number of users changed from 2 to 3
+# 1771853312.4293 MQTT reconnect (2026-02-23 14:28:32.429)
+# 1771853312.4293 MQTT reconnected (2026-02-23 14:28:32.429)
+# 1771853820.5196 GPIO:: pin 13 value changed to 1
+# 1771853820.6250 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# number of users changed from 3 to 2
+# number of users changed from 2 to 3
+# 1771856429.5308 GPIO:: pin 13 value changed to 1
+# 1771856429.5760 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771858822.3146 GPIO:: pin 13 value changed to 1
+# 1771858822.4803 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771858869.5677 GPIO:: pin 13 value changed to 1
+# 1771858869.6581 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771863890.5607 GPIO:: pin 13 value changed to 1
+# 1771863890.8318 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771863890.8640 GPIO:: pin 13 value changed to 1
+# 1771863890.9695 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771864869.1938 GPIO:: pin 13 value changed to 1
+# 1771864869.3293 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771865147.5338 GPIO:: pin 13 value changed to 1
+# 1771865147.6996 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771865639.1734 GPIO:: pin 13 value changed to 1
+# 1771865639.2789 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771865998.2957 GPIO:: pin 13 value changed to 1
+# 1771865998.3108 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771867191.3451 GPIO:: pin 13 value changed to 1
+# 1771867191.5108 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771867668.9388 GPIO:: pin 13 value changed to 1
+# 1771867669.1497 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771867669.5736 GPIO:: pin 13 value changed to 1
+# 1771867669.6640 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771867672.7420 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+# at 2026-02-23 18:27:58.751 Interrupted by signal 15
+# UService:: created directory log_20260223_182801.894/
+# SGpiod::setup: found GPIO chip gpiochip4
+# UMqtt:: Waiting for Mosquitto (1)
+# UMqtt:: Waiting for Mosquitto (2)
+# UMqtt:: Waiting for Mosquitto (3)
+# UMqtt:: Waiting for Mosquitto (4)
+# UMqtt:: Waiting for Mosquitto (5)
+# UMqtt:: Waiting for Mosquitto (6)
+# UMqtt:: connection to MQTT broker on broker (127.0.0.1) established
+Mon Feb 23 06:28:09 PM CET 2026
+ ip_disp started (date may be from last clean shutdown)
+# number of users changed from 0 to 1
+# number of users changed from 1 to 2
+# at 2026-02-23 18:29:20.953 MQTT connection lost, cause (null)
+# 1771867772.7801 MQTT reconnect (2026-02-23 18:29:32.780)
+# 1771867772.7801 MQTT reconnected (2026-02-23 18:29:32.780)
+# number of users changed from 2 to 3
+# 1771870602.5552 GPIO:: pin 13 value changed to 1
+# 1771870602.7058 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771870602.7268 GPIO:: pin 13 value changed to 1
+# 1771870605.9208 GPIO:: pin 13 value changed to 0
+# SGpio:: start: bash /home/local/mission_start.bash
+# 1771870608.7871 GPIO:: pin 13 value changed to 1
+# SGPIO:: power off request - pin 0
+# UService::mqttDecode: got shutdown topic: robobot/cmd/shutdown
+# --------- terminating -----------
+Mon Feb 23 07:16:54 PM CET 2026
+ip_disp terminated

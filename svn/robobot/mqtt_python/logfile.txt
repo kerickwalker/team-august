@@ -1,0 +1,9 @@
+% logfile for Python side
+% 1 time (sec)
+% 2 Mission state
+% 3,4,5 (x,y,h) (m,m,rad)
+% 6 Camera frame count
+% 7-9 Line sensor: line position, e*kp, control y (rad/s), validCnt
+%     Line sensor: Kp=1.0, tau_z=0.8s, tau_p=0.25s
+% 10,11 trip A (distance and heading change)
+% 12,13 trip B (distance and heading change)

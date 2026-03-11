@@ -1,0 +1,5 @@
+% Servo logfile (Teensy 0)
+% 1 	Time (sec)
+% 2 	Servo number
+% 3 	Requested position
+% 4,5,6 	Enabled, position, velocity

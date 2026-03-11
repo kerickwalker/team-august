@@ -1,0 +1,9 @@
+% Mixer logfile
+% Wheel base used in calculation: 0.22 m
+% 1 	Time (sec)
+% 2 	control source 0 = this, 1 = manuel (gamepad), 2.. = MQTT
+% 3 	manual override mode (0= automatic, 1=manuel mode (gamepad))
+% 4 	Linear velocity (m/s)
+% 5 	Curvature (rad/m)
+% 6 	Desired left wheel velocity (rad/s)
+% 7 	Desired right wheel velocity (rad/s)

@@ -1,0 +1,447 @@
+% BCM GPIO found OK
+% Starting
+Started 2026-02-04 11:23:03.813786
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master False
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'log 1' len(param)=5, not master False, master False
+% GPIO setup start
+% GPIO setup finished
+% Connected to MQTT Broker localhost on 1883
+% ConnectedOut to MQTT Broker localhost on 1883
+% Robot (srobot.py) data stream OK; 14 loops.
+% IR sensor (sir.py):: got data stream; 0 loops.
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'enc0' len(param)=4, not master False, master False
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'confw 0.074 0.074 19 92 0.23' len(param)=28, not master False, master False
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'confi' len(param)=5, not master False, master False
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master False
+% Pose:: configured, and got data stream; 1 loops.
+% IMU (simu.py):: got data stream; 0 loops.
+% I am now accepted as master of robot unknown
+% Teensy info 1770200584.3539 # got confw: r1=0.074, r2=0.074, G=19, PPR=92, WB=0.23
+% SPose.py:: Robot config info 1 at 0:00:00.533914
+%    - Wheel radius (left,right): (0.074, 0.074 m
+%    - Encoder tick per rev: 92.0
+%    - Gearing: 19.0:1
+%    - Wheel base: 0.23 m
+% Edge (sedge.py):: turns on line sensor
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'lip 1' len(param)=5, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'sub livn 10' len(param)=11, not master False, master True
+% Camera available: size (616x820, 3 channels)
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'liwi' len(param)=4, not master False, master True
+% Edge (sedge.py):: got data stream; after 1 loops
+% (uservice.py) Setup finished with connected=True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 30 30 0' len(param)=15, not master False, master True
+% Starting at state 0
+% Starting
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 0 30' len(param)=14, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'rc 0.25 0.0' len(param)=11, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'servo 1 100 300' len(param)=15, not master False, master True
+% State change from -1 to 12
+% Teensy info 1770200584.6364 # setvo t=96681, 0, ref=100, e=10000, value=300, vel=300, dw=300, v=2047
+% Teensy info 1770200584.6387 # setvo t=96683, 0, ref=100, e=9700, value=600, vel=300, dw=300, v=2051
+% Teensy info 1770200584.6411 # setvo t=96685, 0, ref=100, e=9400, value=900, vel=300, dw=300, v=2055
+% Teensy info 1770200584.6423 # setvo t=96687, 0, ref=100, e=9100, value=1200, vel=300, dw=300, v=2059
+% Teensy info 1770200584.6446 # setvo t=96689, 0, ref=100, e=8800, value=1500, vel=300, dw=300, v=2063
+% Teensy info 1770200584.6469 # setvo t=96691, 0, ref=100, e=8500, value=1800, vel=300, dw=300, v=2067
+% Teensy info 1770200584.6492 # setvo t=96693, 0, ref=100, e=8200, value=2100, vel=300, dw=300, v=2071
+% Teensy info 1770200584.6504 # setvo t=96695, 0, ref=100, e=7900, value=2400, vel=300, dw=300, v=2075
+% Teensy info 1770200584.6529 # setvo t=96697, 0, ref=100, e=7600, value=2700, vel=300, dw=300, v=2079
+% Teensy info 1770200584.6552 # setvo t=96699, 0, ref=100, e=7300, value=3000, vel=300, dw=300, v=2083
+% Teensy info 1770200584.6564 # setvo t=96701, 0, ref=100, e=7000, value=3300, vel=300, dw=300, v=2087
+% Teensy info 1770200584.6587 # setvo t=96703, 0, ref=100, e=6700, value=3600, vel=300, dw=300, v=2091
+% Teensy info 1770200584.6611 # setvo t=96705, 0, ref=100, e=6400, value=3900, vel=300, dw=300, v=2095
+% Teensy info 1770200584.6624 # setvo t=96707, 0, ref=100, e=6100, value=4200, vel=300, dw=300, v=2099
+% Teensy info 1770200584.6647 # setvo t=96709, 0, ref=100, e=5800, value=4500, vel=300, dw=300, v=2103
+% Teensy info 1770200584.6670 # setvo t=96711, 0, ref=100, e=5500, value=4800, vel=300, dw=300, v=2107
+% Teensy info 1770200584.6683 # setvo t=96713, 0, ref=100, e=5200, value=5100, vel=300, dw=300, v=2111
+% Teensy info 1770200584.6705 # setvo t=96715, 0, ref=100, e=4900, value=5400, vel=300, dw=300, v=2115
+% Teensy info 1770200584.6728 # setvo t=96717, 0, ref=100, e=4600, value=5700, vel=300, dw=300, v=2119
+% Teensy info 1770200584.6750 # setvo t=96719, 0, ref=100, e=4300, value=6000, vel=300, dw=300, v=2123
+% Teensy info 1770200584.6765 # setvo t=96721, 0, ref=100, e=4000, value=6300, vel=300, dw=300, v=2127
+% Teensy info 1770200584.6788 # setvo t=96723, 0, ref=100, e=3700, value=6600, vel=300, dw=300, v=2131
+% Teensy info 1770200584.6811 # setvo t=96725, 0, ref=100, e=3400, value=6900, vel=300, dw=300, v=2135
+% Teensy info 1770200584.6823 # setvo t=96727, 0, ref=100, e=3100, value=7200, vel=300, dw=300, v=2139
+% Teensy info 1770200584.6846 # setvo t=96729, 0, ref=100, e=2800, value=7500, vel=300, dw=300, v=2143
+% Teensy info 1770200584.6869 # setvo t=96731, 0, ref=100, e=2500, value=7800, vel=300, dw=300, v=2147
+% Teensy info 1770200584.6883 # setvo t=96733, 0, ref=100, e=2200, value=8100, vel=300, dw=300, v=2151
+% Teensy info 1770200584.6905 # setvo t=96735, 0, ref=100, e=1900, value=8400, vel=300, dw=300, v=2155
+% Teensy info 1770200584.6930 # setvo t=96737, 0, ref=100, e=1600, value=8700, vel=300, dw=300, v=2159
+% Teensy info 1770200584.6952 # setvo t=96739, 0, ref=100, e=1300, value=9000, vel=300, dw=300, v=2163
+% Teensy info 1770200584.6964 # setvo t=96741, 0, ref=100, e=1000, value=9300, vel=300, dw=300, v=2167
+% Teensy info 1770200584.6987 # setvo t=96743, 0, ref=100, e=700, value=9600, vel=300, dw=300, v=2171
+% Teensy info 1770200584.7011 # setvo t=96745, 0, ref=100, e=400, value=9900, vel=300, dw=300, v=2175
+% Teensy info 1770200584.7024 # setvo t=96747, 0, ref=100, e=100, value=10000, vel=300, dw=100, v=2177
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'rc 0.1 0.5' len(param)=10, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'servo 1 -800 1000' len(param)=17, not master False, master True
+% State change from 12 to 14
+% Teensy info 1770200586.7369 # setvo t=98781, 0, ref=-800, e=-90000, value=9000, vel=1000, dw=-1000, v=2163
+% Teensy info 1770200586.7385 # setvo t=98783, 0, ref=-800, e=-89000, value=8000, vel=1000, dw=-1000, v=2150
+% Teensy info 1770200586.7411 # setvo t=98785, 0, ref=-800, e=-88000, value=7000, vel=1000, dw=-1000, v=2137
+% Teensy info 1770200586.7423 # setvo t=98787, 0, ref=-800, e=-87000, value=6000, vel=1000, dw=-1000, v=2123
+% Teensy info 1770200586.7447 # setvo t=98789, 0, ref=-800, e=-86000, value=5000, vel=1000, dw=-1000, v=2110
+% Teensy info 1770200586.7463 # setvo t=98791, 0, ref=-800, e=-85000, value=4000, vel=1000, dw=-1000, v=2097
+% Teensy info 1770200586.7487 # setvo t=98793, 0, ref=-800, e=-84000, value=3000, vel=1000, dw=-1000, v=2083
+% Teensy info 1770200586.7503 # setvo t=98795, 0, ref=-800, e=-83000, value=2000, vel=1000, dw=-1000, v=2070
+% Teensy info 1770200586.7529 # setvo t=98797, 0, ref=-800, e=-82000, value=1000, vel=1000, dw=-1000, v=2057
+% Teensy info 1770200586.7551 # setvo t=98799, 0, ref=-800, e=-81000, value=0, vel=1000, dw=-1000, v=2044
+% Teensy info 1770200586.7569 # setvo t=98801, 0, ref=-800, e=-80000, value=-1000, vel=1000, dw=-1000, v=2031
+% Teensy info 1770200586.7591 # setvo t=98803, 0, ref=-800, e=-79000, value=-2000, vel=1000, dw=-1000, v=2018
+% Teensy info 1770200586.7604 # setvo t=98805, 0, ref=-800, e=-78000, value=-3000, vel=1000, dw=-1000, v=2005
+% Teensy info 1770200586.7630 # setvo t=98807, 0, ref=-800, e=-77000, value=-4000, vel=1000, dw=-1000, v=1991
+% Teensy info 1770200586.7645 # setvo t=98809, 0, ref=-800, e=-76000, value=-5000, vel=1000, dw=-1000, v=1978
+% Teensy info 1770200586.7662 # setvo t=98811, 0, ref=-800, e=-75000, value=-6000, vel=1000, dw=-1000, v=1965
+% Teensy info 1770200586.7685 # setvo t=98813, 0, ref=-800, e=-74000, value=-7000, vel=1000, dw=-1000, v=1951
+% Teensy info 1770200586.7708 # setvo t=98815, 0, ref=-800, e=-73000, value=-8000, vel=1000, dw=-1000, v=1938
+% Teensy info 1770200586.7722 # setvo t=98817, 0, ref=-800, e=-72000, value=-9000, vel=1000, dw=-1000, v=1925
+% Teensy info 1770200586.7744 # setvo t=98819, 0, ref=-800, e=-71000, value=-10000, vel=1000, dw=-1000, v=1911
+% Teensy info 1770200586.7769 # setvo t=98821, 0, ref=-800, e=-70000, value=-11000, vel=1000, dw=-1000, v=1898
+% Teensy info 1770200586.7781 # setvo t=98823, 0, ref=-800, e=-69000, value=-12000, vel=1000, dw=-1000, v=1885
+% Teensy info 1770200586.7808 # setvo t=98825, 0, ref=-800, e=-68000, value=-13000, vel=1000, dw=-1000, v=1871
+% Teensy info 1770200586.7830 # setvo t=98827, 0, ref=-800, e=-67000, value=-14000, vel=1000, dw=-1000, v=1858
+% Teensy info 1770200586.7842 # setvo t=98829, 0, ref=-800, e=-66000, value=-15000, vel=1000, dw=-1000, v=1845
+% Teensy info 1770200586.7865 # setvo t=98831, 0, ref=-800, e=-65000, value=-16000, vel=1000, dw=-1000, v=1832
+% Teensy info 1770200586.7891 # setvo t=98833, 0, ref=-800, e=-64000, value=-17000, vel=1000, dw=-1000, v=1818
+% Teensy info 1770200586.7903 # setvo t=98835, 0, ref=-800, e=-63000, value=-18000, vel=1000, dw=-1000, v=1805
+% Teensy info 1770200586.7926 # setvo t=98837, 0, ref=-800, e=-62000, value=-19000, vel=1000, dw=-1000, v=1792
+% Teensy info 1770200586.7948 # setvo t=98839, 0, ref=-800, e=-61000, value=-20000, vel=1000, dw=-1000, v=1778
+% Teensy info 1770200586.7963 # setvo t=98841, 0, ref=-800, e=-60000, value=-21000, vel=1000, dw=-1000, v=1765
+% Teensy info 1770200586.7986 # setvo t=98843, 0, ref=-800, e=-59000, value=-22000, vel=1000, dw=-1000, v=1752
+% Teensy info 1770200586.8010 # setvo t=98845, 0, ref=-800, e=-58000, value=-23000, vel=1000, dw=-1000, v=1738
+% Teensy info 1770200586.8022 # setvo t=98847, 0, ref=-800, e=-57000, value=-24000, vel=1000, dw=-1000, v=1725
+% Teensy info 1770200586.8046 # setvo t=98849, 0, ref=-800, e=-56000, value=-25000, vel=1000, dw=-1000, v=1712
+% Teensy info 1770200586.8070 # setvo t=98851, 0, ref=-800, e=-55000, value=-26000, vel=1000, dw=-1000, v=1698
+% Teensy info 1770200586.8082 # setvo t=98853, 0, ref=-800, e=-54000, value=-27000, vel=1000, dw=-1000, v=1685
+% Teensy info 1770200586.8105 # setvo t=98855, 0, ref=-800, e=-53000, value=-28000, vel=1000, dw=-1000, v=1672
+% Teensy info 1770200586.8130 # setvo t=98857, 0, ref=-800, e=-52000, value=-29000, vel=1000, dw=-1000, v=1658
+% Teensy info 1770200586.8142 # setvo t=98859, 0, ref=-800, e=-51000, value=-30000, vel=1000, dw=-1000, v=1645
+% Teensy info 1770200586.8165 # setvo t=98861, 0, ref=-800, e=-50000, value=-31000, vel=1000, dw=-1000, v=1632
+% Teensy info 1770200586.8188 # setvo t=98863, 0, ref=-800, e=-49000, value=-32000, vel=1000, dw=-1000, v=1619
+% Teensy info 1770200586.8211 # setvo t=98865, 0, ref=-800, e=-48000, value=-33000, vel=1000, dw=-1000, v=1605
+% Teensy info 1770200586.8223 # setvo t=98867, 0, ref=-800, e=-47000, value=-34000, vel=1000, dw=-1000, v=1592
+% Teensy info 1770200586.8247 # setvo t=98869, 0, ref=-800, e=-46000, value=-35000, vel=1000, dw=-1000, v=1579
+% Teensy info 1770200586.8270 # setvo t=98871, 0, ref=-800, e=-45000, value=-36000, vel=1000, dw=-1000, v=1565
+% Teensy info 1770200586.8285 # setvo t=98873, 0, ref=-800, e=-44000, value=-37000, vel=1000, dw=-1000, v=1552
+% Teensy info 1770200586.8310 # setvo t=98875, 0, ref=-800, e=-43000, value=-38000, vel=1000, dw=-1000, v=1539
+% Teensy info 1770200586.8322 # setvo t=98877, 0, ref=-800, e=-42000, value=-39000, vel=1000, dw=-1000, v=1525
+% Teensy info 1770200586.8344 # setvo t=98879, 0, ref=-800, e=-41000, value=-40000, vel=1000, dw=-1000, v=1512
+% Teensy info 1770200586.8370 # setvo t=98881, 0, ref=-800, e=-40000, value=-41000, vel=1000, dw=-1000, v=1499
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% Teensy info 1770200586.8383 # setvo t=98883, 0, ref=-800, e=-39000, value=-42000, vel=1000, dw=-1000, v=1485
+% Teensy info 1770200586.8406 # setvo t=98885, 0, ref=-800, e=-38000, value=-43000, vel=1000, dw=-1000, v=1472
+% Teensy info 1770200586.8428 # setvo t=98887, 0, ref=-800, e=-37000, value=-44000, vel=1000, dw=-1000, v=1459
+% Teensy info 1770200586.8451 # setvo t=98889, 0, ref=-800, e=-36000, value=-45000, vel=1000, dw=-1000, v=1446
+% Teensy info 1770200586.8464 # setvo t=98891, 0, ref=-800, e=-35000, value=-46000, vel=1000, dw=-1000, v=1432
+% Teensy info 1770200586.8488 # setvo t=98893, 0, ref=-800, e=-34000, value=-47000, vel=1000, dw=-1000, v=1419
+% Teensy info 1770200586.8511 # setvo t=98895, 0, ref=-800, e=-33000, value=-48000, vel=1000, dw=-1000, v=1406
+% Teensy info 1770200586.8523 # setvo t=98897, 0, ref=-800, e=-32000, value=-49000, vel=1000, dw=-1000, v=1392
+% Teensy info 1770200586.8545 # setvo t=98899, 0, ref=-800, e=-31000, value=-50000, vel=1000, dw=-1000, v=1379
+% Teensy info 1770200586.8569 # setvo t=98901, 0, ref=-800, e=-30000, value=-51000, vel=1000, dw=-1000, v=1366
+% Teensy info 1770200586.8591 # setvo t=98903, 0, ref=-800, e=-29000, value=-52000, vel=1000, dw=-1000, v=1352
+% Teensy info 1770200586.8605 # setvo t=98905, 0, ref=-800, e=-28000, value=-53000, vel=1000, dw=-1000, v=1339
+% Teensy info 1770200586.8629 # setvo t=98907, 0, ref=-800, e=-27000, value=-54000, vel=1000, dw=-1000, v=1326
+% Teensy info 1770200586.8651 # setvo t=98909, 0, ref=-800, e=-26000, value=-55000, vel=1000, dw=-1000, v=1312
+% Teensy info 1770200586.8663 # setvo t=98911, 0, ref=-800, e=-25000, value=-56000, vel=1000, dw=-1000, v=1299
+% Teensy info 1770200586.8686 # setvo t=98913, 0, ref=-800, e=-24000, value=-57000, vel=1000, dw=-1000, v=1286
+% Teensy info 1770200586.8709 # setvo t=98915, 0, ref=-800, e=-23000, value=-58000, vel=1000, dw=-1000, v=1272
+% Teensy info 1770200586.8722 # setvo t=98917, 0, ref=-800, e=-22000, value=-59000, vel=1000, dw=-1000, v=1259
+% Teensy info 1770200586.8745 # setvo t=98919, 0, ref=-800, e=-21000, value=-60000, vel=1000, dw=-1000, v=1246
+% Teensy info 1770200586.8768 # setvo t=98921, 0, ref=-800, e=-20000, value=-61000, vel=1000, dw=-1000, v=1233
+% Teensy info 1770200586.8791 # setvo t=98923, 0, ref=-800, e=-19000, value=-62000, vel=1000, dw=-1000, v=1219
+% Teensy info 1770200586.8804 # setvo t=98925, 0, ref=-800, e=-18000, value=-63000, vel=1000, dw=-1000, v=1206
+% Teensy info 1770200586.8826 # setvo t=98927, 0, ref=-800, e=-17000, value=-64000, vel=1000, dw=-1000, v=1193
+% Teensy info 1770200586.8850 # setvo t=98929, 0, ref=-800, e=-16000, value=-65000, vel=1000, dw=-1000, v=1179
+% Teensy info 1770200586.8863 # setvo t=98931, 0, ref=-800, e=-15000, value=-66000, vel=1000, dw=-1000, v=1166
+% Teensy info 1770200586.8885 # setvo t=98933, 0, ref=-800, e=-14000, value=-67000, vel=1000, dw=-1000, v=1153
+% Teensy info 1770200586.8908 # setvo t=98935, 0, ref=-800, e=-13000, value=-68000, vel=1000, dw=-1000, v=1139
+% Teensy info 1770200586.8931 # setvo t=98937, 0, ref=-800, e=-12000, value=-69000, vel=1000, dw=-1000, v=1126
+% Teensy info 1770200586.8943 # setvo t=98939, 0, ref=-800, e=-11000, value=-70000, vel=1000, dw=-1000, v=1113
+% Teensy info 1770200586.8968 # setvo t=98941, 0, ref=-800, e=-10000, value=-71000, vel=1000, dw=-1000, v=1099
+% Teensy info 1770200586.8990 # setvo t=98943, 0, ref=-800, e=-9000, value=-72000, vel=1000, dw=-1000, v=1086
+% Teensy info 1770200586.9003 # setvo t=98945, 0, ref=-800, e=-8000, value=-73000, vel=1000, dw=-1000, v=1073
+% Teensy info 1770200586.9025 # setvo t=98947, 0, ref=-800, e=-7000, value=-74000, vel=1000, dw=-1000, v=1060
+% Teensy info 1770200586.9048 # setvo t=98949, 0, ref=-800, e=-6000, value=-75000, vel=1000, dw=-1000, v=1046
+% Teensy info 1770200586.9071 # setvo t=98951, 0, ref=-800, e=-5000, value=-76000, vel=1000, dw=-1000, v=1033
+% Teensy info 1770200586.9085 # setvo t=98953, 0, ref=-800, e=-4000, value=-77000, vel=1000, dw=-1000, v=1020
+% Teensy info 1770200586.9109 # setvo t=98955, 0, ref=-800, e=-3000, value=-78000, vel=1000, dw=-1000, v=1006
+% Teensy info 1770200586.9121 # setvo t=98957, 0, ref=-800, e=-2000, value=-79000, vel=1000, dw=-1000, v=993
+% Teensy info 1770200586.9143 # setvo t=98959, 0, ref=-800, e=-1000, value=-80000, vel=1000, dw=-1000, v=980
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'rc 0 0' len(param)=6, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'servo 1 0 1000' len(param)=14, not master False, master True
+% State change from 14 to 20
+% Teensy info 1770200589.9404 # setvo t=101985, 0, ref=0, e=80000, value=-79000, vel=1000, dw=1000, v=993
+% Teensy info 1770200589.9428 # setvo t=101987, 0, ref=0, e=79000, value=-78000, vel=1000, dw=1000, v=1006
+% Teensy info 1770200589.9451 # setvo t=101989, 0, ref=0, e=78000, value=-77000, vel=1000, dw=1000, v=1020
+% Teensy info 1770200589.9464 # setvo t=101991, 0, ref=0, e=77000, value=-76000, vel=1000, dw=1000, v=1033
+% Teensy info 1770200589.9488 # setvo t=101993, 0, ref=0, e=76000, value=-75000, vel=1000, dw=1000, v=1046
+% Teensy info 1770200589.9503 # setvo t=101995, 0, ref=0, e=75000, value=-74000, vel=1000, dw=1000, v=1060
+% Teensy info 1770200589.9525 # setvo t=101997, 0, ref=0, e=74000, value=-73000, vel=1000, dw=1000, v=1073
+% Teensy info 1770200589.9548 # setvo t=101999, 0, ref=0, e=73000, value=-72000, vel=1000, dw=1000, v=1086
+% Teensy info 1770200589.9563 # setvo t=102001, 0, ref=0, e=72000, value=-71000, vel=1000, dw=1000, v=1099
+% Teensy info 1770200589.9588 # setvo t=102003, 0, ref=0, e=71000, value=-70000, vel=1000, dw=1000, v=1113
+% Teensy info 1770200589.9602 # setvo t=102005, 0, ref=0, e=70000, value=-69000, vel=1000, dw=1000, v=1126
+% Teensy info 1770200589.9624 # setvo t=102007, 0, ref=0, e=69000, value=-68000, vel=1000, dw=1000, v=1139
+% Teensy info 1770200589.9648 # setvo t=102009, 0, ref=0, e=68000, value=-67000, vel=1000, dw=1000, v=1153
+% Teensy info 1770200589.9663 # setvo t=102011, 0, ref=0, e=67000, value=-66000, vel=1000, dw=1000, v=1166
+% Teensy info 1770200589.9686 # setvo t=102013, 0, ref=0, e=66000, value=-65000, vel=1000, dw=1000, v=1179
+% Teensy info 1770200589.9711 # setvo t=102015, 0, ref=0, e=65000, value=-64000, vel=1000, dw=1000, v=1193
+% Teensy info 1770200589.9723 # setvo t=102017, 0, ref=0, e=64000, value=-63000, vel=1000, dw=1000, v=1206
+% Teensy info 1770200589.9748 # setvo t=102019, 0, ref=0, e=63000, value=-62000, vel=1000, dw=1000, v=1219
+% Teensy info 1770200589.9771 # setvo t=102021, 0, ref=0, e=62000, value=-61000, vel=1000, dw=1000, v=1233
+% Teensy info 1770200589.9784 # setvo t=102023, 0, ref=0, e=61000, value=-60000, vel=1000, dw=1000, v=1246
+% Teensy info 1770200589.9808 # setvo t=102025, 0, ref=0, e=60000, value=-59000, vel=1000, dw=1000, v=1259
+% Teensy info 1770200589.9823 # setvo t=102027, 0, ref=0, e=59000, value=-58000, vel=1000, dw=1000, v=1272
+% Teensy info 1770200589.9846 # setvo t=102029, 0, ref=0, e=58000, value=-57000, vel=1000, dw=1000, v=1286
+% Teensy info 1770200589.9869 # setvo t=102031, 0, ref=0, e=57000, value=-56000, vel=1000, dw=1000, v=1299
+% Teensy info 1770200589.9882 # setvo t=102033, 0, ref=0, e=56000, value=-55000, vel=1000, dw=1000, v=1312
+% Teensy info 1770200589.9907 # setvo t=102035, 0, ref=0, e=55000, value=-54000, vel=1000, dw=1000, v=1326
+% Teensy info 1770200589.9929 # setvo t=102037, 0, ref=0, e=54000, value=-53000, vel=1000, dw=1000, v=1339
+% Teensy info 1770200589.9944 # setvo t=102039, 0, ref=0, e=53000, value=-52000, vel=1000, dw=1000, v=1352
+% Teensy info 1770200589.9969 # setvo t=102041, 0, ref=0, e=52000, value=-51000, vel=1000, dw=1000, v=1366
+% Teensy info 1770200589.9983 # setvo t=102043, 0, ref=0, e=51000, value=-50000, vel=1000, dw=1000, v=1379
+% Teensy info 1770200590.0006 # setvo t=102045, 0, ref=0, e=50000, value=-49000, vel=1000, dw=1000, v=1392
+% Teensy info 1770200590.0029 # setvo t=102047, 0, ref=0, e=49000, value=-48000, vel=1000, dw=1000, v=1406
+% Teensy info 1770200590.0051 # setvo t=102049, 0, ref=0, e=48000, value=-47000, vel=1000, dw=1000, v=1419
+% Teensy info 1770200590.0067 # setvo t=102051, 0, ref=0, e=47000, value=-46000, vel=1000, dw=1000, v=1432
+% Teensy info 1770200590.0089 # setvo t=102053, 0, ref=0, e=46000, value=-45000, vel=1000, dw=1000, v=1446
+% Teensy info 1770200590.0102 # setvo t=102055, 0, ref=0, e=45000, value=-44000, vel=1000, dw=1000, v=1459
+% Teensy info 1770200590.0124 # setvo t=102057, 0, ref=0, e=44000, value=-43000, vel=1000, dw=1000, v=1472
+% Teensy info 1770200590.0148 # setvo t=102059, 0, ref=0, e=43000, value=-42000, vel=1000, dw=1000, v=1485
+% Teensy info 1770200590.0171 # setvo t=102061, 0, ref=0, e=42000, value=-41000, vel=1000, dw=1000, v=1499
+% Teensy info 1770200590.0184 # setvo t=102063, 0, ref=0, e=41000, value=-40000, vel=1000, dw=1000, v=1512
+% Teensy info 1770200590.0207 # setvo t=102065, 0, ref=0, e=40000, value=-39000, vel=1000, dw=1000, v=1525
+% Teensy info 1770200590.0230 # setvo t=102067, 0, ref=0, e=39000, value=-38000, vel=1000, dw=1000, v=1539
+% Teensy info 1770200590.0242 # setvo t=102069, 0, ref=0, e=38000, value=-37000, vel=1000, dw=1000, v=1552
+% Teensy info 1770200590.0265 # setvo t=102071, 0, ref=0, e=37000, value=-36000, vel=1000, dw=1000, v=1565
+% Teensy info 1770200590.0288 # setvo t=102073, 0, ref=0, e=36000, value=-35000, vel=1000, dw=1000, v=1579
+% Teensy info 1770200590.0303 # setvo t=102075, 0, ref=0, e=35000, value=-34000, vel=1000, dw=1000, v=1592
+% Teensy info 1770200590.0325 # setvo t=102077, 0, ref=0, e=34000, value=-33000, vel=1000, dw=1000, v=1605
+% Teensy info 1770200590.0348 # setvo t=102079, 0, ref=0, e=33000, value=-32000, vel=1000, dw=1000, v=1619
+% Teensy info 1770200590.0371 # setvo t=102081, 0, ref=0, e=32000, value=-31000, vel=1000, dw=1000, v=1632
+% Teensy info 1770200590.0384 # setvo t=102083, 0, ref=0, e=31000, value=-30000, vel=1000, dw=1000, v=1645
+% Teensy info 1770200590.0407 # setvo t=102085, 0, ref=0, e=30000, value=-29000, vel=1000, dw=1000, v=1658
+% Teensy info 1770200590.0431 # setvo t=102087, 0, ref=0, e=29000, value=-28000, vel=1000, dw=1000, v=1672
+% Teensy info 1770200590.0443 # setvo t=102089, 0, ref=0, e=28000, value=-27000, vel=1000, dw=1000, v=1685
+% Teensy info 1770200590.0467 # setvo t=102091, 0, ref=0, e=27000, value=-26000, vel=1000, dw=1000, v=1698
+% Teensy info 1770200590.0490 # setvo t=102093, 0, ref=0, e=26000, value=-25000, vel=1000, dw=1000, v=1712
+% Teensy info 1770200590.0502 # setvo t=102095, 0, ref=0, e=25000, value=-24000, vel=1000, dw=1000, v=1725
+% Teensy info 1770200590.0524 # setvo t=102097, 0, ref=0, e=24000, value=-23000, vel=1000, dw=1000, v=1738
+% Teensy info 1770200590.0549 # setvo t=102099, 0, ref=0, e=23000, value=-22000, vel=1000, dw=1000, v=1752
+% Teensy info 1770200590.0562 # setvo t=102101, 0, ref=0, e=22000, value=-21000, vel=1000, dw=1000, v=1765
+% Teensy info 1770200590.0584 # setvo t=102103, 0, ref=0, e=21000, value=-20000, vel=1000, dw=1000, v=1778
+% Teensy info 1770200590.0608 # setvo t=102105, 0, ref=0, e=20000, value=-19000, vel=1000, dw=1000, v=1792
+% Teensy info 1770200590.0631 # setvo t=102107, 0, ref=0, e=19000, value=-18000, vel=1000, dw=1000, v=1805
+% Teensy info 1770200590.0643 # setvo t=102109, 0, ref=0, e=18000, value=-17000, vel=1000, dw=1000, v=1818
+% Teensy info 1770200590.0667 # setvo t=102111, 0, ref=0, e=17000, value=-16000, vel=1000, dw=1000, v=1832
+% Teensy info 1770200590.0690 # setvo t=102113, 0, ref=0, e=16000, value=-15000, vel=1000, dw=1000, v=1845
+% Teensy info 1770200590.0704 # setvo t=102115, 0, ref=0, e=15000, value=-14000, vel=1000, dw=1000, v=1858
+% Teensy info 1770200590.0726 # setvo t=102117, 0, ref=0, e=14000, value=-13000, vel=1000, dw=1000, v=1871
+% Teensy info 1770200590.0749 # setvo t=102119, 0, ref=0, e=13000, value=-12000, vel=1000, dw=1000, v=1885
+% Teensy info 1770200590.0761 # setvo t=102121, 0, ref=0, e=12000, value=-11000, vel=1000, dw=1000, v=1898
+% Teensy info 1770200590.0787 # setvo t=102123, 0, ref=0, e=11000, value=-10000, vel=1000, dw=1000, v=1911
+% Teensy info 1770200590.0810 # setvo t=102125, 0, ref=0, e=10000, value=-9000, vel=1000, dw=1000, v=1925
+% Teensy info 1770200590.0822 # setvo t=102127, 0, ref=0, e=9000, value=-8000, vel=1000, dw=1000, v=1938
+% Teensy info 1770200590.0845 # setvo t=102129, 0, ref=0, e=8000, value=-7000, vel=1000, dw=1000, v=1951
+% Teensy info 1770200590.0868 # setvo t=102131, 0, ref=0, e=7000, value=-6000, vel=1000, dw=1000, v=1965
+% Teensy info 1770200590.0891 # setvo t=102133, 0, ref=0, e=6000, value=-5000, vel=1000, dw=1000, v=1978
+% Teensy info 1770200590.0905 # setvo t=102135, 0, ref=0, e=5000, value=-4000, vel=1000, dw=1000, v=1991
+% Teensy info 1770200590.0927 # setvo t=102137, 0, ref=0, e=4000, value=-3000, vel=1000, dw=1000, v=2005
+% Teensy info 1770200590.0950 # setvo t=102139, 0, ref=0, e=3000, value=-2000, vel=1000, dw=1000, v=2018
+% Teensy info 1770200590.0963 # setvo t=102141, 0, ref=0, e=2000, value=-1000, vel=1000, dw=1000, v=2031
+% Teensy info 1770200590.0986 # setvo t=102143, 0, ref=0, e=1000, value=0, vel=1000, dw=1000, v=2044
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+% Saved image image_2026_Feb_04_112311_004.jpg
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'alive 2026-02-04 11:23:03.813786' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% State change from 20 to 99
+% Mission finished/aborted; state=99
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 0 0' len(param)=13, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'rc 0 0' len(param)=6, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'servo 1 0 0' len(param)=11, not master False, master True
+% shutting down
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'rc 0 0' len(param)=6, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'stop' len(param)=4, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 14 0 0 0' len(param)=13, not master False, master True
+% Teensy info 1770200594.3326 # stopping
+% Teensy info 1770200594.3327 # stopping
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 15 0 0 0' len(param)=13, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'leds 16 0 0 0' len(param)=13, not master False, master True
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/ti' with 'log 0' len(param)=5, not master False, master True
+% Service - thread stopped
+% Service - thread stopped
+% Pose terminated
+% Robot terminated
+% Pose terminated
+% IR terminated
+% Edge (sedge.py):: turn off line sensor
+% At 2026-02-04 11:23:03.813786: sending: 'robobot/cmd/T0' with 'lip 0' len(param)=5, not master False, master True
+% Edge (sedge.py):: terminated
+% Camera thread stopped
+% Camera terminated
+% GPIO terminated
+% logfile closed
+Ended at 2026-02-04 11:23:14.680709
+% Main Terminated
+% BCM GPIO found OK
+% Starting
+Started 2026-02-06 14:58:48.828247
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master False
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'log 1' len(param)=5, not master False, master False
+% GPIO setup start
+% GPIO setup finished
+% Connected to MQTT Broker localhost on 1883
+% ConnectedOut to MQTT Broker localhost on 1883
+% Robot (srobot.py) data stream OK; 6 loops.
+% IR sensor (sir.py):: got data stream; 0 loops.
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'enc0' len(param)=4, not master False, master False
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'confw 0.074 0.074 19 92 0.23' len(param)=28, not master False, master False
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'confi' len(param)=5, not master False, master False
+% Pose:: configured, and got data stream; 1 loops.
+% IMU (simu.py):: got data stream; 0 loops.
+% Teensy info 1770386329.1280 # got confw: r1=0.074, r2=0.074, G=19, PPR=92, WB=0.23
+% SPose.py:: Robot config info 1 at 0:00:00.299353
+%    - Wheel radius (left,right): (0.074, 0.074 m
+%    - Encoder tick per rev: 92.0
+%    - Gearing: 19.0:1
+%    - Wheel base: 0.23 m
+% Edge (sedge.py):: turns on line sensor
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'lip 1' len(param)=5, not master False, master False
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'sub livn 10' len(param)=11, not master False, master False
+% Camera available: size (616x820, 3 channels)
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'liwi' len(param)=4, not master False, master False
+% Edge (sedge.py):: got data stream; after 1 loops
+% (uservice.py) Setup finished with connected=True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 30 30 0' len(param)=15, not master False, master False
+% Starting at state 0
+% Starting
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 0 30' len(param)=14, not master False, master False
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'rc 0.25 0.0' len(param)=11, not master False, master False
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'servo 1 100 300' len(param)=15, not master False, master False
+% State change from -1 to 12
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master False
+% I am now accepted as master of robot Robobot
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'rc 0.1 0.5' len(param)=10, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'servo 1 -800 1000' len(param)=17, not master False, master True
+% State change from 12 to 14
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'rc 0 0' len(param)=6, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'servo 1 0 1000' len(param)=14, not master False, master True
+% State change from 14 to 20
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+% Saved image image_2026_Feb_06_145855_004.jpg
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 64 0' len(param)=14, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'alive 2026-02-06 14:58:48.828247' len(param)=32, not master False, master True
+ Edge::paint: posLeft 0.0, right 0.0
+# imageAnalysis:: image not saved
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 30 30' len(param)=15, not master False, master True
+% State change from 20 to 99
+% Mission finished/aborted; state=99
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 0 0' len(param)=13, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'rc 0 0' len(param)=6, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'servo 1 0 0' len(param)=11, not master False, master True
+% shutting down
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'rc 0 0' len(param)=6, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'stop' len(param)=4, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 14 0 0 0' len(param)=13, not master False, master True
+% Teensy info 1770386338.7474 # stopping
+% Teensy info 1770386338.7475 # stopping
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 15 0 0 0' len(param)=13, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'leds 16 0 0 0' len(param)=13, not master False, master True
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/ti' with 'log 0' len(param)=5, not master False, master True
+% Service - thread stopped
+% Service - thread stopped
+% Pose terminated
+% Robot terminated
+% Pose terminated
+% IR terminated
+% Edge (sedge.py):: turn off line sensor
+% At 2026-02-06 14:58:48.828247: sending: 'robobot/cmd/T0' with 'lip 0' len(param)=5, not master False, master True
+% Edge (sedge.py):: terminated
+% Camera thread stopped
+% Camera terminated
+% GPIO terminated
+% logfile closed
+Ended at 2026-02-06 14:58:59.087244
+% Main Terminated

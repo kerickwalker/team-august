@@ -1,0 +1,5 @@
+% IR distance logfile
+% 1 	Time (sec)
+% 2-3 	Distance sensor 1 and 2 (meter)
+% 4-5 	Raw AD value for sensor 1 and 2
+% 6 	Sensor power on (1=on)

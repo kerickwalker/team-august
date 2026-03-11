@@ -1,0 +1,3 @@
+% Edge
+% 1 	Time (sec)
+% 2-10 	sensor notmalized value (0..1000), sensor 0 is left, 0 is no reflection, 1000 is calibrated white
