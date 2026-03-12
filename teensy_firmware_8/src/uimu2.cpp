@@ -69,15 +69,38 @@ void UImu2::initMpu()
   }
   else
   { // print who am i
-    const int MSL = 100;
+    const int MSL = 150;
     char s[MSL];
     snprintf(s, MSL, "# MPU9250 'who_am_i'=%d (0x%x)\n", id, id);
     usb.send(s);
-    // set sensor scale scale
+
     mpu.beginAccel(ACC_FULL_SCALE_4_G);
     mpu.beginGyro(GYRO_FULL_SCALE_1000_DPS);
+
     if (useMag)
+    {
+      usb.send("# enabling mag bypass\n");
+      mpu.magEnableSlaveMode();
+      delay(10);
+
+      usb.send("# probing AK8963\n");
+      Wire.beginTransmission(0x0C);
+      Wire.write(0x00); // WHO_AM_I
+      int e = Wire.endTransmission(false);
+
+      int n = Wire.requestFrom(0x0C, 1);
+      int who = -1;
+      if (Wire.available())
+        who = Wire.read();
+
+      snprintf(s, MSL, "# AK8963 probe endTx=%d n=%d who=0x%x\n", e, n, who);
+      usb.send(s);
+
+      usb.send("# about to call beginMag()\n");
       mpu.beginMag(MAG_MODE_CONTINUOUS_100HZ);
+      delay(10);
+      usb.send("# beginMag() returned\n");
+    }
   }
 }
 
@@ -244,12 +267,36 @@ void UImu2::tick()
           usb.send("# message failed to read from MPU9250 10 times in a row, stopped trying\n");
       }
     }
+    static uint32_t lastProbe = 0;
+    if (useMag && (micros() - lastProbe > 1000000))
+    {
+      lastProbe = micros();
+
+      mpu.magEnableSlaveMode();
+      delay(1);
+
+      Wire.beginTransmission(0x0C);
+      Wire.write(0x00); // WHO_AM_I
+      int e = Wire.endTransmission(false);
+
+      int n = Wire.requestFrom(0x0C, 1);
+      int who = -1;
+      if (Wire.available())
+        who = Wire.read();
+
+      const int MSL = 120;
+      char s[MSL];
+      snprintf(s, MSL, "# AK8963 probe endTx=%d n=%d who=0x%x\n", e, n, who);
+      usb.send(s);
+    }
+    
     if (useMag)
     { // read magnetometer at ~100Hz
       uint32_t ntm = micros();
       if (ntm - lastReadMag >= 10000)
       {
         lastReadMag = ntm;
+        // mpu.magEnableSlaveMode(); // Ensure I2C bypass is enabled before each mag read
         int mr = mpu.magUpdate();
         if (mr == 0)
         {

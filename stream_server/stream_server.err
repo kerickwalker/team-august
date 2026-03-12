@@ -1,31 +1,7 @@
-[0:00:12.763941399] [864] [1;32m INFO [1;37mCamera [1;34mcamera_manager.cpp:340 [0mlibcamera v0.6.0+rpt20251202
-[0:00:12.801503825] [1064] [1;32m INFO [1;37mIPAProxy [1;34mipa_proxy.cpp:180 [0mUsing tuning file /usr/share/libcamera/ipa/rpi/vc4/ov5647.json
-[0:00:12.808645214] [1064] [1;32m INFO [1;37mCamera [1;34mcamera_manager.cpp:223 [0mAdding camera '/base/soc/i2c0mux/i2c@1/ov5647@36' for pipeline handler rpi/vc4
-[0:00:12.808711418] [1064] [1;32m INFO [1;37mRPI [1;34mvc4.cpp:445 [0mRegistered camera /base/soc/i2c0mux/i2c@1/ov5647@36 to Unicam device /dev/media0 and ISP device /dev/media3
-[0:00:12.808743695] [1064] [1;32m INFO [1;37mRPI [1;34mpipeline_base.cpp:1111 [0mUsing configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
-[0:00:12.816300455] [864] [1;32m INFO [1;37mCamera [1;34mcamera.cpp:1215 [0mconfiguring streams: (0) 820x616-XBGR8888/SMPTE170M/Rec709/None/Full (1) 1296x972-SGBRG10_CSI2P/RAW
-[0:00:12.816733584] [1064] [1;32m INFO [1;37mRPI [1;34mvc4.cpp:620 [0mSensor: /base/soc/i2c0mux/i2c@1/ov5647@36 - Selected sensor format: 1296x972-SGBRG10_1X10/RAW - Selected unicam format: 1296x972-pGAA/RAW
-127.0.0.1 - - [11/Mar/2026 19:20:32] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 58686): [Errno 104] Connection reset by peer
-127.0.0.1 - - [11/Mar/2026 19:20:47] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 35980): [Errno 32] Broken pipe
-127.0.0.1 - - [11/Mar/2026 19:26:45] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 35662): [Errno 104] Connection reset by peer
-127.0.0.1 - - [11/Mar/2026 19:27:19] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 49900): [Errno 32] Broken pipe
-127.0.0.1 - - [11/Mar/2026 19:32:39] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 45804): [Errno 104] Connection reset by peer
-127.0.0.1 - - [11/Mar/2026 19:33:51] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 41698): [Errno 104] Connection reset by peer
-127.0.0.1 - - [11/Mar/2026 19:41:34] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 47938): [Errno 104] Connection reset by peer
-127.0.0.1 - - [11/Mar/2026 19:43:10] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 58320): [Errno 104] Connection reset by peer
-127.0.0.1 - - [11/Mar/2026 19:43:28] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 44312): [Errno 32] Broken pipe
-127.0.0.1 - - [11/Mar/2026 19:44:34] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 54874): [Errno 104] Connection reset by peer
-127.0.0.1 - - [11/Mar/2026 19:44:42] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 52476): [Errno 104] Connection reset by peer
-127.0.0.1 - - [11/Mar/2026 20:04:49] "GET /stream.mjpg HTTP/1.1" 200 -
-WARNING:root:Removed streaming client ('127.0.0.1', 55674): [Errno 104] Connection reset by peer
+[0:00:12.785599047] [864] [1;32m INFO [1;37mCamera [1;34mcamera_manager.cpp:340 [0mlibcamera v0.6.0+rpt20251202
+[0:00:12.823236213] [1069] [1;32m INFO [1;37mIPAProxy [1;34mipa_proxy.cpp:180 [0mUsing tuning file /usr/share/libcamera/ipa/rpi/vc4/ov5647.json
+[0:00:12.830342398] [1069] [1;32m INFO [1;37mCamera [1;34mcamera_manager.cpp:223 [0mAdding camera '/base/soc/i2c0mux/i2c@1/ov5647@36' for pipeline handler rpi/vc4
+[0:00:12.830406287] [1069] [1;32m INFO [1;37mRPI [1;34mvc4.cpp:445 [0mRegistered camera /base/soc/i2c0mux/i2c@1/ov5647@36 to Unicam device /dev/media0 and ISP device /dev/media1
+[0:00:12.830438232] [1069] [1;32m INFO [1;37mRPI [1;34mpipeline_base.cpp:1111 [0mUsing configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+[0:00:12.838140417] [864] [1;32m INFO [1;37mCamera [1;34mcamera.cpp:1215 [0mconfiguring streams: (0) 820x616-XBGR8888/SMPTE170M/Rec709/None/Full (1) 1296x972-SGBRG10_CSI2P/RAW
+[0:00:12.838587121] [1069] [1;32m INFO [1;37mRPI [1;34mvc4.cpp:620 [0mSensor: /base/soc/i2c0mux/i2c@1/ov5647@36 - Selected sensor format: 1296x972-SGBRG10_1X10/RAW - Selected unicam format: 1296x972-pGAA/RAW

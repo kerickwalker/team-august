@@ -337,19 +337,19 @@ def read_key():
         return key
 
 def catch_ball():
-  SERVO_DOWN_POS = -200     
-  SERVO_UP_POS = -850     
+  SERVO_DOWN_POS = 100     
+  SERVO_UP_POS = -840     
   SERVO_DOWN_VEL = 100     # slow speed
   SERVO_UP_VEL = 100     # slow speed
 
 
   # 1) Servo down
   service.send("robobot/cmd/T0", f"servo 1 {SERVO_DOWN_POS} {SERVO_DOWN_VEL}")
-  t.sleep(5)
+  t.sleep(2)
 
   # 3) Release servo
   service.send("robobot/cmd/T0", f"servo 1 {-2000} {0}")
-  t.sleep(1)
+  t.sleep(5)
 
   # 3) Servo up
   service.send("robobot/cmd/T0", f"servo 1 {SERVO_UP_POS} {SERVO_UP_VEL}")
@@ -404,6 +404,57 @@ def teleop_control():
         service.send("robobot/cmd/ti", "rc 0 0")
         service.send("robobot/cmd/T0", "leds 16 0 0 0")
 
+def calibrate_line_sensor_only():
+    """
+    Calibration-only mode.
+
+    If program is started with -w, this function will:
+    - initialize the edge sensor subsystem
+    - run white calibration through edge.setup()
+    - do nothing else (no driving, no servo motion)
+    - return when calibration is done
+    """
+    print("% calibrate_line_sensor_only(): starting")
+    edge.setup()
+    print("% calibrate_line_sensor_only(): finished")
+
+def line_follow_test(speed=0.15, follow_left=True, ref_position=0.0):
+    """
+    Minimal test function for continuous line following.
+
+    - Initializes the line sensor
+    - Enables the built-in line follower in sedge.py
+    - Keeps running until stopped externally
+    """
+    print("% line_follow_test(): starting")
+
+    # Make sure line sensor is initialized and data is streaming
+    edge.setup()
+
+    # Optional: wait until some normalized sensor data has arrived
+    while not service.stop and edge.edge_nUpdCnt == 0:
+        t.sleep(0.05)
+
+    print("% line_follow_test(): sensor data received")
+
+    # Enable built-in line follower
+    edge.lineControl(speed, follow_left, ref_position)
+
+    try:
+        while not service.stop:
+            # Optional debug print every 0.1 s
+            print(f"# line valid cnt={edge.lineValidCnt}, "
+                  f"left={edge.posLeft:.2f}, right={edge.posRight:.2f}, "
+                  f"high={edge.high}, avg={edge.average:.1f}")
+            t.sleep(0.1)
+
+    finally:
+        # Stop safely when function exits
+        edge.lineControl(0, follow_left, ref_position)
+        service.send("robobot/cmd/ti", "rc 0 0")
+        service.send("robobot/cmd/T0", "leds 16 0 0 0")
+        print("% line_follow_test(): stopped")
+        
 ##########################################################
 # ------------ END OF CUSTOM FUNCTIONALITY  ------------ #
 ##########################################################
@@ -424,6 +475,7 @@ if __name__ == "__main__":
       #service.setup('10.197.218.17') # Public IP
       if service.connected:
         #loop()
-        teleop_control() # manual teleop control
+        #teleop_control() # manual teleop control
+        line_follow_test(speed=0.15, follow_left=True, ref_position=0.0) # test line following
       service.terminate()
     print("% Main Terminated")
