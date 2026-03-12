@@ -169,8 +169,8 @@ def driveToLine():
         service.send("robobot/cmd/ti/","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
         state = 2
       if edge.lineValidCnt > 4:
-        # start follow line (center of line; was left edge)
-        edge.lineControl(0.2, True, 0.0, True)
+        # start follow line
+        edge.lineControl(0.2, True)
         # service.send("robobot/cmd/T0","servo 1 0 0") # (move servo to position 0 - front)
         dist_to_line = pose.tripB
         pose.tripBreset()

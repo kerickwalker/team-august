@@ -54,7 +54,6 @@ class SEdge:
     posRight = 0.0
     followLeft = True
     refPosition = 0.0 # distance from detected edge
-    followCenter = False  # if True, error from line center (posLeft+posRight)/2
     lineValid = False
     lineValidCnt = 0 # a value up to 20 for most confident line detect
     crossingLine = False
@@ -355,11 +354,10 @@ class SEdge:
 
     ##########################################################
 
-    def lineControl(self, velocity, followLeft = True, refPosition = 0, followCenter = False):
+    def lineControl(self, velocity, followLeft = True, refPosition = 0):
       self.velocity = velocity
       self.followLeft = followLeft
       self.refPosition = refPosition
-      self.followCenter = followCenter  # if True, track (posLeft+posRight)/2 instead of one edge
       # velocity 0 (or negative) is turning off line control
       self.lineCtrl = velocity > 0.001
       pass
@@ -373,10 +371,7 @@ class SEdge:
       if abs(self.edge_nInterval - self.edgeIntervalSetup) > 2.0: # ms
         self.PIDrecalculate()
         self.edgeIntervalSetup = self.edge_nInterval
-      if getattr(self, 'followCenter', False):
-        lineCenter = (self.posLeft + self.posRight) / 2.0
-        e = self.refPosition - lineCenter
-      elif self.followLeft:
+      if self.followLeft:
         e = self.refPosition - self.posLeft
       else:
         e = self.refPosition - self.posRight
