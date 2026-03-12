@@ -91,6 +91,8 @@ class UService:
                 help='Calibrate horizontal (not implemented, but maybe an idea)')
     self.parser.add_argument('-s', '--silent', action='store_true',
                 help='Print less to console')
+    self.parser.add_argument('-t', '--test', action='store_true',
+                help='Test mode: quiet like --silent but show test prints (e.g. periodic line sensor)')
     self.parser.add_argument('-n', '--now', action='store_true',
                 help='Start drive now (do not wait for the start button)')
     self.parser.add_argument('-m', '--meter', action='store_true',
@@ -130,12 +132,15 @@ class UService:
     imu.setup()
     cam.setup()
     edge.setup()
-    print(f"% (uservice.py) Setup finished with connected={self.connected}")
+    if not getattr(self.args, 'test', False):
+      print(f"% (uservice.py) Setup finished with connected={self.connected}")
     if self.args.level:
       print(f"% Command line argument '--level'={self.args.level} but not implemented")
       self.stop = True
     if self.args.silent:
       print(f"% Command line argument '--silent'={self.args.silent}")
+    if self.args.test:
+      print(f"% Command line argument '--test' (quiet + test prints only)")
 
   def run(self):
     # print("% MQTT service - thread running")
@@ -238,7 +243,7 @@ class UService:
       # print("# Message out, topic '" + msg.topic + "' payload:" + str(msg.payload))
     except:
       print("% Message exception (illegal char?) - continues, topic '" + msg.topic + "' payload:" + str(msg.payload))
-    if not self.args.silent:
+    if not self.args.silent and not getattr(self.args, 'test', False):
       print(f"% MQTT got message on the output channel {msg.topic}")
 
   def decode(self, topic, msg):
@@ -260,7 +265,7 @@ class UService:
       elif gpio.decode(subtopic, msg):
         pass
       elif subtopic == "T0/info":
-        if not self.args.silent:
+        if not self.args.silent and not getattr(self.args, 'test', False):
           print(f"% Teensy info {msg}", end="")
       elif subtopic == "master":
         # skip timestamp to get real masters starttime
@@ -288,13 +293,13 @@ class UService:
       else:
         used = False
     if not used:
-      if not self.args.silent:
+      if not self.args.silent and not getattr(self.args, 'test', False):
         print("% Service:: message not used " + topic + " " + msg)
     return used
 
   def send(self, topic, param):
     # print(self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f"))
-    if not self.args.silent:
+    if not self.args.silent and not getattr(self.args, 'test', False):
       print(f"% {self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f")}: sending: '{topic}' with '{param}' len(param)={len(param)}, not master {self.confirmedNotMaster}, master {self.confirmedMaster}")
     if self.confirmedNotMaster:
       # self.terminate()

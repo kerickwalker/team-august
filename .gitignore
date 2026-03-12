@@ -21,7 +21,9 @@ venv/
 *.tmp
 *.swp
 *.log
-log_*.txt
+*.err
+log*.txt
+
 
 # Ignore all JPEG images
 *.jpg

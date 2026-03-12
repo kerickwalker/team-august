@@ -54,6 +54,7 @@ class SEdge:
     posRight = 0.0
     followLeft = True
     refPosition = 0.0 # distance from detected edge
+    followCenter = False  # if True, error from line center (posLeft+posRight)/2
     lineValid = False
     lineValidCnt = 0 # a value up to 20 for most confident line detect
     crossingLine = False
@@ -64,6 +65,8 @@ class SEdge:
     #
     topicLip = ""
     sendCalibRequest = False
+    calibCollecting = False   # True while rolling forward/back to collect white levels
+    calibWhiteMax = [0] * 8   # per-sensor max raw value during rolling calib
     #
     # follow line controller
     lineCtrl = False # private
@@ -97,8 +100,9 @@ class SEdge:
       print("% Edge (sedge.py):: turns on line sensor")
       self.topicCmdT0 = "robobot/cmd/T0"
       service.send(self.topicCmdT0, "lip 1")
-      # request fast update (every 3 ms)
+      # request fast update (every 10 ms); raw every 50 ms for periodic prints
       service.send(self.topicCmdT0,"sub livn 10")
+      service.send(self.topicCmdT0,"sub liv 50")
       # request data
       while not service.stop:
         t.sleep(0.02)
@@ -114,26 +118,31 @@ class SEdge:
             service.send(self.topicCmdT0,"livi")
             pass
           elif not self.sendCalibRequest:
-            # send calibration request, averaged over 100 samples
-            service.send(self.topicCmdT0,"liwi")
-            t.sleep(0.02)
-            # calibrate using current white level averaged over 100 samples
-            service.send(self.topicCmdT0,"licw 100")
-            # allow communication to settle
-            print("# Edge (sedge.py):: sending calibration request")
-            # wait for calibration to finish (each sample takes 1-2 ms)
-            t.sleep(0.25)
-            # save the calibration as new default
-            service.send(self.topicCmdT0,"eew")
+            # Rolling calibration: drive slowly over the line, collect max raw per sensor, set white from that
+            print("% Edge (sedge.py):: Place robot on line; will roll forward then back to capture white level")
+            self.calibWhiteMax = [0] * 8
+            self.calibCollecting = True
+            # forward
+            service.send("robobot/cmd/ti", "rc 0.12 0.0")
+            t.sleep(2.5)
+            # back
+            service.send("robobot/cmd/ti", "rc -0.12 0.0")
+            t.sleep(2.5)
+            service.send("robobot/cmd/ti", "rc 0.0 0.0")
+            self.calibCollecting = False
+            # ensure no zero (firmware needs white > black); use at least 1
+            w = [max(1, self.calibWhiteMax[i]) for i in range(8)]
+            service.send(self.topicCmdT0, "litw " + " ".join(str(v) for v in w))
+            t.sleep(0.1)
+            service.send(self.topicCmdT0, "eew")
             self.sendCalibRequest = True
-            # ask for new white values
-            service.send(self.topicCmdT0,"liwi")
-            t.sleep(0.02)
+            print(f"% Edge (sedge.py):: white set from rolling calib: {w}")
+            service.args.white = False
+            service.stop = True
           else:
             t.sleep(0.25)
             service.args.white = False
-            print(f"% Edge (sedge.py):: calibration should be fine, terminates.")
-            # terminate mission
+            print(f"% Edge (sedge.py):: calibration done, terminates.")
             service.stop = True
         elif self.edge_n_wUpdCnt == 0:
           # get calibrated white value
@@ -217,6 +226,10 @@ class SEdge:
             elif self.edgeUpdCnt > 2:
               self.edgeInterval = (self.edgeInterval * 99 + (t1 -t0).total_seconds()*1000) / 100
             self.edgeUpdCnt += 1
+            # during rolling calibration, keep per-sensor max (line = brightest)
+            if getattr(self, 'calibCollecting', False):
+              for i in range(8):
+                self.calibWhiteMax[i] = max(self.calibWhiteMax[i], self.edge[i])
             # self.print()
         elif topic == "T0/livn": # normalized after calibration range (0..1000)
           from uservice import service
@@ -251,6 +264,14 @@ class SEdge:
             # log relevant line sensor data
             if self.edge_nUpdCnt % 10 == 0:
               flog.write()
+            # periodic print: every 50 lines (~0.5 s at 100 Hz) unless --silent
+            # (posL/posR = where we suspect the line edges; could add explicit "line at" summary later)
+            from uservice import service
+            # test prints: show when --test (quiet + test only) or when not --silent
+            if (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % 50 == 0:
+              raw = " ".join(str(self.edge[i]) for i in range(8))
+              norm = " ".join(str(self.edge_n[i]) for i in range(8))
+              print(f"% line: raw [{raw}]  livn [{norm}]  avg={self.average:.0f} high={self.high} valid={self.lineValid} validCnt={self.lineValidCnt} posL={self.posLeft:.2f} posR={self.posRight:.2f} cross={self.crossingLine}")
             #self.printn()
         elif topic == "T0/liw": # get white level
           from uservice import service
@@ -334,10 +355,11 @@ class SEdge:
 
     ##########################################################
 
-    def lineControl(self, velocity, followLeft = True, refPosition = 0):
+    def lineControl(self, velocity, followLeft = True, refPosition = 0, followCenter = False):
       self.velocity = velocity
       self.followLeft = followLeft
       self.refPosition = refPosition
+      self.followCenter = followCenter  # if True, track (posLeft+posRight)/2 instead of one edge
       # velocity 0 (or negative) is turning off line control
       self.lineCtrl = velocity > 0.001
       pass
@@ -351,7 +373,10 @@ class SEdge:
       if abs(self.edge_nInterval - self.edgeIntervalSetup) > 2.0: # ms
         self.PIDrecalculate()
         self.edgeIntervalSetup = self.edge_nInterval
-      if self.followLeft:
+      if getattr(self, 'followCenter', False):
+        lineCenter = (self.posLeft + self.posRight) / 2.0
+        e = self.refPosition - lineCenter
+      elif self.followLeft:
         e = self.refPosition - self.posLeft
       else:
         e = self.refPosition - self.posRight
@@ -378,9 +403,9 @@ class SEdge:
       #par = f"{self.velocity:.3f} 0 {t.time()}"
       # debug end
       service.send("robobot/cmd/ti", par) # send new turn command, maintaining velocity
-      # debug print
-      if True: # self.edge_nUpdCnt % 20 == 0:
-        print(f"% Edge::followLine: ctrl: e={e:.3f}, u={self.u:.3f}, y={self.lineY:.3f}, cnt {self.lineValidCnt}, -> {par}")
+      # test print (every 20th update; shown with --test or when not --silent)
+      if (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt % 20 == 0:
+        print(f"% Edge::followLine: e={e:.3f} u={self.u:.3f} y={self.lineY:.3f} cnt={self.lineValidCnt} -> {par}")
 
     ##########################################################
 

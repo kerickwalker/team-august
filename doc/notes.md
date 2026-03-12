@@ -2,10 +2,6 @@
 
 Quick handoff file for SSH sessions and sensor-calibration work.
 
-## Copilot Temporary Files Rule
-- All temporary scripts, logs, and outputs created by Copilot should be saved in `.copilot_workspace/` at the root of the robobot repo, not in `/tmp`.
-- You do not need to ask for permission to use `.copilot_workspace/` for any temporary or test files.
-
 ## Quick Command Sheet (copy/paste)
 
 ```bash
@@ -755,8 +751,6 @@ v_dot = (commanded - actual) / tau_v
 # === Copilot Instructions (for AI agent, keep at bottom) ===
 # ======================
 
-- All temporary scripts, logs, and outputs created by Copilot should be saved in `.copilot_workspace/` at the root of the robobot repo, not in `/tmp`.
-- You do not need to ask for permission to use `.copilot_workspace/` for any temporary or test files.
 - Use roadmap/task list first.
 - After approval, execute one task at a time.
 - Keep assistant replies short and manageable.

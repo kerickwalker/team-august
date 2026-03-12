@@ -681,17 +681,14 @@ void UService::run()
       }
     }
     if (masterAliveTime.getTimePassed() > 4.0 and masterAliveCnt > 0)
-    { // master lost
-      printf("# UService::run: master lost (%s), no alive in %.2f sec\n",
+    { // master lost — stop the robot so wheels don't keep turning when mqtt-client exits
+      printf("# UService::run: master lost (%s), no alive in %.2f sec — stopping robot\n",
              masterAliveID, masterAliveTime.getTimePassed());
       masterAliveCnt = 0;
       masterAliveErr = 0;
-      // stop the robot
-      printf("# UService:: should probably stop the robot, but ignored for now.\n");
-      // mixer.setVelocity(0, 0);
-      //
+      mixer.setVelocity(0, 0);
       if (logfile != nullptr)
-        fprintf(logfile, "%lu.%04ld Lost Master, alive since %s\n",
+        fprintf(logfile, "%lu.%04ld Lost Master, alive since %s — velocity set to 0\n",
                 t.getSec(), t.getMicrosec()/100,
                 masterAliveID);
     }
