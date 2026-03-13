@@ -418,7 +418,7 @@ def calibrate_line_sensor_only():
     edge.setup()
     print("% calibrate_line_sensor_only(): finished")
 
-def line_follow_test(speed=0.15, follow_left=True, ref_position=0.0):
+def line_follow_test(speed=0.15, ref_position=0.0):
     """
     Minimal test function for continuous line following.
 
@@ -438,7 +438,7 @@ def line_follow_test(speed=0.15, follow_left=True, ref_position=0.0):
     print("% line_follow_test(): sensor data received")
 
     # Enable built-in line follower
-    edge.lineControl(speed, follow_left, ref_position)
+    edge.lineControl(speed, ref_position)
 
     try:
         while not service.stop:
@@ -476,6 +476,6 @@ if __name__ == "__main__":
       if service.connected:
         #loop()
         #teleop_control() # manual teleop control
-        line_follow_test(speed=0.15, follow_left=True, ref_position=0.0) # test line following
+        line_follow_test(speed=0.15, ref_position=0.0) # test line following
       service.terminate()
     print("% Main Terminated")
