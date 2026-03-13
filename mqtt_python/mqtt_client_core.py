@@ -51,7 +51,7 @@ def driveOneMeter():
 # ═══════════════════════════════════════════════════════════════════════════
 # driveToLine() — LINE-FOLLOW MISSION
 # State 0: drive forward (rc 0.2 0) until ir.ir[0] >= 0.2 or we just start.
-# State 1: keep driving; when edge.lineValidCnt > 4 → start following: edge.lineControl(0.2, True);
+# State 1: keep driving; when edge.lineValidCnt > 4 → start following: edge.lineControl(0.2);
 #           then state 10. Also exit state 1 if tripB > 1 m or 15 s → state 2.
 # State 10: follow line (control runs in sedge on each livn). When edge.lineValidCnt < 2 →
 #           stop line control, rc 0 0, state 2.
@@ -73,7 +73,7 @@ def driveToLine():
                 service.send("robobot/cmd/ti", "rc 0.0 0.0")
                 state = 2
             if edge.lineValidCnt > 4:
-                edge.lineControl(0.2, True)   # 0.2 m/s, follow left edge
+                edge.lineControl(0.2)   # 0.2 m/s, follow line center
                 service.send("robobot/cmd/T0", "servo 1 0 0")
                 pose.tripBreset()
                 state = 10
@@ -82,7 +82,7 @@ def driveToLine():
                 state = 99
         elif state == 10:
             if edge.lineValidCnt < 2:
-                edge.lineControl(0, True)     # turn off line control
+                edge.lineControl(0)     # turn off line control
                 service.send("robobot/cmd/ti", "rc 0.0 0.0")
                 pose.tripBreset()
                 state = 2
@@ -158,7 +158,7 @@ def loop():
         state = service.args.usestate
     else:
         state = 200
-    edge.lineControl(0, True)   # ensure line control off at start
+    edge.lineControl(0)   # ensure line control off at start
     while not service.stop:
         if state == 101:
             driveOneMeter()
@@ -191,7 +191,7 @@ def loop():
         gpio.set_value(20, 0)
     except Exception:
         pass
-    edge.lineControl(0, True)
+    edge.lineControl(0)
     service.send("robobot/cmd/ti", "rc 0 0")
     service.send("robobot/cmd/T0", "servo 1 0 0")
     t.sleep(0.05)

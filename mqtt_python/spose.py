@@ -104,7 +104,10 @@ class SPose:
           # wait for pose data (set in robot.ini)
           pass
         else: # finished
-          print(f"% Pose:: configured, and got data stream; {loops} loops.")
+          if not service.is_quiet():
+            print()
+            print(f"% Pose:: configured, and got data stream; {loops} loops.")
+            print()
           break
         loops += 1
         if loops > 20:
@@ -118,31 +121,35 @@ class SPose:
 
     def printMVel(self):
       from uservice import service
-      print("% Pose motor velocity " + str(self.motorVelocityTime - service.startTime) + " (" +
-            str(self.motorVelocity[0]) + ", " +
-            str(self.motorVelocity[1]) + f") (rad/sec) {self.motorVelocityInterval:.4f} sec " +
-            str(self.motorVelocityCnt))
+      if not service.is_quiet():
+        print("% Pose motor velocity " + str(self.motorVelocityTime - service.startTime) + " (" +
+              str(self.motorVelocity[0]) + ", " +
+              str(self.motorVelocity[1]) + f") (rad/sec) {self.motorVelocityInterval:.4f} sec " +
+              str(self.motorVelocityCnt))
     def printWVel(self):
       from uservice import service
-      print("% Pose wheel velocity " + str(self.wheelVelocityTime - service.startTime) + " (" +
-            str(self.wheelVelocity[0]) + ", " +
-            str(self.wheelVelocity[1]) + f") (m/sec) {self.wheelVelocityInterval:.4f} sec " +
-            str(self.wheelVelocityCnt))
+      if not service.is_quiet():
+        print("% Pose wheel velocity " + str(self.wheelVelocityTime - service.startTime) + " (" +
+              str(self.wheelVelocity[0]) + ", " +
+              str(self.wheelVelocity[1]) + f") (m/sec) {self.wheelVelocityInterval:.4f} sec " +
+              str(self.wheelVelocityCnt))
     def printPose(self):
       from uservice import service
-      print("% Pose  " + str(self.poseTime - service.startTime) + " (" +
-            f"{self.pose[0]:.3f}, " +
-            f"{self.pose[1]:.3f}, " +
-            f"{self.pose[2]:.4f}, " +
-            f"{self.pose[3]:.4f}) (m,m,rad,rad) {self.poseInterval:.4f} sec " +
-            str(self.poseCnt))
+      if not service.is_quiet():
+        print("% Pose  " + str(self.poseTime - service.startTime) + " (" +
+              f"{self.pose[0]:.3f}, " +
+              f"{self.pose[1]:.3f}, " +
+              f"{self.pose[2]:.4f}, " +
+              f"{self.pose[3]:.4f}) (m,m,rad,rad) {self.poseInterval:.4f} sec " +
+              str(self.poseCnt))
     def printInfo(self):
       from uservice import service
-      print(f"% SPose.py:: Robot config info {self.infoCnt} at " + str(self.motorVelocityTime - service.startTime))
-      print(f"%    - Wheel radius (left,right): ({self.radiusLeft}, {self.radiusRight} m")
-      print(f"%    - Encoder tick per rev: {self.tickPerRev}")
-      print(f"%    - Gearing: {self.gear}:1")
-      print(f"%    - Wheel base: {self.wheelBase} m")
+      if not service.is_quiet():
+        print(f"% SPose.py:: Robot config info {self.infoCnt} at " + str(self.motorVelocityTime - service.startTime))
+        print(f"%    - Wheel radius (left,right): ({self.radiusLeft}, {self.radiusRight} m")
+        print(f"%    - Encoder tick per rev: {self.tickPerRev}")
+        print(f"%    - Gearing: {self.gear}:1")
+        print(f"%    - Wheel base: {self.wheelBase} m")
       # reversed is for motortest only
       # print(f"%    - Encoder reversed: {self.encoder_reversed} (1 = reversed)")
 
@@ -263,7 +270,9 @@ class SPose:
         return used
 
     def terminate(self):
-        print("% Pose terminated")
+        from uservice import service
+        if not service.is_quiet():
+          print("% Pose terminated")
         pass
 
 # create the data object

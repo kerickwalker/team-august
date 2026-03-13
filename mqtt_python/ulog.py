@@ -84,8 +84,10 @@ class ULog:
       self.f.write(f"{pose.tripB:.4f} {pose.tripBh:.4f}\n")
 
   def terminate(self):
+    from uservice import service
     self.f.close()
-    print("% logfile closed")
+    if not service.is_quiet():
+      print("% logfile closed")
     pass
 
 # create the data object

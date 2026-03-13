@@ -1,46 +1,6 @@
 # Change Log
 
-## 2026-03-12: Line-following smoothing (less jagged)
-
-### Changes in sedge.py
-- **maxTurnRate = 2.5** rad/s (was hardcoded ±4). Limits how sharply the robot can turn.
-- **lineKp = 0.7** (was 1.0). Same error produces a smaller turn rate.
-- **Low-pass filtered position:** Added `posLeftFilt`, `posRightFilt` with `linePosAlpha = 0.35`. Error in `followLine()` is now based on the filtered position so sensor-to-sensor jumps don’t translate directly to steering. Filter is updated only when `lineValid`.
-- **followLine() debug print** only every 20th update to reduce console spam.
-
-Tuning: Increase `linePosAlpha` (e.g. 0.5) for quicker response, decrease (e.g. 0.25) for smoother. Increase `lineKp` or `maxTurnRate` if following feels sluggish.
-
-## 2026-03-12: teensy_interface stops robot when master is lost
-
-### Problem
-If mqtt-client was closed (or crashed) while the robot was moving, the wheels kept turning because the last `rc` command (e.g. `rc 0.2 0.5`) stayed active. The interface detected "master lost" after 4 s without "alive" but did not stop the motors.
-
-### Fix
-In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 s), call `mixer.setVelocity(0, 0)` so the robot stops. Previously this was commented out ("ignored for now").
-
-**Note:** After you close mqtt-client there can be up to ~4 s before the interface declares master lost and stops the robot. For immediate stop, exit the client normally (Ctrl+C or let the mission end) so it sends `rc 0 0` in cleanup.
-
-## 2026-03-12: Rolling white calibration (--white)
-
-### Change
-White calibration no longer samples in a single position. When you run `--white`:
-1. Place the robot on the line; the script drives **forward** at 0.12 m/s for 2.5 s, then **backward** for 2.5 s, then stops.
-2. While moving, it collects raw line-sensor values (`liv`); for each of the 8 sensors it keeps the **maximum** (the line is the brightest).
-3. It sends those 8 values to the Teensy with **`litw w1 w2 ... w8`**, then **`eew`** to save to EEPROM.
-
-So the white level reflects the full behaviour over the line, not one spot. Implemented in `sedge.py` (setup() and decode T0/liv); uses existing `litw` and `eew` on the Teensy.
-
-## 2026-03-12: Calibration persistence docs and periodic line-sensor prints
-
-### Calibration persistence (notes)
-- **line_following.md:** Clarified that white/black calibration is stored in **Teensy EEPROM** (`eew` after `licw 100`). One calibration is enough unless tape/lighting/surface changes; "calibrate first" is for first run or after such a change.
-- **commands_and_workflow.md:** Line-follow workflow now states that calibration is persistent; can skip `--white` when already calibrated.
-
-### Periodic line-sensor prints (sedge.py)
-- **Purpose:** During testing (without `--silent`), print raw and normalized sensor values and line state periodically.
-- **Implementation:** Print every **50** lines (~0.5 s at 100 Hz). In `decode()` when topic is `T0/livn`, if not `--silent` and `edge_nUpdCnt % 50 == 0`, print one line: raw `edge[]`, normalized `edge_n[]`, `average`, `high`, `lineValid`, `lineValidCnt`, `posLeft`, `posRight`, `crossingLine`.
-- **Raw values:** Setup sends `sub liv 50` so raw (`T0/liv`) is requested every 50 ms and `edge[]` is updated for the print.
-- **Modified files:** `mqtt_python/sedge.py`, `notes/line_following.md`, `notes/commands_and_workflow.md`.
+Entries are in chronological order (oldest first, newest at bottom).
 
 ## 2026-03-10: Button-6 GPIO Fix and Quiet Mode Implementation
 
@@ -92,7 +52,7 @@ Affected areas:
 ### Encoder topic handler in `spose.py`
 
 **Problem**
-- The newer encoder MQTT topic `robobot/drive/T0/enc` produced “message not used” warnings because Python had no decoder case for it.
+- The newer encoder MQTT topic `robobot/drive/T0/enc` produced "message not used" warnings because Python had no decoder case for it.
 
 **Solution**
 Added a decoder branch:
@@ -134,7 +94,7 @@ elif topic == "T0/enc":
 ### Master-claim grace period in `uservice.py`
 
 **Problem**
-- `mqtt-client` could quit immediately with “I am not robot master, quitting!” when `teensy_interface` was still publishing a stale master ID.
+- `mqtt-client` could quit immediately with "I am not robot master, quitting!" when `teensy_interface` was still publishing a stale master ID.
 
 **Solution**
 Added a 5-second grace period before confirming non-master status.
@@ -296,7 +256,9 @@ After fix, probe output should show something like `endTx=0 n=1 who=0x48` (0x48 
 
 **Next step:** Verify and fix I2C bypass configuration in MPU9250 initialization. (Deferred until after line-following work.)
 
-## Line-following: first Python-only patch (sedge.py, mqtt-client.py)
+
+
+## 2026-03-12: Line-following, first Python-only patch (sedge.py, mqtt-client.py)
 
 ### Context
 The active line-following controller is in Python (`sedge.py`, `mqtt-client.py`), not on the Teensy. The Teensy provides sensor acquisition, calibration, normalization, and an onboard line estimate (`lip`); Python subscribes to `livn` and recomputes line position (it does not use `lip`). The original Python logic was a coarse threshold-based edge follower.
@@ -306,18 +268,62 @@ The active line-following controller is in Python (`sedge.py`, `mqtt-client.py`)
 - Reduce jumpy behavior and improve line-loss handling.
 - No firmware flashing; Python-only changes.
 
-### Changes in sedge.py
-- **Smoother line position:** New state `lineCenter`, `lineCenterRaw`, `lineWidth`, `followMode`. Weighted center-of-gravity from sensor intensities above background; low-pass filtered (`linePosAlpha`). `posLeft`/`posRight` kept from active sensor span.
-- **followMode:** Controller can follow `"center"`, `"left"`, or `"right"`.
-- **Dropout recovery:** `lostLineCnt`, `maxLostLineCnt`, `recoveryTurnGain` — softened steering and recovery turn on brief loss; stop only after prolonged loss.
-- **Steering saturation:** `maxTurnRate` reduced from 4 to 2.5 rad/s.
-- **paint():** Updated to show `posLeft`, `posRight`, `lineCenter` for debugging.
+## 2026-03-12: Calibration persistence docs and periodic line-sensor prints
 
-### Changes in mqtt-client.py
-- `driveToLine()` now calls `edge.lineControl(0.2, True, 0.0, "center")` — follow line center instead of left edge.
+### Calibration persistence (notes)
+- **line_following.md:** Clarified that white/black calibration is stored in **Teensy EEPROM** (`eew` after `licw 100`). One calibration is enough unless tape/lighting/surface changes; "calibrate first" is for first run or after such a change.
+- **commands_and_workflow.md:** Line-follow workflow now states that calibration is persistent; can skip `--white` when already calibrated.
 
-### Testing
-- No Teensy reflash required. Recommended order: calibrate (`--white`), motion check (`--meter`), then line follow (`--edge`). See `line_following.md`.
+### Periodic line-sensor prints (sedge.py)
+- **Purpose:** During testing (without `--silent`), print raw and normalized sensor values and line state periodically.
+- **Implementation:** Print every **50** lines (~0.5 s at 100 Hz). In `decode()` when topic is `T0/livn`, if not `--silent` and `edge_nUpdCnt % 50 == 0`, print one line: raw `edge[]`, normalized `edge_n[]`, `average`, `high`, `lineValid`, `lineValidCnt`, `posLeft`, `posRight`, `crossingLine`.
+- **Raw values:** Setup sends `sub liv 50` so raw (`T0/liv`) is requested every 50 ms and `edge[]` is updated for the print.
+- **Modified files:** `mqtt_python/sedge.py`, `notes/line_following.md`, `notes/commands_and_workflow.md`.
 
-### Caveat
-Debug prints in `followLine()` and `paint()` may still be verbose; consider reducing console spam before live testing.
+## 2026-03-12: Rolling white calibration (--white)
+
+### Change
+White calibration no longer samples in a single position. When you run `--white`:
+1. Place the robot on the line; the script drives **forward** at 0.12 m/s for 2.5 s, then **backward** for 2.5 s, then stops.
+2. While moving, it collects raw line-sensor values (`liv`); for each of the 8 sensors it keeps the **maximum** (the line is the brightest).
+3. It sends those 8 values to the Teensy with **`litw w1 w2 ... w8`**, then **`eew`** to save to EEPROM.
+
+So the white level reflects the full behaviour over the line, not one spot. Implemented in `sedge.py` (setup() and decode T0/liv); uses existing `litw` and `eew` on the Teensy.
+
+## 2026-03-12: teensy_interface stops robot when master is lost
+
+### Problem
+If mqtt-client was closed (or crashed) while the robot was moving, the wheels kept turning because the last `rc` command (e.g. `rc 0.2 0.5`) stayed active. The interface detected "master lost" after 4 s without "alive" but did not stop the motors.
+
+### Fix
+In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 s), call `mixer.setVelocity(0, 0)` so the robot stops. Previously this was commented out ("ignored for now").
+
+**Note:** After you close mqtt-client there can be up to ~4 s before the interface declares master lost and stops the robot. For immediate stop, exit the client normally (Ctrl+C or let the mission end) so it sends `rc 0 0` in cleanup.
+
+## 2026-03-13: Silent/test mode fix, quiet startup, and line-print cleanup
+
+### Bug fix: robot not moving with `-s` or `-t`
+- **Problem:** With `-e -s` or `-e -t` (or `-m -s`, etc.) the robot did nothing; `loop()` was never run.
+- **Cause:** In `uservice.py`, `on_connect` and `on_connectOut` set `self.connected` and `self.connectedOut` only inside `if rc == 0 and not self.is_quiet()`. With `-s` or `-t`, `is_quiet()` is true, so the flags were never set and `if service.connected: loop()` in mqtt-client.py was skipped.
+- **Fix:** Set `connected` / `connectedOut` whenever `rc == 0`; use `is_quiet()` only to gate the "Connected to MQTT Broker" print.
+
+### Quiet mode cleanup (`-s` / `-t`)
+- **`is_quiet()`** in `uservice.py`: returns true when `--silent` or `--test`; used to gate normal chatter (not errors).
+- **`-s` (silent):** No startup messages, no state/mission prints, no test prints. Only critical/error messages.
+- **`-t` (test):** Same as silent for chatter; **only** test prints are shown (the periodic line + followLine output during line-following).
+- **Gated prints:** Startup (BCM GPIO, GPIO setup, Robot data stream OK, IR got data stream, Pose configured), uservice (Started/Ended, Connected, Setup finished, shutting down, Service thread stopped), mqtt-client (Starting, state changes, mission messages, Main Terminated), and module terminate/log messages are all gated with `if not service.is_quiet():` in uservice, mqtt-client, sedge, spose, srobot, sir, sgpio, scam, ulog, simu. Pose message in non-quiet mode gets a blank line before and after.
+
+### Line-follow test print (sedge.py)
+- **Only when line-following:** The single test print runs only inside `followLine()` (when `lineCtrl` is true). No print during drive-to-line or when line control is off.
+- **One combined message:** livn + line state + followLine output in one block (no separate "line:" and "Edge::followLine" lines).
+- **Content:** livn (8 values 0–1000), avg, high, valid, validCnt, posL, posR, cross, then `|` then e, u, y, and rc (velocity and turn only; timestamp omitted from print). Raw values removed from print (calculation: Teensy does `(raw - black) * gain` → 0–1 → ×1000 for livn; see `teensy_firmware_8/src/ulinesensor.cpp`).
+- **posL / posR:** Line position index in [-3.5, 3.5] for left/right edge of the detected line (sensors 1..8).
+- **Format:** Two lines, break after validCnt; fixed-width columns so output lines up. First line: `% line: livn [ ... ] avg=... high=... valid=... validCnt=...`; second line: `%       posL=... posR=... cross=... | e=... u=... y=... -> rc ...`. Printed every 10th livn update when test or not silent.
+- **Subscription:** `sub liv 20` (raw every 20 ms) for fresher data when printing; livn remains at 10 ms.
+
+### Modified files
+- `mqtt_python/uservice.py` — is_quiet(), on_connect/on_connectOut fix, gated prints
+- `mqtt_python/mqtt-client.py` — gated mission/state/startup prints
+- `mqtt_python/sedge.py` — test print only in followLine(), combined two-line fixed-width format
+- `mqtt_python/spose.py`, `srobot.py`, `sir.py`, `sgpio.py`, `scam.py`, `ulog.py`, `simu.py` — gated startup/terminate/periodic prints
+

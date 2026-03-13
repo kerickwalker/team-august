@@ -155,7 +155,8 @@ def driveToLine():
   state = 0
   pose.tripBreset()
   dist_to_line = 0;
-  print("% Driving to line ---------------------- right ir start ---")
+  if not service.is_quiet():
+    print("% Driving to line ---------------------- right ir start ---")
   service.send("robobot/cmd/T0", "leds 16 0 100 0") # green
   while not (service.stop):
     if state == 0: # forward towards line
@@ -170,26 +171,30 @@ def driveToLine():
         state = 2
       if edge.lineValidCnt > 4:
         # start follow line
-        edge.lineControl(0.2, True)
+        edge.lineControl(0.2)
         # service.send("robobot/cmd/T0","servo 1 0 0") # (move servo to position 0 - front)
         dist_to_line = pose.tripB
         pose.tripBreset()
-        print(" to state 10")
+        if not service.is_quiet():
+          print(" to state 10")
         state = 10
       pass
     elif state == 2:
       if abs(pose.velocity()) < 0.001:
-        print(" to state 99")
+        if not service.is_quiet():
+          print(" to state 99")
         state = 99
     elif state == 10:
       if edge.lineValidCnt < 2:
-        edge.lineControl(0, True)
+        edge.lineControl(0)
         service.send("robobot/cmd/ti","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
-        print(" to state 2")
+        if not service.is_quiet():
+          print(" to state 2")
         pose.tripBreset()
         state = 2
     else:
-      print(f"# drive to line {dist_to_line:.3f}m, then along line {pose.tripB:.3f}m in {pose.tripBtimePassed():.3f} seconds")
+      if not service.is_quiet():
+        print(f"# drive to line {dist_to_line:.3f}m, then along line {pose.tripB:.3f}m in {pose.tripBtimePassed():.3f} seconds")
       service.send("robobot/cmd/ti","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
       # service.send("robobot/cmd/T0","servo 1 500 200") # (move servo down slow)
       break;
@@ -197,7 +202,8 @@ def driveToLine():
     t.sleep(0.01)
   pass
   service.send("robobot/cmd/T0","leds 16 0 0 0") # end
-  print("% Driving to line ------------------------- end")
+  if not service.is_quiet():
+    print("% Driving to line ------------------------- end")
 
 ####################################################################3
 
@@ -250,16 +256,18 @@ def loop():
   else:
     # Default: stationary mode (state 200)
     state = 200
-  print(f"% Starting at state {state}")
+  if not service.is_quiet():
+    print(f"% Starting at state {state}")
   # elif not service.args.now:
   #   print("% Ready, press start button")
   # main state machine
-  edge.lineControl(0, True) # make sure line control is off (velocity 0)
+  edge.lineControl(0)  # make sure line control is off (velocity 0)
   while not (service.stop):
     if state == 0: # wait for start signal
       start = True # gpio.start() or service.args.now
       if start:
-        print("% Starting")
+        if not service.is_quiet():
+          print("% Starting")
         service.send("robobot/cmd/T0","leds 16 0 0 30") # blue: running
         service.send("robobot/cmd/ti","rc 0.25 0.0") # (forward m/s, turn-rate rad/sec)
         # service.send("robobot/cmd/T0","servo 1 100 300") # (servo down slow)
@@ -268,7 +276,7 @@ def loop():
     elif state == 12: # following line
       if pose.tripB > 0.5 or pose.tripBtimePassed() > 10:
         # start turning
-        edge.lineControl(0, True) # stop following line
+        edge.lineControl(0)  # stop following line
         pose.tripBreset()
         service.send("robobot/cmd/ti","rc 0.1 0.5") # turn left
         # service.send("robobot/cmd/T0","servo 1 -800 1000") # (servo up faster)
@@ -317,7 +325,8 @@ def loop():
       t.sleep(1.0) # just loop and wait
       pass
     else: # abort
-      print(f"% Mission finished/aborted; state={state}")
+      if not service.is_quiet():
+        print(f"% Mission finished/aborted; state={state}")
       break
     # allow openCV to handle imshow (if in use)
     # images are almost useless while turning, but
@@ -334,7 +343,8 @@ def loop():
     if state != oldstate:
       # flog.write(state)
       flog.writeRemark(f"% State change from {oldstate} to {state}")
-      print(f"% State change from {oldstate} to {state}")
+      if not service.is_quiet():
+        print(f"% State change from {oldstate} to {state}")
       oldstate = state
       stateTime = datetime.now()
     # do not loop too fast
@@ -343,7 +353,7 @@ def loop():
   # end of mission, turn LEDs off and stop
   service.send("robobot/cmd/T0","leds 16 0 0 0")
   gpio.set_value(20, 0)
-  edge.lineControl(0, True) # stop following line
+  edge.lineControl(0)  # stop following line
   service.send("robobot/cmd/ti","rc 0 0")
   # service.send("robobot/cmd/T0","servo 1 0 0")
   t.sleep(0.05)
@@ -361,7 +371,8 @@ if __name__ == "__main__":
     else:
       # set title of process, so that it is not just called Python
       setproctitle("mqtt-client")
-      print("% Starting")
+      if not service.is_quiet():
+        print("% Starting")
       # where is the MQTT data server:
       service.setup('localhost') # localhost
       #service.setup('10.197.217.81') # Juniper
@@ -370,4 +381,5 @@ if __name__ == "__main__":
       if service.connected:
         loop()
       service.terminate()
-    print("% Main Terminated")
+    if not service.is_quiet():
+      print("% Main Terminated")

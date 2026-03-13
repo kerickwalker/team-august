@@ -23,3 +23,49 @@ WARNING:root:Removed streaming client ('127.0.0.1', 59372): [Errno 104] Connecti
 WARNING:root:Removed streaming client ('127.0.0.1', 52074): [Errno 104] Connection reset by peer
 127.0.0.1 - - [13/Mar/2026 00:01:03] "GET /stream.mjpg HTTP/1.1" 200 -
 WARNING:root:Removed streaming client ('127.0.0.1', 52676): [Errno 32] Broken pipe
+127.0.0.1 - - [13/Mar/2026 00:24:17] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 46048): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:24:51] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 41072): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:25:19] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 39780): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:27:49] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 51838): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:28:51] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 60598): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:30:08] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 38426): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:30:47] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 40752): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:30:59] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 42438): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:35:02] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 55416): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:35:37] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 55348): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:36:14] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 45302): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:36:37] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 38706): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:39:41] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 39712): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:40:13] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 48708): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:40:44] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 49268): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:48:58] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 59132): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:49:44] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 50788): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:49:58] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 34928): [Errno 32] Broken pipe
+127.0.0.1 - - [13/Mar/2026 00:56:24] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 39936): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 00:57:25] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 41606): [Errno 32] Broken pipe
+127.0.0.1 - - [13/Mar/2026 01:01:40] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 55908): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 01:02:43] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 35960): [Errno 104] Connection reset by peer
+127.0.0.1 - - [13/Mar/2026 01:03:14] "GET /stream.mjpg HTTP/1.1" 200 -
+WARNING:root:Removed streaming client ('127.0.0.1', 49148): [Errno 104] Connection reset by peer

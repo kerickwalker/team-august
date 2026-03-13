@@ -75,9 +75,15 @@ class UService:
   masterClaimGraceSec = 12.0
   parser = argparse.ArgumentParser(description='Robobot app 2024')
 
+  def is_quiet(self):
+    """True if -s or -t: suppress normal prints. Test prints still shown only when -t."""
+    a = getattr(self, 'args', None)
+    return getattr(a, 'silent', False) or getattr(a, 'test', False)
+
   def setup(self, mqtt_host):
     #
-    print(self.startTime.strftime("Started %Y-%m-%d %H:%M:%S.%f"))
+    if not self.is_quiet():
+      print(self.startTime.strftime("Started %Y-%m-%d %H:%M:%S.%f"))
     from ulog import flog
     flog.setup()
     self.host = mqtt_host
@@ -132,15 +138,11 @@ class UService:
     imu.setup()
     cam.setup()
     edge.setup()
-    if not getattr(self.args, 'test', False):
+    if not self.is_quiet():
       print(f"% (uservice.py) Setup finished with connected={self.connected}")
     if self.args.level:
       print(f"% Command line argument '--level'={self.args.level} but not implemented")
       self.stop = True
-    if self.args.silent:
-      print(f"% Command line argument '--silent'={self.args.silent}")
-    if self.args.test:
-      print(f"% Command line argument '--test' (quiet + test prints only)")
 
   def run(self):
     # print("% MQTT service - thread running")
@@ -149,14 +151,16 @@ class UService:
     # self.subscribe(self.client)
     while not self.stop:
       self.client.loop()
-    print("% Service - thread stopped")
+    if not self.is_quiet():
+      print("% Service - thread stopped")
 
   def runOut(self):
     # print("% MQTT service - out thread running")
     self.clientOut.on_message = self.on_messageOut
     while not self.stop:
       self.clientOut.loop()
-    print("% Service - thread stopped")
+    if not self.is_quiet():
+      print("% Service - thread stopped")
 
   def runAlive(self):
     loop = 0;
@@ -174,15 +178,17 @@ class UService:
 
   def on_connect(self, client, userdata, flags, rc, properties = []):
     if rc == 0:
-      print(f"% Connected to MQTT Broker {self.host} on {self.port}")
       self.connected = True
-      self.client2=client
+      self.client2 = client
+      if not self.is_quiet():
+        print(f"% Connected to MQTT Broker {self.host} on {self.port}")
 
   def on_connectOut(self, client, userdata, flags, rc, properties = []):
     if rc == 0:
-      print(f"% ConnectedOut to MQTT Broker {self.host} on {self.port}")
       self.connectedOut = True
-      self.clientOut2=client
+      self.clientOut2 = client
+      if not self.is_quiet():
+        print(f"% ConnectedOut to MQTT Broker {self.host} on {self.port}")
 
   def connect_mqtt(self):
     import platform
@@ -271,7 +277,7 @@ class UService:
         # skip timestamp to get real masters starttime
         realMasterTime = msg[msg.find(" ")+1:]
         if str(self.startTime) == realMasterTime:
-          if not self.confirmedMaster:
+          if not self.confirmedMaster and not self.is_quiet():
             print(f"% I am now accepted as master of robot {robot.robotName}")
           self.confirmedMaster = True
           self.confirmedNotMaster = False
@@ -337,9 +343,10 @@ class UService:
       return
     if not self.connected:
       return
-    print("% shutting down")
+    if not self.is_quiet():
+      print("% shutting down")
     if self.connected and not self.confirmedNotMaster:
-      edge.lineControl(0, 0) # make sure line control is off
+      edge.lineControl(0)  # make sure line control is off
       try:
         t.sleep(0.02)
         service.send("robobot/cmd/ti","rc 0 0") # stop robot control loop
@@ -361,15 +368,18 @@ class UService:
     try:
       self.th.join()
     except:
-      print("% Service thread not running")
+      if not self.is_quiet():
+        print("% Service thread not running")
     try:
       self.th2.join()
     except:
-      print("% Service thread 2 not running")
+      if not self.is_quiet():
+        print("% Service thread 2 not running")
     try:
       self.thAlive.join()
     except:
-      print("% Service thread Alive not running")
+      if not self.is_quiet():
+        print("% Service thread Alive not running")
     imu.terminate()
     robot.terminate()
     pose.terminate()
@@ -379,7 +389,8 @@ class UService:
     gpio.terminate()
     flog.terminate()
     self.startTime = datetime.now()
-    print(self.startTime.strftime("Ended at %Y-%m-%d %H:%M:%S.%f"))
+    if not self.is_quiet():
+      print(self.startTime.strftime("Ended at %Y-%m-%d %H:%M:%S.%f"))
 
 # create the service object
 service = UService()

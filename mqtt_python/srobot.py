@@ -45,7 +45,8 @@ class SRobot:
           # wait for data
           pass
         else: # finished
-          print(f"% Robot (srobot.py) data stream OK; {loops} loops.")
+          if not service.is_quiet():
+            print(f"% Robot (srobot.py) data stream OK; {loops} loops.")
           break
         loops += 1
         if loops > 30:
@@ -65,10 +66,11 @@ class SRobot:
 
     def print(self):
       from uservice import service
-      print("% Robot hbt " + str(self.hbtTime - service.startTime) +
-            f" Bat {self.batVolt:.1f} V," +
-            f" {self.hbtInterval:.4f} sec, " +
-            str(self.hbtUpdCnt))
+      if not service.is_quiet():
+        print("% Robot hbt " + str(self.hbtTime - service.startTime) +
+              f" Bat {self.batVolt:.1f} V," +
+              f" {self.hbtInterval:.4f} sec, " +
+              str(self.hbtUpdCnt))
 
     def decode(self, topic, msg):
         # decode MQTT message
@@ -112,7 +114,9 @@ class SRobot:
         return used
 
     def terminate(self):
-        print("% Robot terminated")
+        from uservice import service
+        if not service.is_quiet():
+          print("% Robot terminated")
         pass
 
 # create the data object

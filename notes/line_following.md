@@ -106,6 +106,13 @@ The weak points are in Python (rough edge estimate, simple lost-line behavior, c
 ### Caveat
 Patch does not yet clean up noisy debug prints in `followLine()` and `paint()`. Before live testing, consider reducing console spam and centralizing tuning parameters.
 
+### Test print format (`-t` or when not `-s`)
+When line-following is active, a combined two-line block is printed every 10th livn update (if `--test` or not `--silent`):
+- **Line 1:** `% line: livn [ 8 values ] avg=... high=... valid=... validCnt=...`
+- **Line 2:** `%       posL=... posR=... cross=... | e=... u=... y=... -> rc <velocity> <turn>`
+
+Fields: **livn** = normalized 0–1000 (Teensy: raw → subtract black, × gain, ×1000). **posL/posR** = line position index -3.5..3.5 (left/right edge of detected line). **e** = error, **u** = P output, **y** = lead-filtered turn; **rc** is the command sent (no timestamp in print). No print when not line-following (e.g. during drive-to-line).
+
 ---
 
 ## Calibration and testing workflow (recommended order)

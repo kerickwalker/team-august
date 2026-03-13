@@ -58,24 +58,28 @@ class SImu:
           # wait for data
           pass
         else: # finished
-          print(f"% IMU (simu.py):: got data stream; {loops} loops.")
+          if not service.is_quiet():
+            print(f"% IMU (simu.py):: got data stream; {loops} loops.")
           break
         loops += 1
         if loops > 20:
-          print(f"% IMU (simu.py):: no data updates after {loops} wait loops (continues).")
+          if not service.is_quiet():
+            print(f"% IMU (simu.py):: no data updates after {loops} wait loops (continues).")
           break
         pass
         loops += 1
       # should we calibrate the gyro
       if service.args.gyro:
-        print("% Starting calibrate gyro offset.")
+        if not service.is_quiet():
+          print("% Starting calibrate gyro offset.")
         # ask Teensy to calibrate
         service.send("robobot/cmd/T0", "gyroc")
         # wait for calibration to finish (average over 1s)
         t.sleep(2.5)
         # save calibrated values
         service.send("robobot/cmd/T0", "eew")
-        print("% Starting calibrate gyro offset finished.")
+        if not service.is_quiet():
+          print("% Starting calibrate gyro offset finished.")
         t.sleep(0.5)
         # all done
         service.stop = True
@@ -83,16 +87,17 @@ class SImu:
 
     def print(self):
       from uservice import service
-      print("% IMU acc  " + str(self.accTime - service.startTime) + " (" +
-            str(self.acc[0]) + ", " +
-            str(self.acc[1]) + ", " +
-            str(self.acc[2]) + f") {self.gyroInterval:.4f} sec " +
-            str(self.accUpdCnt))
-      print("% IMU gyro " + str(self.gyroTime - service.startTime) + " (" +
-            str(self.gyro[0]) + ", " +
-            str(self.gyro[1]) + ", " +
-            str(self.gyro[2]) + f") {self.accInterval:.4f} sec " +
-            str(self.gyroUpdCnt))
+      if not service.is_quiet():
+        print("% IMU acc  " + str(self.accTime - service.startTime) + " (" +
+              str(self.acc[0]) + ", " +
+              str(self.acc[1]) + ", " +
+              str(self.acc[2]) + f") {self.gyroInterval:.4f} sec " +
+              str(self.accUpdCnt))
+        print("% IMU gyro " + str(self.gyroTime - service.startTime) + " (" +
+              str(self.gyro[0]) + ", " +
+              str(self.gyro[1]) + ", " +
+              str(self.gyro[2]) + f") {self.accInterval:.4f} sec " +
+              str(self.gyroUpdCnt))
 
     def decode(self, topic, msg):
         # decode MQTT message
@@ -159,7 +164,9 @@ class SImu:
         return used
 
     def terminate(self):
-        print("% Pose terminated")
+        from uservice import service
+        if not service.is_quiet():
+          print("% Pose terminated")
         pass
 
 # create the data object

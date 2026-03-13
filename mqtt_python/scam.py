@@ -95,7 +95,8 @@ class SCam:
           if first:
             first = False
             h, w, ch = self.savedFrame.shape
-            print(f"% Camera available: size ({h}x{w}, {ch} channels)")
+            if not service.is_quiet():
+              print(f"% Camera available: size ({h}x{w}, {ch} channels)")
       else:
         # just discard unused images
         self.cap.read()
@@ -105,21 +106,26 @@ class SCam:
           print("% Failed receive frame (stream end?). Exiting ...")
           self.terminate()
       # self.gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    print("% Camera thread stopped")
+    if not service.is_quiet():
+      print("% Camera thread stopped")
 
 
   def terminate(self):
+    from uservice import service
     try:
       self.th.join()
     except:
-      print("% join cam failed")
+      if not service.is_quiet():
+        print("% join cam failed")
       pass
     if isinstance(self.cap, cv.VideoCapture):
       self.cap.release()
     else:
-      print("% Camera stream was not open")
+      if not service.is_quiet():
+        print("% Camera stream was not open")
     cv.destroyAllWindows()
-    print("% Camera terminated")
+    if not service.is_quiet():
+      print("% Camera terminated")
 
 # create instance of this class
 cam = SCam()

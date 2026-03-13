@@ -32,7 +32,12 @@ try:
   list = [6, 12, 16, 19, 26, 21, 20]
   GPIO.setup(list, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
   gpioFound = True
-  print("% BCM GPIO found OK")
+  try:
+    from uservice import service
+    if not service.is_quiet():
+      print("% BCM GPIO found OK")
+  except Exception:
+    print("% BCM GPIO found OK")
 except:
   print("% No GPIO (not on a Pi?) - continue without GPIO support")
   pass
@@ -42,13 +47,16 @@ class SGpio:
     onPi = False
 
     def setup(self):
+      from uservice import service
       if gpioFound:
         # import RPi.GPIO as GPIO
-        print("% GPIO setup start")
+        if not service.is_quiet():
+          print("% GPIO setup start")
         GPIO.setwarnings(False)
         # list = [13, 12, 16, 19, 26, 21, 20]
         GPIO.setup(6, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        print("% GPIO setup finished")
+        if not service.is_quiet():
+          print("% GPIO setup finished")
         self.onPi = True
 
     def test_stop_button(self):
@@ -101,11 +109,13 @@ class SGpio:
 
 
     def terminate(self):
+      from uservice import service
       if self.onPi:
         # import RPi.GPIO as GPIO
         GPIO.cleanup()
         pass
-      print("% GPIO terminated")
+      if not service.is_quiet():
+        print("% GPIO terminated")
       pass
 
 # create the data object

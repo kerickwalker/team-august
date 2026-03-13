@@ -52,8 +52,7 @@ class SEdge:
     # line detection values
     posLeft = 0.0
     posRight = 0.0
-    followLeft = True
-    refPosition = 0.0 # distance from detected edge
+    refPosition = 0.0  # setpoint: 0 = line center under sensor
     lineValid = False
     lineValidCnt = 0 # a value up to 20 for most confident line detect
     crossingLine = False
@@ -96,12 +95,13 @@ class SEdge:
       sendBlack = False
       loops = 0
       # turn line sensor on (command 'lip 1')
-      print("% Edge (sedge.py):: turns on line sensor")
+      if not service.is_quiet():
+        print("% Edge (sedge.py):: turns on line sensor")
       self.topicCmdT0 = "robobot/cmd/T0"
       service.send(self.topicCmdT0, "lip 1")
-      # request fast update (every 10 ms); raw every 50 ms for periodic prints
+      # request fast update (every 10 ms); raw every 20 ms for combined line+followLine prints
       service.send(self.topicCmdT0,"sub livn 10")
-      service.send(self.topicCmdT0,"sub liv 50")
+      service.send(self.topicCmdT0,"sub liv 20")
       # request data
       while not service.stop:
         t.sleep(0.02)
@@ -118,7 +118,8 @@ class SEdge:
             pass
           elif not self.sendCalibRequest:
             # Rolling calibration: drive slowly over the line, collect max raw per sensor, set white from that
-            print("% Edge (sedge.py):: Place robot on line; will roll forward then back to capture white level")
+            if not service.is_quiet():
+              print("% Edge (sedge.py):: Place robot on line; will roll forward then back to capture white level")
             self.calibWhiteMax = [0] * 8
             self.calibCollecting = True
             # forward
@@ -135,13 +136,15 @@ class SEdge:
             t.sleep(0.1)
             service.send(self.topicCmdT0, "eew")
             self.sendCalibRequest = True
-            print(f"% Edge (sedge.py):: white set from rolling calib: {w}")
+            if not service.is_quiet():
+              print(f"% Edge (sedge.py):: white set from rolling calib: {w}")
             service.args.white = False
             service.stop = True
           else:
             t.sleep(0.25)
             service.args.white = False
-            print(f"% Edge (sedge.py):: calibration done, terminates.")
+            if not service.is_quiet():
+              print(f"% Edge (sedge.py):: calibration done, terminates.")
             service.stop = True
         elif self.edge_n_wUpdCnt == 0:
           # get calibrated white value
@@ -151,11 +154,13 @@ class SEdge:
           # wait for line sensor data
           pass
         else:
-          print(f"% Edge (sedge.py):: got data stream; after {loops} loops")
+          if not service.is_quiet():
+            print(f"% Edge (sedge.py):: got data stream; after {loops} loops")
           break
         loops += 1
         if loops > 30:
-          print(f"% Edge (sedge.py):: got no data after {loops} (continues edge_n_wUpdCnt={self.edge_n_wUpdCnt}, edgeUpdCnt={self.edgeUpdCnt}, edge_nUpdCnt={self.edge_nUpdCnt})")
+          if not service.is_quiet():
+            print(f"% Edge (sedge.py):: got no data after {loops} (continues edge_n_wUpdCnt={self.edge_n_wUpdCnt}, edgeUpdCnt={self.edgeUpdCnt}, edge_nUpdCnt={self.edge_nUpdCnt})")
           break
       pass
 
@@ -163,7 +168,8 @@ class SEdge:
 
     def print(self):
       from uservice import service
-      print("% Edge (sedge.py):: " + str(self.edgeTime - service.startTime) +
+      if not service.is_quiet():
+        print("% Edge (sedge.py):: " + str(self.edgeTime - service.startTime) +
             f" ({self.edge[0]}, " +
             f"{self.edge[1]}, " +
             f"{self.edge[2]}, " +
@@ -176,20 +182,22 @@ class SEdge:
             str(self.edgeUpdCnt))
     def printn(self):
       from uservice import service
-      print("% Edge (sedge.py):: normalized " + str(self.edge_nTime - service.startTime) +
-            f" ({self.edge_n[0]}, " +
-            f"{self.edge_n[1]}, " +
-            f"{self.edge_n[2]}, " +
-            f"{self.edge_n[3]}, " +
-            f"{self.edge_n[4]}, " +
-            f"{self.edge_n[5]}, " +
-            f"{self.edge_n[6]}, " +
-            f"{self.edge_n[7]})" +
-            f" {self.edge_nInterval:.2f} ms " +
-            str(self.edge_nUpdCnt))
+      if not service.is_quiet():
+        print("% Edge (sedge.py):: normalized " + str(self.edge_nTime - service.startTime) +
+              f" ({self.edge_n[0]}, " +
+              f"{self.edge_n[1]}, " +
+              f"{self.edge_n[2]}, " +
+              f"{self.edge_n[3]}, " +
+              f"{self.edge_n[4]}, " +
+              f"{self.edge_n[5]}, " +
+              f"{self.edge_n[6]}, " +
+              f"{self.edge_n[7]})" +
+              f" {self.edge_nInterval:.2f} ms " +
+              str(self.edge_nUpdCnt))
     def printnw(self):
       from uservice import service
-      print("% Edge (sedge.py):: white level " + str(self.edge_n_wTime) +
+      if not service.is_quiet():
+        print("% Edge (sedge.py):: white level " + str(self.edge_n_wTime) +
             f" ({self.edge_n_w[0]}, " +
             f"{self.edge_n_w[1]}, " +
             f"{self.edge_n_w[2]}, " +
@@ -263,14 +271,6 @@ class SEdge:
             # log relevant line sensor data
             if self.edge_nUpdCnt % 10 == 0:
               flog.write()
-            # periodic print: every 50 lines (~0.5 s at 100 Hz) unless --silent
-            # (posL/posR = where we suspect the line edges; could add explicit "line at" summary later)
-            from uservice import service
-            # test prints: show when --test (quiet + test only) or when not --silent
-            if (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % 50 == 0:
-              raw = " ".join(str(self.edge[i]) for i in range(8))
-              norm = " ".join(str(self.edge_n[i]) for i in range(8))
-              print(f"% line: raw [{raw}]  livn [{norm}]  avg={self.average:.0f} high={self.high} valid={self.lineValid} validCnt={self.lineValidCnt} posL={self.posLeft:.2f} posR={self.posRight:.2f} cross={self.crossingLine}")
             #self.printn()
         elif topic == "T0/liw": # get white level
           from uservice import service
@@ -354,9 +354,8 @@ class SEdge:
 
     ##########################################################
 
-    def lineControl(self, velocity, followLeft = True, refPosition = 0):
+    def lineControl(self, velocity, refPosition = 0):
       self.velocity = velocity
-      self.followLeft = followLeft
       self.refPosition = refPosition
       # velocity 0 (or negative) is turning off line control
       self.lineCtrl = velocity > 0.001
@@ -371,11 +370,10 @@ class SEdge:
       if abs(self.edge_nInterval - self.edgeIntervalSetup) > 2.0: # ms
         self.PIDrecalculate()
         self.edgeIntervalSetup = self.edge_nInterval
-      if self.followLeft:
-        e = self.refPosition - self.posLeft
-      else:
-        e = self.refPosition - self.posRight
-      # when line (posLeft or posRight) is to (much) to the right edge position is positive.
+      # always follow line center (smoother than following one edge)
+      lineCenter = (self.posLeft + self.posRight) / 2.0
+      e = self.refPosition - lineCenter
+      # line center to the right -> positive e -> robot too far left -> negative turn corrects
       # The robot is thus too much to the left.
       # To correct we need a negative turn rate (CV),
       # so sign of e is OK
@@ -398,22 +396,31 @@ class SEdge:
       #par = f"{self.velocity:.3f} 0 {t.time()}"
       # debug end
       service.send("robobot/cmd/ti", par) # send new turn command, maintaining velocity
-      # test print (every 20th update; shown with --test or when not --silent)
-      if (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt % 20 == 0:
-        print(f"% Edge::followLine: e={e:.3f} u={self.u:.3f} y={self.lineY:.3f} cnt={self.lineValidCnt} -> {par}")
+      # test print only when line-following (every 10th update; shown with --test or when not --silent)
+      # posL/posR: line position index -3.5..3.5 (sensors 1..8), left/right edge of detected line
+      if (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % 10 == 0:
+        norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
+        rc_short = f"rc {self.velocity:.3f} {self.lineY:.3f}"
+        # fixed-width columns, break after validCnt so columns line up
+        line1 = f"% line: livn [{norm}] avg={self.average:6.0f} high={self.high:4d} valid={str(self.lineValid):5} validCnt={self.lineValidCnt:2d}\n"
+        line2 = f"%       posL={self.posLeft:5.2f} posR={self.posRight:5.2f} cross={str(self.crossingLine):5} | e={e:6.3f} u={self.u:6.3f} y={self.lineY:6.3f} -> {rc_short}\n"
+        print(line1 + line2, end="")
 
     ##########################################################
 
     def PIDrecalculate(self):
-      print(f"LineCtrl:: PIDrecalculate: T={self.edgeIntervalSetup:.2f} -> {self.edge_nInterval:.2f} ms")
+      from uservice import service
+      if not service.is_quiet():
+        print(f"LineCtrl:: PIDrecalculate: T={self.edgeIntervalSetup:.2f} -> {self.edge_nInterval:.2f} ms")
       Tsec = self.edge_nInterval/1000
       self.tauP2pT = self.lineTauP * 2.0 + Tsec
       self.tauP2mT = self.lineTauP * 2.0 - Tsec
       self.tauZ2pT = self.lineTauZ * 2.0 + Tsec
       self.tauZ2mT = self.lineTauZ * 2.0 - Tsec
       # debug
-      print(f"%% Lead: tauZ {self.lineTauZ:.3f} sec, tauP = {self.lineTauP:.3f} sec, T = {self.edge_nInterval:.3f} ms\n")
-      print(f"%%       tauZ2pT = {self.tauZ2pT:.4f}, tauZ2mT = {self.tauZ2mT:.4f}, tauP2pT = {self.tauP2pT:.4f}, tauP2mT = {self.tauP2pT:.4f}")
+      if not service.is_quiet():
+        print(f"%% Lead: tauZ {self.lineTauZ:.3f} sec, tauP = {self.lineTauP:.3f} sec, T = {self.edge_nInterval:.3f} ms\n")
+        print(f"%%       tauZ2pT = {self.tauZ2pT:.4f}, tauZ2mT = {self.tauZ2mT:.4f}, tauP2pT = {self.tauP2pT:.4f}, tauP2mT = {self.tauP2pT:.4f}")
 
 
     ##########################################################
@@ -421,7 +428,8 @@ class SEdge:
     def terminate(self):
       from uservice import service
       self.need_data = False
-      print("% Edge (sedge.py):: turn off line sensor")
+      if not service.is_quiet():
+        print("% Edge (sedge.py):: turn off line sensor")
       service.send(self.topicCmdT0, "lip 0")
       # try:
       #   self.th.join()
@@ -429,7 +437,8 @@ class SEdge:
       #   service.send(service.topicCmd + "T0/sub","livn 0")
       # except:
       #   print("% Edge thread not running")
-      print("% Edge (sedge.py):: terminated")
+      if not service.is_quiet():
+        print("% Edge (sedge.py):: terminated")
       pass
 
     ##########################################################
@@ -457,7 +466,9 @@ class SEdge:
         cv.drawMarker(img, (x,y), dtuRed, markerType=cv.MARKER_STAR, thickness=2, line_type=8, markerSize = 10)
         x += st
       # paint line position
-      print(f" Edge::paint: posLeft {self.posLeft}, right {self.posRight}")
+      from uservice import service
+      if not service.is_quiet():
+        print(f" Edge::paint: posLeft {self.posLeft}, right {self.posRight}")
       pixP = int((self.posLeft + 4.5)*st)
       cv.line(img, (pixP, int(pl)), (pixP, int(pl-gh)), dtuRed, thickness=3, lineType=4)
       pixP = int((self.posRight + 4.5)*st)

@@ -43,7 +43,8 @@ class SIr:
           # wait for data
           pass
         else: # finished
-          print(f"% IR sensor (sir.py):: got data stream; {loops} loops.")
+          if not service.is_quiet():
+            print(f"% IR sensor (sir.py):: got data stream; {loops} loops.")
           break
         loops += 1
         if loops > 20:
@@ -54,11 +55,12 @@ class SIr:
 
     def print(self):
       from uservice import service
-      print("% IR dist " + str(self.accTime - service.startTime) + " (" +
-            str(self.ir[0]) + ", " +
-            str(self.ir[1]) + ", " +
-            f") {self.irInterval:.4f} sec " +
-            str(self.irUpdCnt))
+      if not service.is_quiet():
+        print("% IR dist " + str(self.accTime - service.startTime) + " (" +
+              str(self.ir[0]) + ", " +
+              str(self.ir[1]) + ", " +
+              f") {self.irInterval:.4f} sec " +
+              str(self.irUpdCnt))
 
     def decode(self, topic, msg):
         # decode MQTT message
@@ -82,7 +84,9 @@ class SIr:
         return used
 
     def terminate(self):
-        print("% IR terminated")
+        from uservice import service
+        if not service.is_quiet():
+          print("% IR terminated")
         pass
 
 # create the data object
