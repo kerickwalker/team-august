@@ -40,10 +40,12 @@ class ULog:
     self.f.write(f"%     Line sensor: Kp={edge.lineKp}, tau_z={edge.lineTauZ}s, tau_p={edge.lineTauP}s\n")
     self.f.write("% 10,11 trip A (distance and heading change)\n")
     self.f.write("% 12,13 trip B (distance and heading change)\n")
+    self.f.write("% 14-17 Kalman (x,y,yaw,pitch)\n")
     pass
 
   def writeRemark(self, remark = "remark"):
     from uservice import service
+    from skalman import kalman
     if not service.stop:
       lt = t.time()
       # timestamp and remark preceded by a MATLAB comment character
@@ -64,6 +66,7 @@ class ULog:
     from sedge import edge
     from sgpio import gpio
     from scam import cam
+    from skalman import kalman
     from uservice import service
     if not service.stop:
       lt = t.time()
@@ -81,7 +84,12 @@ class ULog:
       # trip A distance and heading change
       self.f.write(f"{pose.tripA:.3f} {pose.tripAh:.3f} ")
       # trip B distance and heading change
-      self.f.write(f"{pose.tripB:.4f} {pose.tripBh:.4f}\n")
+      self.f.write(f"{pose.tripB:.4f} {pose.tripBh:.4f} ")
+      if kalman.has_estimate():
+        est = kalman.estimate()
+        self.f.write(f"{est[0]:.3f} {est[1]:.3f} {est[5]:.3f} {est[6]:.3f}\n")
+      else:
+        self.f.write("nan nan nan nan\n")
 
   def terminate(self):
     self.f.close()

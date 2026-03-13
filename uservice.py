@@ -29,6 +29,7 @@ def signal_handler(sig, frame):
 import signal
 import argparse
 import time as t
+import json
 import random
 from paho.mqtt import client as mqtt_client
 #from paho.mqtt.enums import CallbackAPIVersion
@@ -42,6 +43,7 @@ from srobot import robot
 from scam import cam
 from sedge import edge
 from sgpio import gpio
+from skalman import kalman
 from ulog import flog
 import psutil
 
@@ -51,6 +53,7 @@ class UService:
   topic = "robobot/drive/"
   topicCmd = "robobot/cmd/" # send to Teensy T0 (Teensy), T1, or ti (teensy_interface)
   topicCmdT0 = "robobot/cmd/T0/" # send to Teensy T0
+  topicKalmanState = "robobot/kalman/state"
   # Generate a Client ID with the subscribe prefix.
   client = []
   client_id = 'mqtt-client-in'
@@ -125,6 +128,7 @@ class UService:
     imu.setup()
     cam.setup()
     edge.setup()
+    kalman.setup()
     print(f"% (uservice.py) Setup finished with connected={self.connected}")
     if self.args.level:
       print(f"% Command line argument '--level'={self.args.level} but not implemented")
@@ -268,15 +272,127 @@ class UService:
           print("% I am not robot master, quitting!")
         # print(f"% got master {msg} my ID is {str(self.startTime)}")
         pass
+      elif subtopic == "kalman/cmd":
+        used = self.handle_kalman_cmd(msg)
       else:
         used = False
+      # Kalman is updated as a side-effect module when relevant sensor topics arrive.
+      updated = kalman.decode(subtopic, msg)
+      if updated:
+        self.publish_kalman_state("sensor_update")
     if not used:
       print("% Service:: message not used " + topic + " " + msg)
     return used
 
+  def publish_kalman_state(self, source = "state"):
+    payload = {
+      "source": source,
+      "time": t.time(),
+      "has_estimate": kalman.has_estimate(),
+      "u": kalman.last_input(),
+    }
+    if kalman.has_estimate():
+      x = kalman.estimate()
+      payload["x"] = {
+        "x": x[0],
+        "y": x[1],
+        "z": x[2],
+        "velocity": x[3],
+        "angular_velocity": x[4],
+        "yaw": x[5],
+        "pitch": x[6],
+      }
+    self.clientOut.publish(self.topicKalmanState, json.dumps(payload))
+
+  def handle_kalman_cmd(self, msg):
+    """Handle manual Kalman commands received on robobot/drive/kalman/cmd."""
+    words = msg.strip().split()
+    if len(words) == 0:
+      self.clientOut.publish(self.topicKalmanState, json.dumps({
+        "source": "cmd_error",
+        "error": "empty command",
+      }))
+      return True
+
+    cmd = words[0].lower()
+    try:
+      if cmd == "state":
+        self.publish_kalman_state("cmd_state")
+      elif cmd == "set_u" and len(words) >= 3:
+        kalman.set_manual_input(float(words[1]), float(words[2]))
+        self.publish_kalman_state("cmd_set_u")
+      elif cmd == "clear_u":
+        kalman.clear_manual_input()
+        self.publish_kalman_state("cmd_clear_u")
+      elif cmd == "reset":
+        # reset -> origin state, reset m -> current sensor measurement,
+        # reset x y z v w yaw pitch -> explicit start state
+        if len(words) == 1:
+          kalman.reset()
+          self.publish_kalman_state("cmd_reset_default")
+        elif len(words) == 2 and words[1].lower() in ["m", "meas", "measurement"]:
+          kalman.reset_from_measurement()
+          self.publish_kalman_state("cmd_reset_measurement")
+        elif len(words) == 8:
+          kalman.reset([float(v) for v in words[1:8]])
+          self.publish_kalman_state("cmd_reset_custom")
+        else:
+          self.clientOut.publish(self.topicKalmanState, json.dumps({
+            "source": "cmd_error",
+            "error": "reset usage: reset | reset m | reset x y z v w yaw pitch",
+            "received": msg,
+          }))
+      elif cmd == "predict" and len(words) >= 2:
+        dt_s = float(words[1])
+        if len(words) >= 4:
+          ok = kalman.predict_only(dt_s, float(words[2]), float(words[3]))
+        else:
+          ok = kalman.predict_only(dt_s)
+        if ok:
+          self.publish_kalman_state("cmd_predict")
+        else:
+          self.clientOut.publish(self.topicKalmanState, json.dumps({
+            "source": "cmd_error",
+            "error": "predict failed",
+          }))
+      elif cmd == "enable" and len(words) >= 2:
+        kalman.enabled = int(words[1]) != 0
+        self.clientOut.publish(self.topicKalmanState, json.dumps({
+          "source": "cmd_enable",
+          "enabled": kalman.enabled,
+        }))
+      elif cmd == "help":
+        self.clientOut.publish(self.topicKalmanState, json.dumps({
+          "source": "cmd_help",
+          "commands": [
+            "state",
+            "reset",
+            "reset m",
+            "reset <x y z v w yaw pitch>",
+            "set_u <left_mps> <right_mps>",
+            "clear_u",
+            "predict <dt_s> [left_mps right_mps]",
+            "enable <0|1>",
+          ],
+        }))
+      else:
+        self.clientOut.publish(self.topicKalmanState, json.dumps({
+          "source": "cmd_error",
+          "error": "unknown command",
+          "received": msg,
+        }))
+    except Exception as ex:
+      self.clientOut.publish(self.topicKalmanState, json.dumps({
+        "source": "cmd_error",
+        "error": str(ex),
+        "received": msg,
+      }))
+    return True
+
   def send(self, topic, param):
     # print(self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f"))
-    print(f"% {self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f")}: sending: '{topic}' with '{param}' len(param)={len(param)}, not master {self.confirmedNotMaster}, master {self.confirmedMaster}")
+    ts = self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f")
+    print(f"% {ts}: sending: '{topic}' with '{param}' len(param)={len(param)}, not master {self.confirmedNotMaster}, master {self.confirmedMaster}")
     if self.confirmedNotMaster:
       # self.terminate()
       self.stop = True
@@ -353,6 +469,7 @@ class UService:
     edge.terminate()
     cam.terminate()
     gpio.terminate()
+    kalman.terminate()
     flog.terminate()
     self.startTime = datetime.now()
     print(self.startTime.strftime("Ended at %Y-%m-%d %H:%M:%S.%f"))
