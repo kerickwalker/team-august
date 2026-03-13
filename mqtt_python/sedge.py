@@ -33,6 +33,7 @@ class SEdge:
     # Line detection (livn 0–1000 scale)
     lineValidThreshold = 500   # line "valid" when peak >= this (500 = half of calibrated white)
     crossingThreshold = 700    # crossing when 8-sensor average >= this
+    low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
     # PID gains (turn rate rad/s; integral in error·s, derivative in error/s)
     lineKp = 0.5
     lineKi = 0.0
@@ -41,6 +42,10 @@ class SEdge:
     # Output saturation (turn rate rad/s)
     lineYMax = 4.0
     lineYMin = -4.0
+    # Recovery when line lost (A1/A4: turn toward last line side)
+    recoveryTurnRate = 0.5   # rad/s when turning to find line during recovery
+    recoveryVelocity = 0.0   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
+    recovery_timeout_s = 5.0 # mission stops after this many seconds without line (recovery runs until then)
     # Legacy lead (unused when using PID; for optional re-enable later)
     lineTauZ = 0.8
     lineTauP = 0.25
@@ -56,7 +61,7 @@ class SEdge:
 
     # Available fields (copy into tuple above; order = order on screen):
     #   Line 1: livn, avg, high, valid, validCnt
-    #   Line 2: posL, posR, center, cross, e, p, i, d, dTerm, integral, u, y, rc
+    #   Line 2: posL, posR, center, cross, e, p, i, d, dTerm, integral, u, y, rc, lastLineSide
     #   livn = normalized sensor values [8]; avg = 8-sensor avg 
     #   high = peak; valid = line valid; validCnt = 0..20
     #   posL, posR = line position -3.5..3.5 left/right edge (sensors 1..8); controller uses center for error
@@ -67,6 +72,7 @@ class SEdge:
     #   integral = accumulated error·s before Ki; 
     #   u = PID before clamp; y = turn rate sent in rc
     #   rc = command sent
+    #   lastLineSide = -1/0/+1 (line was left/unknown/right when last valid); recovery turns this way
     # ============= end tuning & print options =============
 
     # raw AD values
@@ -84,8 +90,6 @@ class SEdge:
     edge_nTime = datetime.now()
     edge_nInterval = 0
     edgeIntervalSetup = 0.1
-    # level for relevant white values (used in LineDetect)
-    low = 400  # lineValidThreshold - 100 when threshold was literal; kept as default
     # line detection values
     posLeft = 0.0
     posRight = 0.0
@@ -96,8 +100,7 @@ class SEdge:
     crossingLine = False
     crossingLineCnt = 0  # a value up to 20 for most confident crossing line
     average = 0
-    high = 0 # highest reflectivity
-    low = 0  # the darkest value found in latest sample
+    high = 0   # highest reflectivity in latest sample
     #
     topicLip = ""
     sendCalibRequest = False
@@ -116,6 +119,8 @@ class SEdge:
     lineE1 = 0.0
     lineY1 = 0.0
     lineY = 0.0  # control output (rad/s), clamped to lineYMin..lineYMax
+    # memory for recovery (A4: remember last side)
+    lastLineSide = 0   # -1 = line was left, +1 = line was right, 0 = unknown; recovery turns this way
     # management
     topicCmdT0 = ""
     lostLineCnt = 0
@@ -452,12 +457,28 @@ class SEdge:
         self.lineY = self.lineYMin
       self.lineE1 = self.u
       self.lineY1 = self.lineY
-      # make response
-      par = f"rc {self.velocity:.3f} {self.lineY:.3f} {t.time()}"
-      # debug - no action, go straight
-      #par = f"{self.velocity:.3f} 0 {t.time()}"
-      # debug end
-      service.send("robobot/cmd/ti", par) # send new turn command, maintaining velocity
+      # remember for recovery: which side the line was on when last valid
+      if self.lineValid:
+        if e > 0:
+          self.lastLineSide = 1   # line was to the right (robot left of line)
+        elif e < 0:
+          self.lastLineSide = -1  # line was to the left
+        # e == 0: keep previous lastLineSide
+      # Recovery: when line lost, turn toward last line side (optional forward creep)
+      if not self.lineValid and self.lineCtrl:
+        recovery_turn = self.recoveryTurnRate * (self.lastLineSide if self.lastLineSide != 0 else 1)
+        if recovery_turn > self.lineYMax:
+          recovery_turn = self.lineYMax
+        elif recovery_turn < self.lineYMin:
+          recovery_turn = self.lineYMin
+        self.lineY = recovery_turn
+        sent_velocity = self.recoveryVelocity
+        sent_turn = self.lineY
+      else:
+        sent_velocity = self.velocity
+        sent_turn = self.lineY
+      par = f"rc {sent_velocity:.3f} {sent_turn:.3f} {t.time()}"
+      service.send("robobot/cmd/ti", par)
       # test print only when line-following (interval and CLI gated; see print_follow_line_block at top)
       if self.print_follow_line_block and (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % self.follow_line_print_every_n == 0:
         enabled = set(self.print_follow_line_fields)
@@ -483,7 +504,7 @@ class SEdge:
           parts2.append(f"center={lineCenter:5.2f}")
         if 'cross' in enabled:
           parts2.append(f"cross={str(self.crossingLine):5}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'y', 'rc')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'y', 'rc', 'lastLineSide')):
           parts2.append("|")
         if 'e' in enabled:
           parts2.append(f"e={e:6.3f}")
@@ -502,7 +523,9 @@ class SEdge:
         if 'y' in enabled:
           parts2.append(f"y={self.lineY:6.3f}")
         if 'rc' in enabled:
-          parts2.append(f"-> rc {self.velocity:.3f} {self.lineY:.3f}")
+          parts2.append(f"-> rc {sent_velocity:.3f} {sent_turn:.3f}")
+        if 'lastLineSide' in enabled:
+          parts2.append(f"lastSide={self.lastLineSide:+d}")
         line2 = "%       " + " ".join(parts2) + "\n" if parts2 else ""
         if line1 or line2:
           print(line1 + line2, end="")

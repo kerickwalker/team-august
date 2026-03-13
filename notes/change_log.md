@@ -351,3 +351,8 @@ In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 
 - **Comments:** Available-fields list and short descriptions moved below `print_follow_line_fields`; comment lines kept short (newline per term where needed). `flog_write_every_n` comment explains it appends line/sensor log to file.
 - **Other prints:** Setup, calibration, PID recalculate, terminate, paint messages no longer have per-category toggles; they are gated only by `is_quiet()` / `--silent` as before.
 
+### Line-follow recovery and last-line memory (sedge + missions)
+- **sedge.py:** `lastLineSide` (-1/0/+1) updated when line valid from sign of error; used for recovery turn direction. Recovery: when line lost and line control on, send `rc <recoveryVelocity> <turn>` with turn = `recoveryTurnRate * lastLineSide`. Tunables: `recoveryTurnRate`, `recoveryVelocity` (m/s forward during recovery; 0 = turn in place, small value = creep forward while turning), `recovery_timeout_s` (mission stops after this many seconds without line).
+- **Missions (mqtt-client.py, mqtt-linefollow.py):** In state 10 (following), no longer stop immediately when `lineValidCnt < 2`; start lost-line timer and keep line control on so sedge recovery runs. Stop only after `edge.recovery_timeout_s` (default 5 s) without line; if line re-found before that, resume following. `recovery_timeout_s` moved to sedge tuning block and read as `edge.recovery_timeout_s`.
+- **Notes:** Crossing logic (Phase 1 slow, Phase 2 pause/choose) and "Other features we can implement" (B speed vs confidence, D1 ramp, C2 distance stop, min/max speed) added to `notes/line_following.md` for later.
+

@@ -186,13 +186,25 @@ Implement as chosen; not all required.
 - **D1.** Ramp speed up when line reacquired (e.g. over 0.5–1 s).
 - **D2.** When using PID: reset integral term when line is lost (avoid windup during lost period).
 
-**E. Crossing / junctions**
-- **E1.** Use `crossingLine` to detect T-junctions; slow or pause and choose direction (left/right/straight).
-- **E2.** Ignore crossing: keep current behavior.
+**E. Crossing / junctions** (detailed plan — implement later)
+- **E1.** Use `crossingLine` / `crossingLineCnt` to detect T-junctions.
+- **E2.** Ignore crossing: keep current behavior (e.g. tunable off or `crossingSpeedScale = 1`).
+- **Phase 1 (recommended first):** **Slow on crossing** — When crossing detected, reduce forward speed (e.g. `sent_velocity = velocity * crossingSpeedScale` or fixed `crossingVelocity`) while still steering with PID. Prevents overshooting; no direction choice. Tunables in sedge: `crossingSpeedScale` (e.g. 0.4) or `crossingVelocity` (e.g. 0.1 m/s); optional `crossingDebounce` (only act when `crossingLineCnt >= N`, e.g. 3).
+- **Phase 2 (later):** **Pause or choose direction** — Optional brief stop at crossing, or turn left/right/straight from mission state or rule (e.g. first crossing straight, second left). Needs extra state or external “direction” input.
 
 ### 3. Lead and lowpass (later, if needed)
 - **Lead:** Re-add phase-lead filter (smooths P output, adds slight anticipation). Add only after PID and behavior are satisfactory; tune `tauZ`, `tauP` with clear goal.
 - **Lowpass:** Optional low-pass on weighted center or turn rate to reduce jerk; add one at a time and document.
+
+---
+
+## Other features we can implement (in rough order)
+
+- **B. Speed vs confidence** — B1: scale speed with `lineValidCnt` (full speed when confident, lower when just reacquired). B2: reduce speed when `|e|` large (slow in curves, fast on straights). B3: combine both. All in sedge; tunables for min/max speed and curves.
+- **D1. Ramp speed on re-entry** — When line reacquired after loss, ramp velocity up over 0.5–1 s instead of jumping to full speed. Smoother and less jerk.
+- **C2. Stop after distance without line** — If odometry (pose) available in mission: stop after X m driven without valid line (in addition to or instead of recovery timeout).
+- **Minimum / maximum speed** — Cap forward speed (e.g. never below 0.05 m/s when following, never above 0.3 m/s) so the robot doesn’t crawl or overspeed on straights.
+- **Crossing logic** — See E above (Phase 1 slow on crossing first).
 
 ---
 
