@@ -72,6 +72,11 @@ class UService:
   confirmedNotMaster = False
   parser = argparse.ArgumentParser(description='Robobot app 2024')
 
+  def is_quiet(self):
+    """True if -s or -t: suppress normal prints. Test prints still shown only when -t."""
+    a = getattr(self, 'args', None)
+    return getattr(a, 'silent', False) or getattr(a, 'test', False)
+
   def setup(self, mqtt_host):
     #
     print(self.startTime.strftime("Started %Y-%m-%d %H:%M:%S.%f"))
@@ -88,6 +93,8 @@ class UService:
                 help='Calibrate horizontal (not implemented, but maybe an idea)')
     self.parser.add_argument('-s', '--silent', action='store_true',
                 help='Print less to console')
+    self.parser.add_argument('-t', '--test', action='store_true',
+                help='Test mode: quiet like --silent but show test prints (e.g. periodic line sensor)')
     self.parser.add_argument('-n', '--now', action='store_true',
                 help='Start drive now (do not wait for the start button)')
     self.parser.add_argument('-m', '--meter', action='store_true',

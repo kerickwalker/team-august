@@ -316,7 +316,8 @@ def loop():
       driveOneMeter();
       state = 100
     elif state == 102:
-      driveTurnPi();
+      driveToLine()
+      driveTurnPi()
       state = 100
     elif state == 103:
       driveToLine()
