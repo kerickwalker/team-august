@@ -111,7 +111,7 @@ When line-following is active, a combined two-line block is printed every 10th l
 - **Line 1:** `% line: livn [ 8 values ] avg=... high=... valid=... validCnt=...`
 - **Line 2:** `%       posL=... posR=... cross=... | e=... u=... y=... -> rc <velocity> <turn>`
 
-Fields: **livn** = normalized 0–1000 (Teensy: raw → subtract black, × gain, ×1000). **posL/posR** = line position index -3.5..3.5 (left/right edge of detected line). **e** = error, **u** = P output, **y** = lead-filtered turn; **rc** is the command sent (no timestamp in print). No print when not line-following (e.g. during drive-to-line).
+Fields: **livn** = normalized 0–1000 (Teensy: raw → subtract black, × gain, ×1000). **posL/posR** = line position index -3.5..3.5 (left/right edge of detected line). **e** = error, **u** = P output, **y** = turn rate (pure P); **rc** is the command sent (no timestamp in print). No print when not line-following (e.g. during drive-to-line).
 
 ---
 
@@ -152,6 +152,47 @@ python3 mqtt-client.py --edge
 4. Whether `livn` shows clear separation between tape and background
 
 Then compare original vs patched behavior (if patch is applied).
+
+---
+
+## Planned changes (line following)
+
+**Order of implementation:** (1) PID controller → (2) Behavior (recovery, speed) → (3) Lead / lowpass later if needed.
+
+### 1. PID controller — done
+- **Implemented:** Integral (I) and derivative (D) added in `sedge.py`; gains `lineKp`, `lineKi`, `lineKd` (defaults 0.5, 0, 0).
+- Integral clamped to ±`lineIntegralLimit`; reset when line lost. Derivative from `(e - e_prev)/dt`; output clamped to ±4 rad/s. Test print shows e, p, i, d, u, y.
+
+### 2. Behavior options (after PID)
+Implement as chosen; not all required.
+
+**A. Finding the line again when driving off**
+- **A1.** When line lost: stop forward, turn in place (alternate left/right or one direction) until line seen again, then resume.
+- **A2.** Sweep search: turn 90° one way, then 180° the other (bounded search).
+- **A3.** Slow forward + turn: while lost, drive slowly and add constant turn (spiral/curve) until line reacquired.
+- **A4.** Remember last side: turn toward the side the line was last on (from last `lineCenterWeighted` or `e` sign).
+
+**B. Speed vs confidence**
+- **B1.** Scale forward speed with `lineValidCnt` (e.g. full speed when confident, reduce when low, minimal when just reacquired).
+- **B2.** Reduce speed when `|e|` is large (slow in curves, fast on straights).
+- **B3.** Combined: speed from both `lineValidCnt` and `|e|`.
+
+**C. When to stop vs keep trying**
+- **C1.** Timeout on loss: if line lost for N seconds, stop (and optionally run search A1/A2).
+- **C2.** Distance without line: stop after X m without valid line (if odometry available).
+- **C3.** No timeout: keep current behavior.
+
+**D. Smoother re-entry**
+- **D1.** Ramp speed up when line reacquired (e.g. over 0.5–1 s).
+- **D2.** When using PID: reset integral term when line is lost (avoid windup during lost period).
+
+**E. Crossing / junctions**
+- **E1.** Use `crossingLine` to detect T-junctions; slow or pause and choose direction (left/right/straight).
+- **E2.** Ignore crossing: keep current behavior.
+
+### 3. Lead and lowpass (later, if needed)
+- **Lead:** Re-add phase-lead filter (smooths P output, adds slight anticipation). Add only after PID and behavior are satisfactory; tune `tauZ`, `tauP` with clear goal.
+- **Lowpass:** Optional low-pass on weighted center or turn rate to reduce jerk; add one at a time and document.
 
 ---
 

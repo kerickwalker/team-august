@@ -327,3 +327,27 @@ In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 
 - `mqtt_python/sedge.py` — test print only in followLine(), combined two-line fixed-width format
 - `mqtt_python/spose.py`, `srobot.py`, `sir.py`, `sgpio.py`, `scam.py`, `ulog.py`, `simu.py` — gated startup/terminate/periodic prints
 
+---
+
+### Planned line-following changes (order documented)
+- **Planned changes** documented in `notes/line_following.md` under "Planned changes (line following)".
+- **Order:** (1) PID controller (Kp, Ki, Kd; integral limit/anti-windup; no lead/lowpass) → (2) Behavior (recovery A1–A4, speed B1–B3, stop C1–C3, re-entry D1–D2, crossing E1–E2) → (3) Lead and lowpass later if needed.
+- **Next step:** Implement PID in `sedge.py`.
+
+### PID line-following controller implemented
+- **File:** `mqtt_python/sedge.py`
+- **Gains:** `lineKp`, `lineKi`, `lineKd` (defaults 0.5, 0, 0 so behavior unchanged until tuned).
+- **Integral:** `lineIntegral` accumulated when line valid; clamped to ±`lineIntegralLimit` (default 2.0 error·s); reset to 0 when `lineValid` is false (avoids windup when line lost).
+- **Derivative:** `(e - e_prev) / dt` with `dt` from `edge_nInterval`; `lineE_prev` set to `e` when line lost so D is zero on re-acquire.
+- **Output:** `u = Kp*e + Ki*integral + Kd*dTerm`, then `lineY = clamp(u, -4, 4)` rad/s unchanged.
+- **Test print:** `e`, `p`, `i`, `d`, `u`, `y` so P/I/D contributions are visible for tuning.
+
+### Line-follow tuning block and follow-line print options (sedge.py)
+- **Single tuning block** at top of `SEdge`: all values to change in one place (line detection thresholds, PID gains, integral limit, output saturation `lineYMax`/`lineYMin`, legacy lead, follow-line print options).
+- **Saturation:** Turn rate clamp uses `lineYMax` / `lineYMin` (default ±4 rad/s) instead of hardcoded ±4.
+- **Follow-line print:** One master switch `print_follow_line_block`; which values are printed is controlled by tuple `print_follow_line_fields`. Copy field names from the "Available fields" comment into the tuple; order in tuple = order on screen.
+- **Available print fields:** Line 1: livn, avg, high, valid, validCnt. Line 2: posL, posR, center, cross, e, p, i, d, dTerm, integral, u, y, rc. Includes P/I/D terms and raw `dTerm` (error/s) and `integral` (error·s) for tuning.
+- **Intervals:** `follow_line_print_every_n` = how often the two-line block is printed when enabled; `flog_write_every_n` = how often `flog.write()` is called (file log append). Both placed next to `print_follow_line_block` in the block.
+- **Comments:** Available-fields list and short descriptions moved below `print_follow_line_fields`; comment lines kept short (newline per term where needed). `flog_write_every_n` comment explains it appends line/sensor log to file.
+- **Other prints:** Setup, calibration, PID recalculate, terminate, paint messages no longer have per-category toggles; they are gated only by `is_quiet()` / `--silent` as before.
+

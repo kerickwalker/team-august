@@ -29,6 +29,46 @@ import cv2 as cv
 from ulog import flog
 
 class SEdge:
+    # ============= TUNING & PRINT OPTIONS (edit these) =============
+    # Line detection (livn 0–1000 scale)
+    lineValidThreshold = 500   # line "valid" when peak >= this (500 = half of calibrated white)
+    crossingThreshold = 700    # crossing when 8-sensor average >= this
+    # PID gains (turn rate rad/s; integral in error·s, derivative in error/s)
+    lineKp = 0.5
+    lineKi = 0.0
+    lineKd = 0.0
+    lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
+    # Output saturation (turn rate rad/s)
+    lineYMax = 4.0
+    lineYMin = -4.0
+    # Legacy lead (unused when using PID; for optional re-enable later)
+    lineTauZ = 0.8
+    lineTauP = 0.25
+    # --- Follow-line block print (gated by --test/--silent). Print + flog next to each other: ---
+    print_follow_line_block = True   # set False to disable the two-line block entirely
+    follow_line_print_every_n = 10  # print block every Nth livn update when enabled
+    flog_write_every_n = 1         # flog.write() every Nth livn update (appends line/sensor log line to file)
+    
+    print_follow_line_fields = (
+        'livn', 'avg', 'high', 'valid', 'validCnt',   # line 1
+        'center', 'cross', 'e', 'dTerm','integral', 'y'    # line 2
+    )
+
+    # Available fields (copy into tuple above; order = order on screen):
+    #   Line 1: livn, avg, high, valid, validCnt
+    #   Line 2: posL, posR, center, cross, e, p, i, d, dTerm, integral, u, y, rc
+    #   livn = normalized sensor values [8]; avg = 8-sensor avg 
+    #   high = peak; valid = line valid; validCnt = 0..20
+    #   posL, posR = line position -3.5..3.5 left/right edge (sensors 1..8); controller uses center for error
+    #   center = weighted center (-3.5..3.5); cross = crossing detected 
+    #   e = error (ref - center)
+    #   p, i, d = P, I, D terms (rad/s);
+    #   dTerm = raw (e-e_prev)/dt in error/s; d = Kd*dTerm  
+    #   integral = accumulated error·s before Ki; 
+    #   u = PID before clamp; y = turn rate sent in rc
+    #   rc = command sent
+    # ============= end tuning & print options =============
+
     # raw AD values
     edge = [0, 0, 0 , 0, 0, 0, 0, 0]
     edgeUpdCnt = 0
@@ -44,14 +84,12 @@ class SEdge:
     edge_nTime = datetime.now()
     edge_nInterval = 0
     edgeIntervalSetup = 0.1
-    # line detection levels
-    lineValidThreshold = 750 # 1000 is calibrated white
-    crossingThreshold = 700 # average above this is assumed to be crossing line
-    # level for relevant white values
-    low = lineValidThreshold - 100;
+    # level for relevant white values (used in LineDetect)
+    low = 400  # lineValidThreshold - 100 when threshold was literal; kept as default
     # line detection values
     posLeft = 0.0
     posRight = 0.0
+    lineCenterWeighted = 0.0  # weighted center of mass from analog values, -3.5..3.5
     refPosition = 0.0  # setpoint: 0 = line center under sensor
     lineValid = False
     lineValidCnt = 0 # a value up to 20 for most confident line detect
@@ -68,21 +106,17 @@ class SEdge:
     #
     # follow line controller
     lineCtrl = False # private
-    # try with a P-Lead controller
-    lineKp = 1.0 # 5  (rad/s per sensor value)
-    lineTauZ = 0.8 # 0.8 (second)
-    lineTauP = 0.25 # 0.15 (second)
-    # Lead pre-calculated factors
     tauP2pT = 1.0
     tauP2mT = 0.0
     tauZ2pT = 1.0
     tauZ2mT = 0.0
-    # control values
-    lineE1 = 0.0 # old error * Kp (rad/s)
-    lineY1 = 0.0 # old control output (rad/s)
-    lineY = 0.0  # control output (rad/s)
+    # PID state
+    lineIntegral = 0.0
+    lineE_prev = None  # previous error for derivative; None on first sample or after line lost
+    lineE1 = 0.0
+    lineY1 = 0.0
+    lineY = 0.0  # control output (rad/s), clamped to lineYMin..lineYMax
     # management
-    # topicRc = ""
     topicCmdT0 = ""
     lostLineCnt = 0
     u = 0 # turn rate control signal
@@ -269,7 +303,7 @@ class SEdge:
             if self.lineCtrl:
               self.followLine()
             # log relevant line sensor data
-            if self.edge_nUpdCnt % 10 == 0:
+            if self.edge_nUpdCnt % self.flog_write_every_n == 0:
               flog.write()
             #self.printn()
         elif topic == "T0/liw": # get white level
@@ -311,8 +345,19 @@ class SEdge:
       self.crossingLine = self.average >= self.crossingThreshold
       # is line valid (high above threshold)
       self.lineValid = self.high >= self.lineValidThreshold
-      # find line position
-      # from left side - stop at first value above half of the brightest
+      # weighted center of mass (analog): sub-sensor resolution, smooth for PID
+      # weight_i = intensity above background; position in -3.5..3.5
+      floor = min(self.edge_n)
+      sumW = 0.0
+      sumPosW = 0.0
+      for i in range(8):
+        w = max(0, self.edge_n[i] - floor)
+        sumW += w
+        sumPosW += (i - 3.5) * w
+      if sumW > 0:
+        self.lineCenterWeighted = sumPosW / sumW
+      # else sumW == 0 (avoid div by zero only). "No line" is indicated by lineValid elsewhere.
+      # threshold-based left/right edges (kept for validity, display, crossing)
       if self.lineValid:
         posLeft = -3.5 # max left
         if self.edge_n[0] < self.lineValidThreshold:
@@ -370,41 +415,97 @@ class SEdge:
       if abs(self.edge_nInterval - self.edgeIntervalSetup) > 2.0: # ms
         self.PIDrecalculate()
         self.edgeIntervalSetup = self.edge_nInterval
-      # always follow line center (smoother than following one edge)
-      lineCenter = (self.posLeft + self.posRight) / 2.0
+      # use weighted center of mass (analog) for error; keep previous when sum(weight)==0
+      lineCenter = self.lineCenterWeighted
       e = self.refPosition - lineCenter
       # line center to the right -> positive e -> robot too far left -> negative turn corrects
-      # The robot is thus too much to the left.
-      # To correct we need a negative turn rate (CV),
-      # so sign of e is OK
-      #
-      # calculate action (P-Lead controller)
-      self.u = self.lineKp * e; # error times Kp
-      # Lead filter
-      self.lineY = (self.u * self.tauZ2pT - self.lineE1 * self.tauZ2mT + self.lineY1 * self.tauP2mT)/self.tauP2pT;
-      #
-      if self.lineY > 4:
-        self.lineY = 4
-      elif self.lineY < -4:
-        self.lineY = -4
-      # save old values
-      self.lineE1 = self.u;
-      self.lineY1 = self.lineY;
+      Tsec = self.edge_nInterval / 1000.0 if self.edge_nInterval > 0 else 0.01
+
+      # Reset integral when line lost (avoid windup during search)
+      if not self.lineValid:
+        self.lineIntegral = 0.0
+        self.lineE_prev = e
+
+      # Derivative: (e - e_prev) / dt; zero on first sample or when dt invalid
+      if self.lineE_prev is not None and Tsec > 0:
+        dTerm = (e - self.lineE_prev) / Tsec
+      else:
+        dTerm = 0.0
+      self.lineE_prev = e
+
+      # Integral: accumulate with clamp (anti-windup)
+      if self.lineValid:
+        self.lineIntegral += e * Tsec
+        if self.lineIntegral > self.lineIntegralLimit:
+          self.lineIntegral = self.lineIntegralLimit
+        elif self.lineIntegral < -self.lineIntegralLimit:
+          self.lineIntegral = -self.lineIntegralLimit
+
+      # PID output (u = P + I + D), then clamp turn rate to ±4 rad/s
+      pTerm = self.lineKp * e
+      iTerm = self.lineKi * self.lineIntegral
+      self.u = pTerm + iTerm + self.lineKd * dTerm
+      self.lineY = self.u
+      if self.lineY > self.lineYMax:
+        self.lineY = self.lineYMax
+      elif self.lineY < self.lineYMin:
+        self.lineY = self.lineYMin
+      self.lineE1 = self.u
+      self.lineY1 = self.lineY
       # make response
       par = f"rc {self.velocity:.3f} {self.lineY:.3f} {t.time()}"
       # debug - no action, go straight
       #par = f"{self.velocity:.3f} 0 {t.time()}"
       # debug end
       service.send("robobot/cmd/ti", par) # send new turn command, maintaining velocity
-      # test print only when line-following (every 10th update; shown with --test or when not --silent)
-      # posL/posR: line position index -3.5..3.5 (sensors 1..8), left/right edge of detected line
-      if (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % 10 == 0:
-        norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
-        rc_short = f"rc {self.velocity:.3f} {self.lineY:.3f}"
-        # fixed-width columns, break after validCnt so columns line up
-        line1 = f"% line: livn [{norm}] avg={self.average:6.0f} high={self.high:4d} valid={str(self.lineValid):5} validCnt={self.lineValidCnt:2d}\n"
-        line2 = f"%       posL={self.posLeft:5.2f} posR={self.posRight:5.2f} cross={str(self.crossingLine):5} | e={e:6.3f} u={self.u:6.3f} y={self.lineY:6.3f} -> {rc_short}\n"
-        print(line1 + line2, end="")
+      # test print only when line-following (interval and CLI gated; see print_follow_line_block at top)
+      if self.print_follow_line_block and (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % self.follow_line_print_every_n == 0:
+        enabled = set(self.print_follow_line_fields)
+        parts1 = []
+        if 'livn' in enabled:
+          norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
+          parts1.append(f"livn [{norm}]")
+        if 'avg' in enabled:
+          parts1.append(f"avg={self.average:6.0f}")
+        if 'high' in enabled:
+          parts1.append(f"high={self.high:4d}")
+        if 'valid' in enabled:
+          parts1.append(f"valid={str(self.lineValid):5}")
+        if 'validCnt' in enabled:
+          parts1.append(f"validCnt={self.lineValidCnt:2d}")
+        line1 = "% line: " + " ".join(parts1) + "\n" if parts1 else ""
+        parts2 = []
+        if 'posL' in enabled:
+          parts2.append(f"posL={self.posLeft:5.2f}")
+        if 'posR' in enabled:
+          parts2.append(f"posR={self.posRight:5.2f}")
+        if 'center' in enabled:
+          parts2.append(f"center={lineCenter:5.2f}")
+        if 'cross' in enabled:
+          parts2.append(f"cross={str(self.crossingLine):5}")
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'y', 'rc')):
+          parts2.append("|")
+        if 'e' in enabled:
+          parts2.append(f"e={e:6.3f}")
+        if 'p' in enabled:
+          parts2.append(f"p={pTerm:6.3f}")
+        if 'i' in enabled:
+          parts2.append(f"i={iTerm:6.3f}")
+        if 'd' in enabled:
+          parts2.append(f"d={self.lineKd*dTerm:6.3f}")
+        if 'dTerm' in enabled:
+          parts2.append(f"dTerm={dTerm:6.3f}")
+        if 'integral' in enabled:
+          parts2.append(f"integral={self.lineIntegral:6.3f}")
+        if 'u' in enabled:
+          parts2.append(f"u={self.u:6.3f}")
+        if 'y' in enabled:
+          parts2.append(f"y={self.lineY:6.3f}")
+        if 'rc' in enabled:
+          parts2.append(f"-> rc {self.velocity:.3f} {self.lineY:.3f}")
+        line2 = "%       " + " ".join(parts2) + "\n" if parts2 else ""
+        if line1 or line2:
+          print(line1 + line2, end="")
 
     ##########################################################
 
@@ -417,10 +518,9 @@ class SEdge:
       self.tauP2mT = self.lineTauP * 2.0 - Tsec
       self.tauZ2pT = self.lineTauZ * 2.0 + Tsec
       self.tauZ2mT = self.lineTauZ * 2.0 - Tsec
-      # debug
       if not service.is_quiet():
         print(f"%% Lead: tauZ {self.lineTauZ:.3f} sec, tauP = {self.lineTauP:.3f} sec, T = {self.edge_nInterval:.3f} ms\n")
-        print(f"%%       tauZ2pT = {self.tauZ2pT:.4f}, tauZ2mT = {self.tauZ2mT:.4f}, tauP2pT = {self.tauP2pT:.4f}, tauP2mT = {self.tauP2pT:.4f}")
+        print(f"%%       tauZ2pT = {self.tauZ2pT:.4f}, tauZ2mT = {self.tauZ2mT:.4f}, tauP2pT = {self.tauP2pT:.4f}, tauP2mT = {self.tauP2mT:.4f}")
 
 
     ##########################################################
@@ -431,12 +531,6 @@ class SEdge:
       if not service.is_quiet():
         print("% Edge (sedge.py):: turn off line sensor")
       service.send(self.topicCmdT0, "lip 0")
-      # try:
-      #   self.th.join()
-      #   # stop subscription service from Teensy
-      #   service.send(service.topicCmd + "T0/sub","livn 0")
-      # except:
-      #   print("% Edge thread not running")
       if not service.is_quiet():
         print("% Edge (sedge.py):: terminated")
       pass
