@@ -1,0 +1,3 @@
+/home/chr/aaa/svn/robobot/off_by_mqtt/build2/CMakeFiles/off_by_mqtt.dir
+/home/chr/aaa/svn/robobot/off_by_mqtt/build2/CMakeFiles/edit_cache.dir
+/home/chr/aaa/svn/robobot/off_by_mqtt/build2/CMakeFiles/rebuild_cache.dir

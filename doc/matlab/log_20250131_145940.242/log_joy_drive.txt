@@ -1,0 +1,13 @@
+% Manual drive control
+% Button fast 5
+% Axis vel 4
+% Axis turn 3
+% Axis servo 1
+% Slow factor 0.3
+% Max velocity (m/s) -1.5
+% Max turnrate (rad/s) 10
+% 1 	Time (sec)
+% 2 	Manual mode (else automatic)
+% 3 	Linear velocity (m/s)
+% 4 	Turn curvature value (rad/m)
+% 5 	Yaw velocity (rad/s) - only id yaw control accept from drive joypad

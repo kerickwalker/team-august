@@ -1,0 +1,10 @@
+[ WARN:0@30.893] global cap_ffmpeg_impl.hpp:453 _opencv_ffmpeg_interrupt_callback Stream timeout triggered after 30063.581149 ms
+
+(mqtt-client:1326): GStreamer-CRITICAL **: 12:27:12.667: gst_caps_get_structure: assertion 'GST_IS_CAPS (caps)' failed
+
+(mqtt-client:1326): GStreamer-CRITICAL **: 12:27:12.667: gst_structure_get_int: assertion 'structure != NULL' failed
+[ WARN:0@66.631] global cap_gstreamer.cpp:1714 open OpenCV | GStreamer warning: cannot query video width/height
+
+(mqtt-client:1326): GStreamer-CRITICAL **: 12:27:12.668: gst_structure_get_fraction: assertion 'structure != NULL' failed
+[ WARN:0@66.631] global cap_gstreamer.cpp:1722 open OpenCV | GStreamer warning: cannot query video fps
+[ WARN:0@66.632] global cap_gstreamer.cpp:1777 open OpenCV | GStreamer warning: Cannot query video position: status=0, value=-1, duration=-1

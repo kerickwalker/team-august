@@ -1,2 +1,29 @@
+# Legacy VCS metadata
+.svn/
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build output directories
+# Ignore only log folders/files inside build, but include all other build contents
+**/build/log*/
+
+# Common compiled artifacts
+*.elf
+*.map
+*.o
+*.a
+
+# Runtime/temp files
+*.tmp
+*.swp
+*.log
+*.err
+log*.txt
+
+
 # Ignore all JPEG images
 *.jpg

@@ -1,0 +1,122 @@
+[
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/cmixer.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/cmixer.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/cmixer.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/cmixer.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/cmotor.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/cmotor.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/cmotor.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/cmotor.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/cservo.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/cservo.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/cservo.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/cservo.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/sgpiod.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/sgpiod.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/sgpiod.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/sgpiod.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/main.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/main.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/main.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/mjoy.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/mjoy.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/mjoy.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/mjoy.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/mvelocity.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/mvelocity.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/mvelocity.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/mvelocity.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/scurrent.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/scurrent.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/scurrent.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/scurrent.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/sdistforce.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/sdistforce.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/sdistforce.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/sdistforce.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/sedge.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/sedge.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/sedge.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/sedge.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/sencoder.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/sencoder.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/sencoder.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/sencoder.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/simu.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/simu.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/simu.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/simu.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/sjoylogitech.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/sjoylogitech.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/sjoylogitech.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/sjoylogitech.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/srobot.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/srobot.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/srobot.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/srobot.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/steensy.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/steensy.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/steensy.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/steensy.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/umqtt.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/umqtt.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/umqtt.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/umqtt.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/umqttin.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/umqttin.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/umqttin.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/umqttin.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/upid.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/upid.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/upid.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/upid.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/uservice.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/uservice.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/uservice.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/uservice.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/teensy_interface/build2",
+  "command": "/usr/bin/c++ -isystem /usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/teensy_interface.dir/src/utime.cpp.o -c /home/chr/aaa/svn/robobot/teensy_interface/src/utime.cpp",
+  "file": "/home/chr/aaa/svn/robobot/teensy_interface/src/utime.cpp",
+  "output": "CMakeFiles/teensy_interface.dir/src/utime.cpp.o"
+}
+]
