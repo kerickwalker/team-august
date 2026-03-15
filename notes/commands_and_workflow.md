@@ -12,7 +12,7 @@ cd ~/svn/robobot/teensy_interface/build  # run teensy_interface commands from bu
 
 mosquitto_pub -h localhost -t "robobot/cmd/ti" -m "log 1"  # start logging manually (run anywhere)
 mosquitto_pub -h localhost -t "robobot/cmd/ti" -m "log 0"  # stop logging manually (run anywhere)
-mosquitto_pub -h 'localhost' -t robobot/cmd/T0 -m "servo 1 0 50"
+mosquitto_pub -h 'localhost' -t robobot/cmd/T0 -m "servo 1 0 100"
 
 cd ~/svn/robobot/mqtt_python  # run mqtt-client commands from python dir
 python3 mqtt-client.py -s  # stationary + quiet mode; auto log1 on setup and log0 on exit

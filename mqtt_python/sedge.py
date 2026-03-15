@@ -30,38 +30,39 @@ from ulog import flog
 
 class SEdge:
     # ============= TUNING & PRINT OPTIONS (edit these) =============
+    # Forward speed when following line (m/s). Mission scripts pass this to lineControl(); change here to tune.
+    defaultLineVelocity = 0.5   # m/s (e.g. 0.15 = slower, 0.25 = faster)
     # Line detection (livn 0–1000 scale)
-    lineValidThreshold = 500   # line "valid" when peak >= this (500 = half of calibrated white)
-    crossingThreshold = 700    # crossing when 8-sensor average >= this
+    lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
+    crossingThreshold = 700    # legacy: was used for average-based crossing; crossing now uses crossingMinSensors
+    crossingMinSensors = 4     # crossing when this many or more sensors above lineValidThreshold (lineState = "crossing")
     low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
     # PID gains (turn rate rad/s; integral in error·s, derivative in error/s)
-    lineKp = 0.5
+    lineKp = 0.8 # 0.8
     lineKi = 0.0
-    lineKd = 0.0
+    lineKd = 0.05 # 0.05
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
     # Output saturation (turn rate rad/s)
     lineYMax = 4.0
     lineYMin = -4.0
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 0.5   # rad/s when turning to find line during recovery
-    recoveryVelocity = 0.0   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
+    recoveryVelocity = 0.2   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
     recovery_timeout_s = 5.0 # mission stops after this many seconds without line (recovery runs until then)
     # Legacy lead (unused when using PID; for optional re-enable later)
     lineTauZ = 0.8
     lineTauP = 0.25
     # --- Follow-line block print (gated by --test/--silent). Print + flog next to each other: ---
-    print_follow_line_block = True   # set False to disable the two-line block entirely
-    follow_line_print_every_n = 10  # print block every Nth livn update when enabled
+    print_follow_line_block = True  # set True to re-enable; False = no print in hot path (test responsiveness)
+    follow_line_print_every_n = 10  # print one line every Nth livn update when enabled
     flog_write_every_n = 1         # flog.write() every Nth livn update (appends line/sensor log line to file)
     
     print_follow_line_fields = (
-        'livn', 'avg', 'high', 'valid', 'validCnt',   # line 1
-        'center', 'cross', 'e', 'dTerm','integral', 'y'    # line 2
+        'center', 'state', 'aboveCnt', 'crossingCnt', 'leftMost', 'rightMost', 'e', 'y'
     )
 
-    # Available fields (copy into tuple above; order = order on screen):
-    #   Line 1: livn, avg, high, valid, validCnt
-    #   Line 2: posL, posR, center, cross, e, p, i, d, dTerm, integral, u, y, rc, lastLineSide
+    # Available fields (copy into tuple above; order = order on screen; single line):
+    #   livn, avg, high, valid, validCnt, posL, posR, center, cross, state, aboveCnt, crossingCnt, leftMost, rightMost, e, p, i, d, dTerm, integral, u, y, rc, lastLineSide
     #   livn = normalized sensor values [8]; avg = 8-sensor avg 
     #   high = peak; valid = line valid; validCnt = 0..20
     #   posL, posR = line position -3.5..3.5 left/right edge (sensors 1..8); controller uses center for error
@@ -73,6 +74,9 @@ class SEdge:
     #   u = PID before clamp; y = turn rate sent in rc
     #   rc = command sent
     #   lastLineSide = -1/0/+1 (line was left/unknown/right when last valid); recovery turns this way
+    #   state = lineState ("no_line"|"line"|"crossing"); aboveCnt = sensorsAboveCount (0..8)
+    #   crossingCnt = mission crossing counter (set by driveToLine; number of crossings left)
+    #   leftMost, rightMost = first/last sensor index 0..7 above threshold (- when none)
     # ============= end tuning & print options =============
 
     # raw AD values
@@ -101,6 +105,13 @@ class SEdge:
     crossingLineCnt = 0  # a value up to 20 for most confident crossing line
     average = 0
     high = 0   # highest reflectivity in latest sample
+    # Per-sensor above-threshold and array state (for crossing/behavior; tunables: lineValidThreshold, crossingMinSensors above)
+    sensorAboveThreshold = [False] * 8   # True if edge_n[i] >= lineValidThreshold
+    sensorsAboveCount = 0                # number of sensors above threshold (0..8)
+    leftmostAboveIndex = None           # first sensor index 0..7 above threshold, or None
+    rightmostAboveIndex = None          # last sensor index 0..7 above threshold, or None
+    lineState = "no_line"               # "no_line" | "line" | "crossing" (set from sensorsAboveCount vs crossingMinSensors)
+    mission_crossing_count = 0          # set by mission (driveToLine) so print can show crossing counter
     #
     topicLip = ""
     sendCalibRequest = False
@@ -139,8 +150,8 @@ class SEdge:
       self.topicCmdT0 = "robobot/cmd/T0"
       service.send(self.topicCmdT0, "lip 1")
       # request fast update (every 10 ms); raw every 20 ms for combined line+followLine prints
-      service.send(self.topicCmdT0,"sub livn 10")
-      service.send(self.topicCmdT0,"sub liv 20")
+      service.send(self.topicCmdT0,"sub livn 3")
+      service.send(self.topicCmdT0,"sub liv 3")
       # request data
       while not service.stop:
         t.sleep(0.02)
@@ -307,10 +318,10 @@ class SEdge:
             # use to control, if active
             if self.lineCtrl:
               self.followLine()
-            # log relevant line sensor data
-            if self.edge_nUpdCnt % self.flog_write_every_n == 0:
-              flog.write()
-            #self.printn()
+            # log relevant line sensor data (disabled for responsiveness test; re-enable to log)
+            # if self.edge_nUpdCnt % self.flog_write_every_n == 0:
+            #   flog.write()
+            ## self.printn()
         elif topic == "T0/liw": # get white level
           from uservice import service
           gg = msg.split(" ")
@@ -333,21 +344,39 @@ class SEdge:
     ##########################################################
 
     def LineDetect(self):
-      sum = 0
+      total = 0
       posSum = 0
       high = int(1)
       # find levels (and average)
       # using normalised readings (0 (no reflection) to 1000 (calibrated white)))
       for i in range(8):
-        sum += self.edge_n[i] # for average
+        total += self.edge_n[i] # for average
         if self.edge_n[i] > high:
           high = self.edge_n[i] # most bright value (floor level)
       self.high = high # most white level
       # print(f"% Edge (sedge.py):: {low}, {high} - what")
       # average white level
-      self.average = sum / 8.0;
-      # detect if we have a crossing line
-      self.crossingLine = self.average >= self.crossingThreshold
+      self.average = total / 8.0
+      # Per-sensor above-threshold state (each sensor checked against lineValidThreshold)
+      for i in range(8):
+        self.sensorAboveThreshold[i] = self.edge_n[i] >= self.lineValidThreshold
+      self.sensorsAboveCount = sum(1 for b in self.sensorAboveThreshold if b)
+      self.leftmostAboveIndex = None
+      self.rightmostAboveIndex = None
+      for i in range(8):
+        if self.sensorAboveThreshold[i]:
+          if self.leftmostAboveIndex is None:
+            self.leftmostAboveIndex = i
+          self.rightmostAboveIndex = i
+      # Named state: no_line, line (1–2 sensors), crossing (3+ sensors)
+      if self.sensorsAboveCount == 0:
+        self.lineState = "no_line"
+      elif self.sensorsAboveCount >= self.crossingMinSensors:
+        self.lineState = "crossing"
+      else:
+        self.lineState = "line"
+      # Crossing: 3 or more sensors above threshold (configurable via crossingMinSensors)
+      self.crossingLine = self.sensorsAboveCount >= self.crossingMinSensors
       # is line valid (high above threshold)
       self.lineValid = self.high >= self.lineValidThreshold
       # weighted center of mass (analog): sub-sensor resolution, smooth for PID
@@ -404,7 +433,10 @@ class SEdge:
 
     ##########################################################
 
-    def lineControl(self, velocity, refPosition = 0):
+    def lineControl(self, velocity = None, refPosition = 0):
+      # Use tunable default speed when velocity not given (so mission can call lineControl() and speed is set here)
+      if velocity is None:
+        velocity = self.defaultLineVelocity
       self.velocity = velocity
       self.refPosition = refPosition
       # velocity 0 (or negative) is turning off line control
@@ -482,53 +514,60 @@ class SEdge:
       # test print only when line-following (interval and CLI gated; see print_follow_line_block at top)
       if self.print_follow_line_block and (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % self.follow_line_print_every_n == 0:
         enabled = set(self.print_follow_line_fields)
-        parts1 = []
+        parts = []
         if 'livn' in enabled:
           norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
-          parts1.append(f"livn [{norm}]")
+          parts.append(f"livn [{norm}]")
         if 'avg' in enabled:
-          parts1.append(f"avg={self.average:6.0f}")
+          parts.append(f"avg={self.average:6.0f}")
         if 'high' in enabled:
-          parts1.append(f"high={self.high:4d}")
+          parts.append(f"high={self.high:4d}")
         if 'valid' in enabled:
-          parts1.append(f"valid={str(self.lineValid):5}")
+          parts.append(f"valid={str(self.lineValid):5}")
         if 'validCnt' in enabled:
-          parts1.append(f"validCnt={self.lineValidCnt:2d}")
-        line1 = "% line: " + " ".join(parts1) + "\n" if parts1 else ""
-        parts2 = []
+          parts.append(f"validCnt={self.lineValidCnt:2d}")
         if 'posL' in enabled:
-          parts2.append(f"posL={self.posLeft:5.2f}")
+          parts.append(f"posL={self.posLeft:5.2f}")
         if 'posR' in enabled:
-          parts2.append(f"posR={self.posRight:5.2f}")
+          parts.append(f"posR={self.posRight:5.2f}")
         if 'center' in enabled:
-          parts2.append(f"center={lineCenter:5.2f}")
+          parts.append(f"center={lineCenter:5.2f}")
         if 'cross' in enabled:
-          parts2.append(f"cross={str(self.crossingLine):5}")
+          parts.append(f"cross={str(self.crossingLine):5}")
+        if 'state' in enabled:
+          parts.append(f"state={self.lineState}")
+        if 'aboveCnt' in enabled:
+          parts.append(f"aboveCnt={self.sensorsAboveCount}")
+        if 'crossingCnt' in enabled:
+          parts.append(f"crossingCnt={self.mission_crossing_count}")
+        if 'leftMost' in enabled:
+          parts.append(f"leftMost={self.leftmostAboveIndex if self.leftmostAboveIndex is not None else '-'}")
+        if 'rightMost' in enabled:
+          parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
         if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'y', 'rc', 'lastLineSide')):
-          parts2.append("|")
+          parts.append("|")
         if 'e' in enabled:
-          parts2.append(f"e={e:6.3f}")
+          parts.append(f"e={e:6.3f}")
         if 'p' in enabled:
-          parts2.append(f"p={pTerm:6.3f}")
+          parts.append(f"p={pTerm:6.3f}")
         if 'i' in enabled:
-          parts2.append(f"i={iTerm:6.3f}")
+          parts.append(f"i={iTerm:6.3f}")
         if 'd' in enabled:
-          parts2.append(f"d={self.lineKd*dTerm:6.3f}")
+          parts.append(f"d={self.lineKd*dTerm:6.3f}")
         if 'dTerm' in enabled:
-          parts2.append(f"dTerm={dTerm:6.3f}")
+          parts.append(f"dTerm={dTerm:6.3f}")
         if 'integral' in enabled:
-          parts2.append(f"integral={self.lineIntegral:6.3f}")
+          parts.append(f"integral={self.lineIntegral:6.3f}")
         if 'u' in enabled:
-          parts2.append(f"u={self.u:6.3f}")
+          parts.append(f"u={self.u:6.3f}")
         if 'y' in enabled:
-          parts2.append(f"y={self.lineY:6.3f}")
+          parts.append(f"y={self.lineY:6.3f}")
         if 'rc' in enabled:
-          parts2.append(f"-> rc {sent_velocity:.3f} {sent_turn:.3f}")
+          parts.append(f"-> rc {sent_velocity:.3f} {sent_turn:.3f}")
         if 'lastLineSide' in enabled:
-          parts2.append(f"lastSide={self.lastLineSide:+d}")
-        line2 = "%       " + " ".join(parts2) + "\n" if parts2 else ""
-        if line1 or line2:
-          print(line1 + line2, end="")
+          parts.append(f"lastSide={self.lastLineSide:+d}")
+        if parts:
+          print("% line: " + " ".join(parts))
 
     ##########################################################
 

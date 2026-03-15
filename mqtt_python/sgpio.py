@@ -29,7 +29,7 @@ gpioFound = False
 try:
   import RPi.GPIO as GPIO
   GPIO.setmode(GPIO.BCM)
-  list = [6, 12, 16, 19, 26, 21, 20]
+  list = [6, 12, 13, 16, 19, 26, 21, 20]  # 6=red/stop, 13=green/start
   GPIO.setup(list, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
   gpioFound = True
   try:
@@ -55,17 +55,25 @@ class SGpio:
         GPIO.setwarnings(False)
         # list = [13, 12, 16, 19, 26, 21, 20]
         GPIO.setup(6, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         if not service.is_quiet():
-          print("% GPIO setup finished")
+          print("% GPIO setup finished (pin 6=stop, 13=start)")
         self.onPi = True
 
     def test_stop_button(self):
+      """Red button (GPIO 6): returns True when pressed. Stops mission."""
       if self.onPi:
-        # print(f"Button 06 returns {self.GPIO06.get_value()}")
         v = self.get_value(6)
         if v:
           print("% Button/pin 6 (stop) is pressed")
         return v
+      else:
+        return False
+
+    def test_start_button(self):
+      """Green button (GPIO 13): returns True when pressed. Starts mission."""
+      if self.onPi:
+        return self.get_value(13)
       else:
         return False
 

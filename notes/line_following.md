@@ -107,11 +107,7 @@ The weak points are in Python (rough edge estimate, simple lost-line behavior, c
 Patch does not yet clean up noisy debug prints in `followLine()` and `paint()`. Before live testing, consider reducing console spam and centralizing tuning parameters.
 
 ### Test print format (`-t` or when not `-s`)
-When line-following is active, a combined two-line block is printed every 10th livn update (if `--test` or not `--silent`):
-- **Line 1:** `% line: livn [ 8 values ] avg=... high=... valid=... validCnt=...`
-- **Line 2:** `%       posL=... posR=... cross=... | e=... u=... y=... -> rc <velocity> <turn>`
-
-Fields: **livn** = normalized 0–1000 (Teensy: raw → subtract black, × gain, ×1000). **posL/posR** = line position index -3.5..3.5 (left/right edge of detected line). **e** = error, **u** = P output, **y** = turn rate (pure P); **rc** is the command sent (no timestamp in print). No print when not line-following (e.g. during drive-to-line).
+When line-following is active, a **single-line** block is printed every 10th livn update (if `--test` or not `--silent`). It includes **center**, **state**, **aboveCnt**, **crossingCnt** (mission crossing count), **leftMost**/**rightMost** (above-threshold indices), **e**, **y**, and **rc**. See section "Mission and crossing behavior (implemented) → Follow-line print" for current fields. No print when not line-following (e.g. during drive-to-line).
 
 ---
 
@@ -186,7 +182,12 @@ Implement as chosen; not all required.
 - **D1.** Ramp speed up when line reacquired (e.g. over 0.5–1 s).
 - **D2.** When using PID: reset integral term when line is lost (avoid windup during lost period).
 
-**E. Crossing / junctions** (detailed plan — implement later)
+**E. Crossing / junctions**
+- **Implemented (sensor state and crossing by count):** Each sensor is checked against `lineValidThreshold`; the code maintains:
+  - `sensorAboveThreshold[0..7]`: bool per sensor.
+  - `sensorsAboveCount`: number of sensors above threshold (0..8).
+  - `leftmostAboveIndex` / `rightmostAboveIndex`: span of active sensors (or None).
+  - `lineState`: `"no_line"` (0 sensors), `"line"` (1–2 sensors), `"crossing"` (3+ sensors). Crossing is defined as **3 or more sensors above threshold** (tunable via `crossingMinSensors`). `crossingLine` and `crossingLineCnt` are still used for debounced crossing detection; you can add behavior per state (e.g. in mission or in sedge) for each sensor-array configuration.
 - **E1.** Use `crossingLine` / `crossingLineCnt` to detect T-junctions.
 - **E2.** Ignore crossing: keep current behavior (e.g. tunable off or `crossingSpeedScale = 1`).
 - **Phase 1 (recommended first):** **Slow on crossing** — When crossing detected, reduce forward speed (e.g. `sent_velocity = velocity * crossingSpeedScale` or fixed `crossingVelocity`) while still steering with PID. Prevents overshooting; no direction choice. Tunables in sedge: `crossingSpeedScale` (e.g. 0.4) or `crossingVelocity` (e.g. 0.1 m/s); optional `crossingDebounce` (only act when `crossingLineCnt >= N`, e.g. 3).
@@ -195,6 +196,40 @@ Implement as chosen; not all required.
 ### 3. Lead and lowpass (later, if needed)
 - **Lead:** Re-add phase-lead filter (smooths P output, adds slight anticipation). Add only after PID and behavior are satisfactory; tune `tauZ`, `tauP` with clear goal.
 - **Lowpass:** Optional low-pass on weighted center or turn rate to reduce jerk; add one at a time and document.
+
+---
+
+## Mission and crossing behavior (implemented)
+
+**Entry point:** `python3 mqtt-linefollow.py -t -e` (or `mqtt-client.py --edge`). Only **teensy_interface** need be running in the background.
+
+### Crossing-count state machine (driveToLine, state 10)
+
+- **Crossing counter:** `crossing_count` = number of crossings we have *left* (incremented only after we have been clear of a crossing for `CROSSING_LEAVE_DELAY_S`). This avoids double-counting and makes crossing 1 vs 2 vs 3 vs 4 unambiguous.
+- **Leave delay:** `CROSSING_LEAVE_DELAY_S = 0.5` s. We only increment `crossing_count` after the robot has been *not* at a crossing for this long. While `crossingLineCnt >= CROSSING_AT_CNT`, the timer is reset each sample, so the delay runs only after we actually leave the crossing.
+- **Constants:** `CROSSING_AT_CNT` (we are "at" a crossing when `crossingLineCnt >= 2`), `CROSSINGS_GO_STRAIGHT = 2`, `CROSSING_STOP_AT = 4`, `START_AT_CROSSING` (0 = normal; 4 = place before 4th for testing).
+
+### Crossing-only logic (hard turns and 4th stop)
+
+- All crossing-specific behavior runs **only when we are at a crossing** (`at_crossing_now = edge.crossingLineCnt >= CROSSING_AT_CNT`). When not at a crossing we do not consider hard turns or 4th-stop.
+- **Crossing 1 and 2:** Go straight (no hard turn).
+- **Crossing 3 (and 5+):** Hard turn allowed if sensor pattern matches: hard left = `leftmostAboveIndex == 0` and `rightmostAboveIndex <= 4`; hard right = `rightmostAboveIndex == 7` and `leftmostAboveIndex >= 3`. Cooldown `hard_turn_cooldown_s` between hard turns.
+- **Crossing 4:** Always stop (never treat as hard turn). Then **state 20:** turn 45° right (`driveTurn(45, "right")`), then drive 1.3 m forward (`driveDistance(1.3)`), then exit.
+
+### driveTurn and driveDistance (mqtt-linefollow.py, mqtt-client.py)
+
+- **`driveTurn(angle_deg, direction)`** — Turn in place by `angle_deg` (degrees). `direction` is `"left"` or `"right"`. Completion when `abs(pose.tripBh) >= angle_rad` (works regardless of odometry sign). No timeout; stops as soon as the requested angle is reached.
+- **`driveDistance(meters, velocity=0.2)`** — Drive forward for `meters` m (same logic as driveOneMeter).
+- **`driveTurn90`** removed; use `driveTurn(90, "left")` or `driveTurn(90, "right")`.
+
+### Follow-line print (sedge.py)
+
+- Single-line block when `print_follow_line_block` is True (and `--test` or not `--silent`). Fields include `center`, `state`, `aboveCnt`, **`crossingCnt`** (mission crossing counter, set by driveToLine), `leftMost`, `rightMost`, `e`, `y`. `edge.mission_crossing_count` is updated each loop in state 10 so the print shows the current crossing count.
+
+### GPIO buttons (sgpio.py, uservice.py)
+
+- **Red button (GPIO 6):** Stop. In `runAlive()`, when `gpio.test_stop_button()` is true, set `service.stop = True` and send `rc 0 0` immediately so the robot stops in place.
+- **Green button (GPIO 13):** Start (optional). `test_start_button()` reads GPIO 13. Mission can wait for green before starting if desired; currently with `-e` the mission starts immediately (no green required).
 
 ---
 

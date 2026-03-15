@@ -171,6 +171,10 @@ class UService:
         # print(f"% sent Alive {datetime.now()}")
       if gpio.test_stop_button():
         self.stop = True
+        try:
+          service.send("robobot/cmd/ti", "rc 0 0")  # stop robot immediately in place
+        except Exception:
+          pass
       t.sleep(0.05)
       loop += 1
     pass

@@ -356,3 +356,57 @@ In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 
 - **Missions (mqtt-client.py, mqtt-linefollow.py):** In state 10 (following), no longer stop immediately when `lineValidCnt < 2`; start lost-line timer and keep line control on so sedge recovery runs. Stop only after `edge.recovery_timeout_s` (default 5 s) without line; if line re-found before that, resume following. `recovery_timeout_s` moved to sedge tuning block and read as `edge.recovery_timeout_s`.
 - **Notes:** Crossing logic (Phase 1 slow, Phase 2 pause/choose) and "Other features we can implement" (B speed vs confidence, D1 ramp, C2 distance stop, min/max speed) added to `notes/line_following.md` for later.
 
+---
+
+## 2026-03-15: Sensor-array state and crossing-by-count (sedge.py)
+
+### Per-sensor threshold and array state
+- **Per-sensor above-threshold:** Each of the 8 line sensors is compared to `lineValidThreshold`; results are stored in `sensorAboveThreshold[0..7]` (bool per sensor).
+- **Derived values:** `sensorsAboveCount` (0..8), `leftmostAboveIndex` / `rightmostAboveIndex` (first/last sensor index above threshold, or None).
+- **Named state:** `lineState` is set each update: `"no_line"` (0 sensors above), `"line"` (1–2 above), `"crossing"` (3+ above). Behavior can branch on `edge.lineState` or on the count/pattern for each sensor-array configuration.
+
+### Crossing detection
+- **Crossing = count of sensors above threshold:** `crossingLine` is now true when `sensorsAboveCount >= crossingMinSensors` (no longer based on 8-sensor average). `crossingLineCnt` still debounces (0..20) for downstream behavior (e.g. slow on crossing).
+
+### Tunables (top of sedge.py)
+- **`lineValidThreshold`** — used for each sensor’s on/off and for line validity (comment clarified).
+- **`crossingMinSensors`** — number of sensors above threshold that define a crossing (default 3). Added to the tuning block at the top of `SEdge` with the other line-detection parameters.
+
+### Bug fix (LineDetect)
+- **TypeError: 'int' object is not callable:** A local variable `sum = 0` in `LineDetect()` shadowed the built-in `sum()`, so `sum(1 for b in self.sensorAboveThreshold if b)` failed. Renamed the local variable to `total`.
+
+### Modified files
+- `mqtt_python/sedge.py` — tuning block (lineValidThreshold comment, crossingMinSensors); per-sensor state and lineState; crossing by count; LineDetect sum→total.
+- `notes/line_following.md` — documented sensor state and crossing-by-count under "E. Crossing / junctions".
+
+---
+
+## 2026-03-15: Mission state machine, hard turns, 4th crossing, buttons
+
+### driveTurn and driveDistance (mqtt-client.py, mqtt-linefollow.py)
+- **`driveTurn(angle_deg, direction)`** — Turn in place by angle in degrees; `direction` is `"left"` or `"right"`. Completion when `abs(pose.tripBh) >= angle_rad` (fixes over-rotation on right turns). No timeout; stop only when requested angle reached. `driveTurn90` removed; use `driveTurn(90, "left")` etc.
+- **`driveDistance(meters, velocity=0.2)`** — Drive forward for given meters (same pattern as driveOneMeter).
+
+### Crossing-count state machine and leave delay
+- **Crossing counter:** Mission tracks `crossing_count`; incremented only **after** we have been clear of a crossing for `CROSSING_LEAVE_DELAY_S` (0.5 s). Timer resets while still at crossing (`crossingLineCnt >= CROSSING_AT_CNT`), so we count one crossing per physical crossing.
+- **Constants:** `CROSSING_AT_CNT`, `CROSSINGS_GO_STRAIGHT = 2`, `CROSSING_STOP_AT = 4`, `START_AT_CROSSING` (0 = normal; e.g. 4 for testing from 4th crossing).
+
+### Crossing-only behavior (hard turns and 4th stop)
+- All crossing logic runs only when **at a crossing** (`at_crossing_now = edge.crossingLineCnt >= CROSSING_AT_CNT`). Crossings 1 and 2: go straight. Crossing 3 (and 5+): hard turn if pattern matches (leftmost=0 and rightmost≤4 → hard left; rightmost=7 and leftmost≥3 → hard right); cooldown between hard turns. **Crossing 4:** always stop (never hard turn); then state 20: `driveTurn(45, "right")`, `driveDistance(1.3)`, then exit.
+
+### Follow-line print (sedge.py)
+- Single-line debug block (no split across lines). Added **crossingCnt** (mission crossing count, set from driveToLine state 10), **leftMost** and **rightMost** (above-threshold indices). `edge.mission_crossing_count` updated in state 10 for display.
+
+### GPIO buttons (sgpio.py, uservice.py)
+- **Green (GPIO 13):** `test_start_button()` added; 13 = start (optional; mission can wait for green; currently `-e` starts without green).
+- **Red (GPIO 6):** Stop unchanged. In `uservice.runAlive()`, when red pressed: set `service.stop = True` and send `rc 0 0` immediately so robot stops in place.
+
+### Modified files
+- `mqtt_python/mqtt-linefollow.py` — driveTurn, driveDistance; crossing state machine with leave delay; hard turns only at crossing and not at 1/2/4; state 20 at 4th crossing; mission_crossing_count in print.
+- `mqtt_python/mqtt-client.py` — same drive/crossing/state-machine logic as mqtt-linefollow.
+- `mqtt_python/sedge.py` — single-line follow print; leftMost, rightMost, crossingCnt (mission_crossing_count) in print.
+- `mqtt_python/sgpio.py` — GPIO 13 green/start, test_start_button(); comment 6=stop, 13=start.
+- `mqtt_python/uservice.py` — red button: set stop and send rc 0 0 immediately.
+- `notes/line_following.md` — new section "Mission and crossing behavior (implemented)".
+- `notes/change_log.md` — this entry.
+
