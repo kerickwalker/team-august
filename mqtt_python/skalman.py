@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+from datetime import datetime
 import math
 
 import numpy as np
 
 from Kalman_filter_seperate_files.Kalman_class import KalmanFilter
+from imu_derived_measurements import imu_derived
 
 
 def _wrap_angle_rad(a: float) -> float:
@@ -41,6 +43,42 @@ class SKalman:
     """Realtime 7-state Kalman estimator for robot pose and orientation."""
 
     STATE_NAMES = ["x", "y", "z", "velocity", "angular_velocity", "yaw", "pitch"]
+    UPDATE_TOPICS = {"T0/pose", "T0/vel", "T0/gyro", "T0/acc", "T0/yawg", "T0/mag", "T0/vision_pose"}
+    # Fixed stacked measurement channels (m = 16).
+    # encoder x
+    # encoder y
+    # encoder z
+    # encoder velocity
+    # gyro angular velocity
+    # encoder yaw
+    # encoder angular velocity
+    # vision x
+    # vision y
+    # vision z
+    # vision yaw
+    # accelerometer-integrated velocity
+    # IMU-integrated yaw
+    # magnetometer-derived yaw
+    # magnetometer-derived pitch
+    # vision pitch
+    MEAS_NAMES = [
+        "pose_x_enc",
+        "pose_y_enc",
+        "pose_z_enc",
+        "vel_enc",
+        "omega_gyro",
+        "yaw_enc",
+        "omega_enc",
+        "pose_x_vision",
+        "pose_y_vision",
+        "pose_z_vision",
+        "yaw_vision",
+        "vel_acc_integrated",
+        "yaw_imu_integrated",
+        "yaw_mag_derived",
+        "pitch_mag_derived",
+        "pitch_vision",
+    ]
 
     def __init__(self):
         self.track_width = 0.23
@@ -51,6 +89,9 @@ class SKalman:
         self.manual_u = None
         self.last_u = np.zeros((2, 1), dtype=float)
         self.default_state = np.zeros((7, 1), dtype=float)
+        self.vision_pose = np.zeros((5, 1), dtype=float)
+        self.vision_pose_time = None
+        self.vision_pose_count = 0
 
     def _create_filter(self):
         from spose import pose
@@ -71,11 +112,10 @@ class SKalman:
             ],
             dtype=float,
         )
-        H = np.eye(7, dtype=float)
+        H = self._fixed_measurement_matrix()
 
         Q = np.diag([0.01, 0.01, 0.02, 0.04, 0.05, 0.02, 0.02]).astype(float)
-        # z is weakly observed in this runtime setup, so keep a larger measurement variance there.
-        R = np.diag([0.05, 0.05, 4.0, 0.08, 0.08, 0.05, 0.08]).astype(float)
+        R = np.diag(self._base_measurement_variances()).astype(float)
 
         self.kf = KalmanFilter(A, B, H, Q, R)
 
@@ -88,23 +128,123 @@ class SKalman:
         self.update_count = 0
         self.last_u = np.zeros((2, 1), dtype=float)
 
-    def _meas_vector(self) -> np.ndarray:
+    def _fixed_measurement_matrix(self) -> np.ndarray:
+        # One fixed H for all updates; duplicate rows model multiple sensors observing same state.
+        H = np.zeros((len(self.MEAS_NAMES), len(self.STATE_NAMES)), dtype=float)
+        H[0, 0] = 1.0  # encoder x
+        H[1, 1] = 1.0  # encoder y
+        H[2, 2] = 1.0  # encoder z
+        H[3, 3] = 1.0  # encoder velocity
+        H[4, 4] = 1.0  # gyro angular velocity
+        H[5, 5] = 1.0  # encoder yaw
+        H[6, 4] = 1.0  # encoder angular velocity
+        H[7, 0] = 1.0  # vision x
+        H[8, 1] = 1.0  # vision y
+        H[9, 2] = 1.0  # vision z
+        H[10, 5] = 1.0  # vision yaw
+        H[11, 3] = 1.0  # integrated-acc velocity
+        H[12, 5] = 1.0  # imu-integrated yaw
+        H[13, 5] = 1.0  # magnetometer-derived yaw
+        H[14, 6] = 1.0  # magnetometer-derived pitch
+        H[15, 6] = 1.0  # vision pitch
+        return H
+
+    def _base_measurement_variances(self):
+        return [
+            0.05,  # pose_x_enc
+            0.05,  # pose_y_enc
+            4.0,  # pose_z_enc
+            0.08,  # vel_enc
+            0.08,  # omega_gyro
+            0.05,  # yaw_enc
+            0.10,  # omega_enc
+            0.03,  # pose_x_vision
+            0.03,  # pose_y_vision
+            0.10,  # pose_z_vision
+            0.04,  # yaw_vision
+            0.20,  # vel_acc_integrated
+            0.10,  # yaw_imu_integrated
+            0.20,  # yaw_mag_derived
+            0.20,  # pitch_mag_derived
+            0.08,  # pitch_vision
+        ]
+
+    def _measurement_vector_and_cov(self, predicted_state: np.ndarray):
         from spose import pose
         from simu import imu
 
-        x_m = float(pose.pose[0])
-        y_m = float(pose.pose[1])
-        z_m = 0.0
-        v_m = float(pose.velocity())
+        imu_derived.update_from_streams()
 
+        x_pred = predicted_state
+        yaw_ref = float(x_pred[5, 0])
+        pitch_ref = float(x_pred[6, 0])
+
+        z = np.zeros((len(self.MEAS_NAMES), 1), dtype=float)
+        variances = self._base_measurement_variances()
+        missing_var = 1e6
+
+        # Encoder/odometry channels.
+        z[0, 0] = float(pose.pose[0])
+        z[1, 0] = float(pose.pose[1])
+        z[2, 0] = 0.0
+        z[3, 0] = float(pose.velocity())
         if imu.gyroUpdCnt > 0:
-            omega_m = float(imu.gyro[2])
+            z[4, 0] = float(imu.gyro[2])
         else:
-            omega_m = float(pose.turnrate())
+            z[4, 0] = float(x_pred[4, 0])
+            variances[4] = missing_var
+        z[5, 0] = _unwrap_near(float(pose.pose[2]), yaw_ref)
+        z[6, 0] = float(pose.turnrate())
 
-        yaw_m = float(pose.pose[2])
-        pitch_m = float(pose.pose[3])
-        return np.array([[x_m], [y_m], [z_m], [v_m], [omega_m], [yaw_m], [pitch_m]], dtype=float)
+        # Vision channels (same states observed by a second independent sensor).
+        if self.vision_pose_count > 0:
+            z[7, 0] = float(self.vision_pose[0, 0])
+            z[8, 0] = float(self.vision_pose[1, 0])
+            z[9, 0] = float(self.vision_pose[2, 0])
+            z[10, 0] = _unwrap_near(float(self.vision_pose[3, 0]), yaw_ref)
+            z[15, 0] = _unwrap_near(float(self.vision_pose[4, 0]), pitch_ref)
+        else:
+            z[7, 0] = float(x_pred[0, 0])
+            z[8, 0] = float(x_pred[1, 0])
+            z[9, 0] = float(x_pred[2, 0])
+            z[10, 0] = float(x_pred[5, 0])
+            z[15, 0] = float(x_pred[6, 0])
+            variances[7] = missing_var
+            variances[8] = missing_var
+            variances[9] = missing_var
+            variances[10] = missing_var
+            variances[15] = missing_var
+
+        # Extra velocity from accelerometer integration.
+        if imu_derived.acc_velocity_upd_cnt > 0:
+            z[11, 0] = float(imu_derived.acc_velocity)
+        else:
+            z[11, 0] = float(x_pred[3, 0])
+            variances[11] = missing_var
+
+        # Extra yaw from gyro integration.
+        if imu.yawgUpdCnt > 0:
+            z[12, 0] = _unwrap_near(float(imu.yawg), yaw_ref)
+        else:
+            z[12, 0] = float(x_pred[5, 0])
+            variances[12] = missing_var
+
+        # Extra yaw from magnetometer heading.
+        if imu_derived.mag_yaw_upd_cnt > 0:
+            z[13, 0] = _unwrap_near(float(imu_derived.mag_yaw), yaw_ref)
+        else:
+            z[13, 0] = float(x_pred[5, 0])
+            variances[13] = missing_var
+
+        # Extra pitch from magnetometer field direction.
+        if imu_derived.mag_pitch_upd_cnt > 0:
+            z[14, 0] = _unwrap_near(float(imu_derived.mag_pitch), pitch_ref)
+        else:
+            z[14, 0] = float(x_pred[6, 0])
+            variances[14] = missing_var
+
+        R = np.diag(variances).astype(float)
+        return z, R
 
     def _control_vector(self) -> np.ndarray:
         from spose import pose
@@ -124,9 +264,79 @@ class SKalman:
             return self.manual_u.copy()
         return self._control_vector()
 
-    def _bootstrap_from_measurement(self, z: np.ndarray):
-        self.kf.x = z.copy()
+    def _bootstrap_from_measurement(self):
+        from spose import pose
+        from simu import imu
+
+        imu_derived.update_from_streams()
+
+        x0 = self.default_state.copy()
+        if self.vision_pose_count > 0:
+            x0[0, 0] = float(self.vision_pose[0, 0])
+            x0[1, 0] = float(self.vision_pose[1, 0])
+            x0[2, 0] = float(self.vision_pose[2, 0])
+            x0[5, 0] = float(self.vision_pose[3, 0])
+            x0[6, 0] = float(self.vision_pose[4, 0])
+        else:
+            x0[0, 0] = float(pose.pose[0])
+            x0[1, 0] = float(pose.pose[1])
+            x0[2, 0] = 0.0
+            x0[5, 0] = float(imu.yawg) if imu.yawgUpdCnt > 0 and pose.poseCnt == 0 else float(pose.pose[2])
+            x0[6, 0] = float(pose.pose[3])
+        x0[3, 0] = float(imu_derived.acc_velocity) if imu_derived.acc_velocity_upd_cnt > 0 else float(pose.velocity())
+        x0[4, 0] = float(imu.gyro[2]) if imu.gyroUpdCnt > 0 else float(pose.turnrate())
+        x0[5, 0] = _wrap_angle_rad(float(x0[5, 0]))
+        x0[6, 0] = _wrap_angle_rad(float(x0[6, 0]))
+        self.kf.x = x0
         self.kf.P = np.eye(7, dtype=float)
+
+    def set_vision_pose(self, x: float, y: float, yaw: float, pitch: float = 0.0, z: float = 0.0, timestamp=None):
+        if timestamp is None:
+            timestamp = datetime.now()
+        elif isinstance(timestamp, (int, float)):
+            timestamp = datetime.fromtimestamp(float(timestamp))
+        self.vision_pose = np.array(
+            [[float(x)], [float(y)], [float(z)], [_wrap_angle_rad(float(yaw))], [_wrap_angle_rad(float(pitch))]],
+            dtype=float,
+        )
+        self.vision_pose_time = timestamp
+        self.vision_pose_count += 1
+
+    def clear_vision_pose(self):
+        self.vision_pose = np.zeros((5, 1), dtype=float)
+        self.vision_pose_time = None
+        self.vision_pose_count = 0
+
+    def _decode_vision_pose(self, msg: str) -> bool:
+        gg = msg.split()
+        if len(gg) < 5:
+            return False
+        timestamp = float(gg[0])
+        if len(gg) >= 6:
+            self.set_vision_pose(gg[1], gg[2], gg[4], pitch=gg[5], z=gg[3], timestamp=timestamp)
+        else:
+            self.set_vision_pose(gg[1], gg[2], gg[3], pitch=gg[4], z=0.0, timestamp=timestamp)
+        return True
+
+    def _measurement_time(self, topic: str):
+        from spose import pose
+        from simu import imu
+
+        if topic == "T0/pose":
+            return pose.poseTime
+        if topic == "T0/vel":
+            return pose.wheelVelocityTime
+        if topic == "T0/gyro":
+            return imu.gyroTime
+        if topic == "T0/acc":
+            return imu.accTime
+        if topic == "T0/yawg":
+            return imu.yawgTime
+        if topic == "T0/mag":
+            return imu.magTime
+        if topic == "T0/vision_pose":
+            return self.vision_pose_time
+        return None
 
     def reset(self, state=None):
         """Reset filter to default or provided 7-state vector."""
@@ -149,20 +359,28 @@ class SKalman:
 
     def reset_from_measurement(self):
         """Reset state directly from latest measurement vector."""
-        z = self._meas_vector()
-        self.reset(z.flatten().tolist())
+        if self.kf is None:
+            self._create_filter()
+        self._bootstrap_from_measurement()
+        self.last_update_time = None
+        self.update_count = 1
+        self.last_u = np.zeros((2, 1), dtype=float)
 
     def decode(self, topic, _msg):
-        # Only update on pose timestamps to keep dt stable and aligned to odometry updates.
-        if not self.enabled or topic != "T0/pose":
+        if not self.enabled:
             return False
 
-        from spose import pose
+        if topic == "T0/vision_pose":
+            if not self._decode_vision_pose(_msg):
+                return False
+        elif topic not in self.UPDATE_TOPICS:
+            return False
 
-        now_t = pose.poseTime
+        now_t = self._measurement_time(topic)
+        if now_t is None:
+            return False
         if self.last_update_time is None:
-            z = self._meas_vector()
-            self._bootstrap_from_measurement(z)
+            self._bootstrap_from_measurement()
             self.last_update_time = now_t
             self.update_count = 1
             return True
@@ -180,9 +398,9 @@ class SKalman:
         self.kf.A = _build_state_transition_matrix(yaw_hat, pitch_hat, dt_s)
         self.kf.predict(u)
 
-        z = self._meas_vector()
-        z[5, 0] = _unwrap_near(float(z[5, 0]), float(self.kf.x[5, 0]))
-        z[6, 0] = _unwrap_near(float(z[6, 0]), float(self.kf.x[6, 0]))
+        z, R = self._measurement_vector_and_cov(self.kf.x)
+        self.kf.H = self._fixed_measurement_matrix()
+        self.kf.R = R
         self.kf.update(z)
 
         self.kf.x[5, 0] = _wrap_angle_rad(float(self.kf.x[5, 0]))
@@ -206,8 +424,7 @@ class SKalman:
             self._create_filter()
 
         if not self.has_estimate():
-            z = self._meas_vector()
-            self._bootstrap_from_measurement(z)
+            self._bootstrap_from_measurement()
             self.update_count = 1
 
         if u_left is not None and u_right is not None:
