@@ -139,6 +139,7 @@ class UService:
   def run(self):
     # print("% MQTT service - thread running")
     self.client.subscribe(self.topic + "#")
+    self.client.subscribe("robobot/teleop/#")  # Subscribe to teleoperation commands
     self.client.on_message = self.on_message
     # self.subscribe(self.client)
     while not self.stop:
@@ -280,6 +281,10 @@ class UService:
       updated = kalman.decode(subtopic, msg)
       if updated:
         self.publish_kalman_state("sensor_update")
+    elif topic == "robobot/teleop/cmd":
+      # Handle teleoperation commands
+      kalman.decode_teleoperation(msg)
+      used = True
     if not used:
       print("% Service:: message not used " + topic + " " + msg)
     return used

@@ -2,6 +2,8 @@
 
 from datetime import datetime
 import math
+import json
+import time as t
 
 import numpy as np
 
@@ -92,6 +94,16 @@ class SKalman:
         self.vision_pose = np.zeros((5, 1), dtype=float)
         self.vision_pose_time = None
         self.vision_pose_count = 0
+        
+        # Teleoperation input
+        self.teleop_cmd = None  # {"linear_velocity": float, "angular_velocity": float}
+        self.teleop_cmd_time = None
+        self.teleop_enabled = False
+        self.teleop_timeout_s = 5.0  # Stop if no command for 5s
+        
+        # State publishing
+        self.last_state_publish_time = datetime.now()
+        self.state_publish_interval = 0.1  # Publish state every 100ms
 
     def _create_filter(self):
         from spose import pose
@@ -258,11 +270,131 @@ class SKalman:
 
     def clear_manual_input(self):
         self.manual_u = None
+    
+    def decode_teleoperation(self, msg: str) -> bool:
+        """Decode teleoperation command from JSON payload.
+        
+        Expected format:
+        {"linear_velocity": 0.5, "angular_velocity": 0.2, "timestamp": "..."}
+        
+        Converts linear velocity and angular velocity to left/right wheel velocities.
+        """
+        try:
+            data = json.loads(msg)
+            linear_v = float(data.get('linear_velocity', 0.0))
+            angular_v = float(data.get('angular_velocity', 0.0))
+            
+            # Convert (v, omega) to wheel velocities using differential drive kinematics
+            # v_left = v - (wheelbase/2) * omega
+            # v_right = v + (wheelbase/2) * omega
+            half_wheelbase = self.track_width / 2.0
+            v_left = linear_v - half_wheelbase * angular_v
+            v_right = linear_v + half_wheelbase * angular_v
+            
+            # Store as control input
+            self.teleop_cmd = {
+                'linear_velocity': linear_v,
+                'angular_velocity': angular_v,
+                'v_left': v_left,
+                'v_right': v_right
+            }
+            self.teleop_cmd_time = datetime.now()
+            self.teleop_enabled = True
+            return True
+        except Exception as e:
+            print(f"# Kalman: Failed to decode teleoperation: {e}")
+            return False
+    
+    def _get_teleoperation_u(self) -> np.ndarray | None:
+        """Get teleoperation control input if available and fresh.
+        
+        Returns None if teleoperation is not active or has timed out.
+        """
+        if not self.teleop_enabled or self.teleop_cmd is None or self.teleop_cmd_time is None:
+            return None
+        
+        elapsed = (datetime.now() - self.teleop_cmd_time).total_seconds()
+        if elapsed > self.teleop_timeout_s:
+            self.teleop_enabled = False
+            return None
+        
+        return np.array([
+            [float(self.teleop_cmd['v_left'])],
+            [float(self.teleop_cmd['v_right'])]
+        ], dtype=float)
 
     def _current_u(self) -> np.ndarray:
+        # Check teleoperation first (higher priority)
+        teleop_u = self._get_teleoperation_u()
+        if teleop_u is not None:
+            return teleop_u
+        
         if self.manual_u is not None:
             return self.manual_u.copy()
         return self._control_vector()
+    
+    def publish_state(self) -> bool:
+        """Publish current state estimate to MQTT.
+        
+        Publishes to: robobot/kalman/state
+        Format: JSON with position, velocity, orientation, and covariance.
+        """
+        try:
+            from uservice import service
+            
+            # Rate limit publishing
+            now = datetime.now()
+            elapsed = (now - self.last_state_publish_time).total_seconds()
+            if elapsed < self.state_publish_interval:
+                return False
+            
+            if not self.has_estimate():
+                return False
+            
+            # Extract state
+            x = self.kf.x.flatten()
+            P_diag = np.diag(self.kf.P)
+            
+            # Build message
+            state_msg = {
+                'timestamp': now.isoformat(),
+                'update_count': self.update_count,
+                'position': {
+                    'x': float(x[0]),
+                    'y': float(x[1]),
+                    'z': float(x[2])
+                },
+                'velocity': {
+                    'linear': float(x[3]),
+                    'angular': float(x[4])
+                },
+                'orientation': {
+                    'yaw': float(x[5]),
+                    'pitch': float(x[6])
+                },
+                'covariance_diag': {
+                    'x_std': float(np.sqrt(max(0, P_diag[0]))),
+                    'y_std': float(np.sqrt(max(0, P_diag[1]))),
+                    'z_std': float(np.sqrt(max(0, P_diag[2]))),
+                    'velocity_std': float(np.sqrt(max(0, P_diag[3]))),
+                    'angular_std': float(np.sqrt(max(0, P_diag[4]))),
+                    'yaw_std': float(np.sqrt(max(0, P_diag[5]))),
+                    'pitch_std': float(np.sqrt(max(0, P_diag[6])))
+                },
+                'raw_state': x.tolist(),
+                'teleop_active': self.teleop_enabled
+            }
+            
+            payload = json.dumps(state_msg)
+            service.send("robobot/kalman/state", payload)
+            self.last_state_publish_time = now
+            return True
+            
+        except Exception as e:
+            # Don't spam errors
+            pass
+        
+        return False
 
     def _bootstrap_from_measurement(self):
         from spose import pose
@@ -373,6 +505,10 @@ class SKalman:
         if topic == "T0/vision_pose":
             if not self._decode_vision_pose(_msg):
                 return False
+        elif topic == "teleop/cmd":
+            # Teleoperation command from keyboard/controller
+            self.decode_teleoperation(_msg)
+            return False  # Don't update filter on teleop only
         elif topic not in self.UPDATE_TOPICS:
             return False
 
@@ -383,6 +519,7 @@ class SKalman:
             self._bootstrap_from_measurement()
             self.last_update_time = now_t
             self.update_count = 1
+            self.publish_state()
             return True
 
         dt_s = (now_t - self.last_update_time).total_seconds()
@@ -408,6 +545,7 @@ class SKalman:
 
         self.last_update_time = now_t
         self.update_count += 1
+        self.publish_state()
         return True
 
     def predict_only(self, dt_s: float, u_left=None, u_right=None) -> bool:
