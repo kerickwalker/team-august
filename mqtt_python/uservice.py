@@ -105,6 +105,8 @@ class UService:
     self.parser.add_argument('--motpwm', type=float, nargs=3, default=None,
           metavar=('LEFT', 'RIGHT', 'DURATION_S'),
           help='One-shot motor command as left right duration_s (handled as velocity-mode test)')
+    self.parser.add_argument('--allow-no-hbt', action='store_true',
+          help='Continue startup even if T0/hbt heartbeat is missing (testing only)')
     self.parser.add_argument('-u', '--usestate', type=int, default = 0,
                 help='set mission state to this value')
     self.args = self.parser.parse_args()

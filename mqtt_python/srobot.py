@@ -37,6 +37,7 @@ class SRobot:
     def setup(self):
       # data subscription is set in teensy_interface/build/robot.ini
       from uservice import service
+      allow_no_hbt = hasattr(service, "args") and bool(getattr(service.args, "allow_no_hbt", False))
       loops = 0
       while not service.stop:
         # wait for essential data to arrive
@@ -50,9 +51,13 @@ class SRobot:
           break
         loops += 1
         if loops > 30:
-          print(f"% Robot (srobot.py) got no HBT data after {loops} loops (stops).")
-          print("% Is teensy_interface running?")
-          service.stop = True
+          if allow_no_hbt:
+            print(f"% Robot (srobot.py) got no HBT data after {loops} loops (continues: --allow-no-hbt).")
+            print("% WARNING: running without T0 heartbeat; check teensy_interface if robot should be active.")
+          else:
+            print(f"% Robot (srobot.py) got no HBT data after {loops} loops (stops).")
+            print("% Is teensy_interface running? Use --allow-no-hbt for testing only.")
+            service.stop = True
           break
         pass
       pass
