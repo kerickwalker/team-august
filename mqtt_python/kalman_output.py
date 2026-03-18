@@ -113,7 +113,7 @@ class KalmanOutputReader:
             print(f"% Error processing message: {e}")
     
     def display_state(self):
-        """Display the current Kalman state estimate."""
+        """Display the current Kalman state estimate and predicted state."""
         if self.latest_state is None:
             return
         
@@ -122,9 +122,11 @@ class KalmanOutputReader:
         
         # Build display string
         print("\033[2J\033[H")  # Clear screen (ANSI escape codes)
-        print(f"% Kalman Filter State Estimate (t={elapsed:.2f}s, updates={self.update_count})")
+        print(f"% Kalman Filter State (t={elapsed:.2f}s, updates={self.update_count})")
         print("% " + "-" * 70)
         
+        #=== ESTIMATED STATE ===
+        print("% [ESTIMATED STATE] (after measurement update)")
         # Handle format from uservice.py (with "x" key containing state vector)
         if 'x' in state:
             x_state = state['x']
@@ -152,6 +154,24 @@ class KalmanOutputReader:
                 print(f"%   Angle:    σyaw={cov.get('yaw_std', 0):.6f}, σpitch={cov.get('pitch_std', 0):.6f}")
         else:
             print(f"% WARNING: Unknown state format. Keys: {list(state.keys())}")
+        
+        #=== PREDICTED STATE (MODEL OUTPUT) ===
+        if 'x_pred' in state:
+            print("% ")
+            print("% [PREDICTED STATE] (motion model, before measurement correction)")
+            x_pred = state['x_pred']
+            print(f"% Position:  X={x_pred.get('x', 0):.4f} m, Y={x_pred.get('y', 0):.4f} m, Z={x_pred.get('z', 0):.4f} m")
+            print(f"% Velocity:  Linear={x_pred.get('velocity', 0):.4f} m/s, Angular={x_pred.get('angular_velocity', 0):.4f} rad/s")
+            print(f"% Angle:     Yaw={x_pred.get('yaw', 0):.4f} rad, Pitch={x_pred.get('pitch', 0):.4f} rad")
+            
+            # Show prediction error (innovation)
+            if 'x' in state:
+                x_est = state['x']
+                print("% ")
+                print("% [INNOVATION] (measurement correction applied)")
+                print(f"% Position delta:  ΔX={x_est.get('x', 0) - x_pred.get('x', 0):+.6f} m, ΔY={x_est.get('y', 0) - x_pred.get('y', 0):+.6f} m")
+                print(f"% Velocity delta:  Δlin={x_est.get('velocity', 0) - x_pred.get('velocity', 0):+.6f} m/s")
+                print(f"% Angle delta:     ΔYaw={x_est.get('yaw', 0) - x_pred.get('yaw', 0):+.6f} rad")
         
         # Show measurements if available
         if 'measurements' in state and state['measurements']:

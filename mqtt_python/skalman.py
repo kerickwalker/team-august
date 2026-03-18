@@ -98,24 +98,17 @@ class SKalman:
     # 8: vision y
     # 9: vision z
     # 10: vision yaw
-    # 11: vision pitch
+    # 11: (was vision pitch, now vel_acc_integrated)
     #
-    # ========== IMU DERIVED - ACCELEROMETER (12-14) ==========
-    # 12: accel_velocity (integrated from acc_x)
-    # 13: accel_pitch (atan2(acc_x, -acc_z))
-    # 14: accel_pitch_interval (dt of last update)
-    #
-    # ========== IMU DERIVED - GYRO (15-17) ==========
-    # 15: gyro_yaw_integrated (IMU integrated yaw from gyro)
-    # 16: gyro_yaw_interval (dt of last update)
-    # 17: gyro_omega_z (raw gyro Z rate, same as encoder omega)
-    #
-    # ========== IMU DERIVED - MAGNETOMETER (18-19) - DISABLED ==========
-    # 18: mag_yaw (magnetometer heading - DISABLED, hardware not working)
-    # 19: mag_pitch (magnetometer pitch - DISABLED, hardware not working)
+    # ========== IMU DERIVED (12-16) - MULTI-SOURCE SENSOR FUSION ==========
+    # 12: yaw_imu_integrated (IMU integrated yaw from gyro)
+    # 13: yaw_mag_derived (magnetometer heading)
+    # 14: pitch_acc_derived (accelerometer-derived pitch - NEW)
+    # 15: pitch_mag_derived (magnetometer-derived pitch - RESTORED)
+    # 16: pitch_vision (vision-derived pitch)
     #
     MEAS_NAMES = [
-        # Encoder/Odometry
+        # Encoder/Odometry (0-6)
         "pose_x_enc",
         "pose_y_enc",
         "pose_z_enc",
@@ -123,23 +116,19 @@ class SKalman:
         "omega_gyro",
         "yaw_enc",
         "omega_enc",
-        # Vision (disabled when inactive)
+        # Vision (7-11)
         "pose_x_vision",
         "pose_y_vision",
         "pose_z_vision",
         "yaw_vision",
-        "pitch_vision",
-        # IMU Derived - Accelerometer
         "vel_acc_integrated",
-        "pitch_acc_derived",
-        "acc_pitch_interval",
-        # IMU Derived - Gyro
-        "yaw_gyro_integrated",
-        "gyro_yaw_interval",
-        "omega_gyro_z",
-        # IMU Derived - Magnetometer (DISABLED)
+        # IMU Derived - Accelerometer (12-13)
+        "yaw_imu_integrated",
         "yaw_mag_derived",
+        # Multi-source pitch measurements (14-16)
+        "pitch_acc_derived",
         "pitch_mag_derived",
+        "pitch_vision",
     ]
 
     def __init__(self):
@@ -168,6 +157,9 @@ class SKalman:
         # Measurement storage for monitoring
         self.last_measurement = None
         self.measurement_names = self.MEAS_NAMES
+        
+        # Predicted state storage (for monitoring/display)
+        self.x_pred_last = np.zeros((7, 1), dtype=float)  # Last predicted state from motion model
 
     def _create_filter(self):
         from spose import pose
@@ -190,7 +182,7 @@ class SKalman:
         )
         H = self._fixed_measurement_matrix()
 
-        Q = np.diag([0.01, 0.01, 0.02, 0.04, 0.05, 0.02, 0.02]).astype(float)
+        Q = np.diag([0.8, 0.8, 0.8, 0.5, 0.5, 0.02, 1e6]).astype(float)
         R = np.diag(self._base_measurement_variances()).astype(float)
 
         self.kf = KalmanFilter(A, B, H, Q, R)
@@ -205,7 +197,7 @@ class SKalman:
         self.last_u = np.zeros((2, 1), dtype=float)
 
     def _fixed_measurement_matrix(self) -> np.ndarray:
-        # One fixed H for all updates; expanded to 20 measurements.
+        # H matrix: 17x7 (measurements x states)
         # STATE: [x, y, z, velocity, angular_velocity, yaw, pitch]
         H = np.zeros((len(self.MEAS_NAMES), len(self.STATE_NAMES)), dtype=float)
         
@@ -219,28 +211,21 @@ class SKalman:
         H[6, 4] = 1.0  # encoder angular velocity (duplicate omega)
         
         # ========== VISION (7-11) - DISABLED when not available ==========
-        # These measure x, y, z, yaw, pitch but will be set to 0 with infinite variance
+        # These measure x, y, z, yaw, vel_acc - will be set to 0 with infinite variance
         H[7, 0] = 0.0   # vision x (disabled)
         H[8, 1] = 0.0   # vision y (disabled)
         H[9, 2] = 0.0   # vision z (disabled)
         H[10, 5] = 0.0  # vision yaw (disabled)
-        H[11, 6] = 0.0  # vision pitch (disabled)
+        H[11, 3] = 1.0  # vel_acc_integrated measures linear velocity
         
-        # ========== IMU DERIVED - ACCELEROMETER (12-14) ==========
-        H[12, 3] = 1.0  # accel_velocity measures linear velocity
-        H[13, 6] = 1.0  # accel_pitch measures pitch
-        # H[14] is acc_pitch_interval - not a state measurement, just metadata
+        # ========== IMU DERIVED - GYRO & MAGNETOMETER (12-13) ==========
+        H[12, 5] = 1.0  # yaw_imu_integrated measures yaw (from gyro)
+        H[13, 5] = 1.0  # yaw_mag_derived measures yaw (from magnetometer)
         
-        # ========== IMU DERIVED - GYRO (15-17) ==========
-        H[15, 5] = 1.0  # gyro_yaw_integrated measures yaw
-        # H[16] is gyro_yaw_interval - not a state measurement, just metadata
-        H[17, 4] = 1.0  # gyro_omega_z measures angular velocity
-        
-        # ========== IMU DERIVED - MAGNETOMETER (18-19) - DISABLED ==========
-        # H[18] = mag_yaw (disabled - hardware not working)
-        # H[19] = mag_pitch (disabled - hardware not working)
-        H[18, 5] = 0.0  # mag_yaw disabled
-        H[19, 6] = 0.0  # mag_pitch disabled
+        # ========== MULTI-SOURCE PITCH (14-16) ==========
+        H[14, 6] = 1.0  # pitch_acc_derived measures pitch (from accelerometer - NEW)
+        H[15, 6] = 1.0  # pitch_mag_derived measures pitch (from magnetometer - RESTORED)
+        H[16, 6] = 1.0  # pitch_vision measures pitch (from vision)
         
         return H
 
@@ -254,23 +239,19 @@ class SKalman:
             0.08,   # 4: omega_gyro
             0.05,   # 5: yaw_enc
             0.10,   # 6: omega_enc
-            # ========== VISION (7-11) - ALL DISABLED ==========
+            # ========== VISION (7-11) ==========
             1e6,    # 7: pose_x_vision (DISABLED - no vision system)
             1e6,    # 8: pose_y_vision (DISABLED - no vision system)
             1e6,    # 9: pose_z_vision (DISABLED - no vision system)
             1e6,    # 10: yaw_vision (DISABLED - no vision system)
-            1e6,    # 11: pitch_vision (DISABLED - no vision system)
-            # ========== IMU DERIVED - ACCELEROMETER (12-14) ==========
-            0.20,   # 12: vel_acc_integrated (from accel integration)
-            0.12,   # 13: pitch_acc_derived (from atan2(acc_x, -acc_z))
-            1.0,    # 14: acc_pitch_interval (time delta, not a measurable state)
-            # ========== IMU DERIVED - GYRO (15-17) ==========
-            0.10,   # 15: yaw_gyro_integrated (from gyro integration)
-            1.0,    # 16: gyro_yaw_interval (time delta, not a measurable state)
-            0.08,   # 17: omega_gyro_z (raw gyro Z rate)
-            # ========== IMU DERIVED - MAGNETOMETER (18-19) - ALL DISABLED ==========
-            1e6,    # 18: yaw_mag_derived (DISABLED - hardware reading 0.0)
-            1e6,    # 19: pitch_mag_derived (DISABLED - hardware reading 0.0)
+            0.20,   # 11: vel_acc_integrated (from accelerometer integration)
+            # ========== IMU DERIVED - YAW SOURCES (12-13) ==========
+            0.10,   # 12: yaw_imu_integrated (from gyro integration)
+            0.15,   # 13: yaw_mag_derived (from magnetometer heading - usually 0 if inactive)
+            # ========== MULTI-SOURCE PITCH (14-16) ==========
+            0.12,   # 14: pitch_acc_derived (accelerometer-based, NEW)
+            0.20,   # 15: pitch_mag_derived (magnetometer-based, RESTORED)
+            1e6,   # 16: pitch_vision (vision-based)
         ]
 
     def _measurement_vector_and_cov(self, predicted_state: np.ndarray):
@@ -308,59 +289,56 @@ class SKalman:
         z[8, 0] = 0.0   # vision y (DISABLED)
         z[9, 0] = 0.0   # vision z (DISABLED)
         z[10, 0] = 0.0  # vision yaw (DISABLED)
-        z[11, 0] = 0.0  # vision pitch (DISABLED)
+        z[16, 0] = 0.0  # vision pitch (DISABLED)
         variances[7] = missing_var
         variances[8] = missing_var
         variances[9] = missing_var
         variances[10] = missing_var
-        variances[11] = missing_var
 
-        # ========== IMU DERIVED - ACCELEROMETER (12-14) ==========
+        # ========== IMU DERIVED - ACCELEROMETER VELOCITY (11) ==========
         # Velocity from accelerometer integration (imu_derived.acc_velocity)
         if imu_derived.acc_velocity_upd_cnt > 0:
-            z[12, 0] = float(imu_derived.acc_velocity)     # accel velocity
+            z[11, 0] = float(imu_derived.acc_velocity)     # accel velocity
+        else:
+            z[11, 0] = 0.0
+            variances[11] = missing_var
+
+        # ========== IMU DERIVED - YAW SOURCES (12-13) ==========
+        # Yaw from gyro integration (imu.yawg)
+        if imu.yawgUpdCnt > 0:
+            z[12, 0] = _unwrap_near(float(imu.yawg), yaw_ref)  # gyro integrated yaw
         else:
             z[12, 0] = 0.0
             variances[12] = missing_var
         
+        # Yaw from magnetometer (imu_derived.mag_yaw)
+        if imu_derived.mag_yaw_upd_cnt > 0:
+            z[13, 0] = _unwrap_near(float(imu_derived.mag_yaw), yaw_ref)  # magnetometer yaw
+        else:
+            z[13, 0] = 0.0
+            variances[13] = missing_var
+
+        # ========== MULTI-SOURCE PITCH (14-16) ==========
         # Pitch from accelerometer: atan2(acc_x, -acc_z)
         if imu.accUpdCnt > 0:
             acc_x = float(imu.acc[0])
             acc_z = float(imu.acc[2])
             pitch_acc = math.atan2(acc_x, -acc_z)
-            z[13, 0] = _unwrap_near(pitch_acc, pitch_ref)  # accel pitch
+            z[14, 0] = _unwrap_near(pitch_acc, pitch_ref)  # accelerometer pitch (NEW)
         else:
-            z[13, 0] = 0.0
-            variances[13] = missing_var
+            z[14, 0] = float(x_pred[6, 0])
+            variances[14] = missing_var
         
-        # Accelerometer pitch update interval (metadata, not a state)
-        z[14, 0] = float(imu_derived.acc_pitch_interval) if imu_derived.acc_pitch_upd_cnt > 0 else 0.0
-
-        # ========== IMU DERIVED - GYRO (15-17) ==========
-        # Yaw from gyro integration (imu.yawg)
-        if imu.yawgUpdCnt > 0:
-            z[15, 0] = _unwrap_near(float(imu.yawg), yaw_ref)  # gyro integrated yaw
+        # Pitch from magnetometer (imu_derived.mag_pitch)
+        if imu_derived.mag_pitch_upd_cnt > 0:
+            z[15, 0] = _unwrap_near(float(imu_derived.mag_pitch), pitch_ref)  # magnetometer pitch (RESTORED)
         else:
-            z[15, 0] = 0.0
+            z[15, 0] = float(x_pred[6, 0])
             variances[15] = missing_var
         
-        # Gyro yaw update interval (metadata, not a state)
-        # Using imu_derived rhythm since imu doesn't track it
-        z[16, 0] = 0.0  # No timestamp exposed; leave as 0
-        
-        # Gyro omega Z (same as channel 4, but explicitly from gyro integration tracking)
-        if imu.gyroUpdCnt > 0:
-            z[17, 0] = float(imu.gyro[2])                  # gyro omega Z
-        else:
-            z[17, 0] = 0.0
-            variances[17] = missing_var
-
-        # ========== IMU DERIVED - MAGNETOMETER (18-19) - DISABLED ==========
-        # Magnetometer hardware not working (reading all zeros), disabled entirely
-        z[18, 0] = 0.0  # mag yaw (DISABLED - hardware broken)
-        z[19, 0] = 0.0  # mag pitch (DISABLED - hardware broken)
-        variances[18] = missing_var
-        variances[19] = missing_var
+        # Pitch from vision (if available)
+        z[16, 0] = float(x_pred[6, 0])  # Vision pitch disabled by default
+        variances[16] = missing_var
 
         R = np.diag(variances).astype(float)
         return z, R
@@ -651,6 +629,9 @@ class SKalman:
         pitch_hat = float(self.kf.x[6, 0])
         self.kf.A = _build_state_transition_matrix(yaw_hat, pitch_hat, dt_s)
         self.kf.predict(u)
+        
+        # Store predicted state for monitoring/display
+        self.x_pred_last = self.kf.x.copy()
 
         z, R = self._measurement_vector_and_cov(self.kf.x)
         self.kf.H = self._fixed_measurement_matrix()
@@ -705,6 +686,10 @@ class SKalman:
         if not self.has_estimate():
             return None
         return self.kf.x.flatten().tolist()
+
+    def predict(self):
+        """Get the last predicted state (before measurement update)."""
+        return self.x_pred_last.flatten().tolist() if self.x_pred_last is not None else None
 
     def last_input(self):
         return self.last_u.flatten().tolist()

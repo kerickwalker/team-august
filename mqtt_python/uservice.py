@@ -327,6 +327,18 @@ class UService:
         "yaw": x[5],
         "pitch": x[6],
       }
+      # Add predicted state (model prediction before measurement update)
+      x_pred = kalman.predict()
+      if x_pred:
+        payload["x_pred"] = {
+          "x": x_pred[0],
+          "y": x_pred[1],
+          "z": x_pred[2],
+          "velocity": x_pred[3],
+          "angular_velocity": x_pred[4],
+          "yaw": x_pred[5],
+          "pitch": x_pred[6],
+        }
     self.clientOut.publish(self.topicKalmanState, json.dumps(payload))
 
   def handle_kalman_cmd(self, msg):
