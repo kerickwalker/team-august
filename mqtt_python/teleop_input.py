@@ -29,6 +29,7 @@ import sys
 import os
 import json
 import time as t
+import threading
 from datetime import datetime
 
 try:
@@ -54,6 +55,14 @@ class PromptTeleopInput:
         self.max_angular_vel = 2.0  # rad/s
         self.max_motor_vel = 1.0    # m/s for direct motor mode
         self.last_publish_time = datetime.now()
+        
+        # Continuous resend to keep motors active
+        self.last_command = None
+        self.last_motor_vel_left = 0.0
+        self.last_motor_vel_right = 0.0
+        self.resend_active = False
+        self.resend_thread = None
+        self.resend_interval = 0.1  # Resend every 100ms
         
         self.setup_mqtt()
     
@@ -111,10 +120,13 @@ class PromptTeleopInput:
         Args:
             val1 (float): Left motor velocity (motor mode) or linear velocity
             val2 (float): Right motor velocity (motor mode) or angular velocity
+        
+        Returns:
+            tuple: (left_vel, right_vel) motor velocities, or None on error
         """
         if not self.connected:
             print("% ERROR: Not connected to MQTT broker")
-            return False
+            return None
         
         if self.motor_mode:
             # Direct motor velocity mode
@@ -149,10 +161,50 @@ class PromptTeleopInput:
                 print(f"✓ Published motor: L={left_vel:.3f}, R={right_vel:.3f} m/s")
             else:
                 print(f"✓ Published: linear={linear_vel:.3f}, angular={angular_vel:.3f}")
-            return True
+            
+            # Store for continuous resend
+            self.last_command = payload
+            self.last_motor_vel_left = left_vel
+            self.last_motor_vel_right = right_vel
+            
+            return (left_vel, right_vel)
         except Exception as e:
             print(f"% ERROR: Failed to publish: {e}")
-            return False
+            return None
+    
+    def _resend_loop(self):
+        """Background thread: continuously resend last command to keep motors active."""
+        while self.resend_active:
+            if self.last_command is not None:
+                try:
+                    # Resend with updated timestamp
+                    cmd_dict = json.loads(self.last_command)
+                    cmd_dict["timestamp"] = datetime.now().isoformat()
+                    updated_payload = json.dumps(cmd_dict)
+                    
+                    self.client.publish("robobot/teleop/cmd", updated_payload, qos=1)
+                    # Quietly resend without printing each time
+                except Exception as e:
+                    print(f"% WARNING: Resend failed: {e}")
+            
+            t.sleep(self.resend_interval)
+    
+    def start_resend(self):
+        """Start background thread that continuously resends last command."""
+        if self.resend_active or self.resend_thread is not None:
+            return  # Already running
+        
+        self.resend_active = True
+        self.resend_thread = threading.Thread(target=self._resend_loop, daemon=True)
+        self.resend_thread.start()
+        print("% Continuous RC resend started (100ms intervals)")
+    
+    def stop_resend(self):
+        """Stop background resend thread."""
+        self.resend_active = False
+        if self.resend_thread is not None:
+            self.resend_thread.join(timeout=1.0)
+            self.resend_thread = None
     
     def print_help(self):
         """Print help message."""
@@ -196,58 +248,64 @@ class PromptTeleopInput:
         mode_str = "Motor (L/R)" if self.motor_mode else "Velocity (lin/ang)"
         print(f"\n% ===== Teleoperation Input ({mode_str}) =====")
         print("% Connected and ready for commands")
+        print("% NOTE: Commands are automatically resent every 100ms to keep motors active")
         self.print_help()
         
-        while True:
-            try:
-                prompt = "[L/R m/s]" if self.motor_mode else "[lin ang]"
-                user_input = input(f"Enter velocity {prompt} or command: ").strip()
-                
-                if not user_input:
-                    continue
-                
-                # Handle commands
-                if user_input.lower() in ['help', 'h', '?']:
-                    self.print_help()
-                    continue
-                
-                if user_input.lower() in ['q', 'quit', 'exit']:
-                    print("% Exiting teleoperation input")
-                    break
-                
-                # Parse velocity input
+        self.start_resend()  # Start continuous resend thread
+        
+        try:
+            while True:
                 try:
-                    parts = user_input.split()
-                    if len(parts) != 2:
-                        print(f"% ERROR: Expected 2 values, got {len(parts)}")
-                        if self.motor_mode:
-                            print("% Usage: <left_velocity> <right_velocity>")
-                        else:
-                            print("% Usage: <linear_velocity> <angular_velocity>")
+                    prompt = "[L/R m/s]" if self.motor_mode else "[lin ang]"
+                    user_input = input(f"Enter velocity {prompt} or command: ").strip()
+                    
+                    if not user_input:
                         continue
                     
-                    val1 = float(parts[0])
-                    val2 = float(parts[1])
+                    # Handle commands
+                    if user_input.lower() in ['help', 'h', '?']:
+                        self.print_help()
+                        continue
                     
-                    # Publish the velocity vector
-                    self.publish_velocity_input(val1, val2)
+                    if user_input.lower() in ['q', 'quit', 'exit']:
+                        print("% Exiting teleoperation input")
+                        break
                     
-                except ValueError as e:
-                    print(f"% ERROR: Invalid input - {e}")
-                    print("% Enter two space-separated numbers (e.g., '0.5 0.2')")
-                    
-            except KeyboardInterrupt:
-                print("\n% Interrupted by user")
-                break
-            except Exception as e:
-                print(f"% ERROR: {e}")
-                continue
+                    # Parse velocity input
+                    try:
+                        parts = user_input.split()
+                        if len(parts) != 2:
+                            print(f"% ERROR: Expected 2 values, got {len(parts)}")
+                            if self.motor_mode:
+                                print("% Usage: <left_velocity> <right_velocity>")
+                            else:
+                                print("% Usage: <linear_velocity> <angular_velocity>")
+                            continue
+                        
+                        val1 = float(parts[0])
+                        val2 = float(parts[1])
+                        
+                        # Publish the velocity vector (will also trigger resend update)
+                        self.publish_velocity_input(val1, val2)
+                        
+                    except ValueError as e:
+                        print(f"% ERROR: Invalid input - {e}")
+                        print("% Enter two space-separated numbers (e.g., '0.5 0.2')")
+                        
+                except KeyboardInterrupt:
+                    print("\n% Interrupted by user")
+                    break
+                except Exception as e:
+                    print(f"% ERROR: {e}")
+                    continue
         
-        # Cleanup - send stop command
-        print("% Sending stop command...")
-        self.publish_velocity_input(0.0, 0.0)
-        t.sleep(0.1)
-        self.client.loop_stop()
+        finally:
+            # Cleanup - send stop command and stop resend
+            print("% Stopping motors...")
+            self.stop_resend()
+            self.publish_velocity_input(0.0, 0.0)
+            t.sleep(0.2)  # Give one more resend cycle for stop command
+            self.client.loop_stop()
         self.client.disconnect()
         print("% Teleoperation Input Stopped")
 

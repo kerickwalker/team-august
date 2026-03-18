@@ -36,14 +36,23 @@ class KalmanOutputReader:
         self.update_count = 0
         self.start_time = datetime.now()
         self.last_display_time = datetime.now()
-        self.display_interval = 0.2  # Display every 200ms
+        self.display_interval = 0.01  # Display every 100ms for real-time feedback
+
         
         self.setup_mqtt()
     
     def setup_mqtt(self):
         """Connect to MQTT broker."""
         try:
-            self.client = mqtt_client.Client("kalman-output-reader")
+            if hasattr(mqtt_client, "CallbackAPIVersion"):
+                # Paho MQTT v2: avoid positional-arg mismatch and keep v1 callbacks.
+                self.client = mqtt_client.Client(
+                    client_id="kalman-output-reader",
+                    callback_api_version=mqtt_client.CallbackAPIVersion.VERSION1,
+                )
+            else:
+                # Paho MQTT v1.
+                self.client = mqtt_client.Client(client_id="kalman-output-reader")
             self.client.on_connect = self.on_connect
             self.client.on_message = self.on_message
             self.client.on_disconnect = self.on_disconnect
@@ -116,33 +125,93 @@ class KalmanOutputReader:
         print(f"% Kalman Filter State Estimate (t={elapsed:.2f}s, updates={self.update_count})")
         print("% " + "-" * 70)
         
-        # Position
-        if 'position' in state:
+        # Handle format from uservice.py (with "x" key containing state vector)
+        if 'x' in state:
+            x_state = state['x']
+            print(f"% Position:  X={x_state.get('x', 0):.4f} m, Y={x_state.get('y', 0):.4f} m, Z={x_state.get('z', 0):.4f} m")
+            print(f"% Velocity:  Linear={x_state.get('velocity', 0):.4f} m/s, Angular={x_state.get('angular_velocity', 0):.4f} rad/s")
+            print(f"% Angle:     Yaw={x_state.get('yaw', 0):.4f} rad, Pitch={x_state.get('pitch', 0):.4f} rad")
+        # Handle format from skalman.py (structured format)
+        elif 'position' in state:
             pos = state['position']
             print(f"% Position:  X={pos.get('x', 0):.4f} m, Y={pos.get('y', 0):.4f} m, Z={pos.get('z', 0):.4f} m")
+            
+            if 'velocity' in state:
+                vel = state['velocity']
+                print(f"% Velocity:  Linear={vel.get('linear', 0):.4f} m/s, Angular={vel.get('angular', 0):.4f} rad/s")
+            
+            if 'orientation' in state:
+                ori = state['orientation']
+                print(f"% Angle:     Yaw={ori.get('yaw', 0):.4f} rad, Pitch={ori.get('pitch', 0):.4f} rad")
+            
+            if 'covariance_diag' in state:
+                cov = state['covariance_diag']
+                print(f"% Uncertainty (std dev):")
+                print(f"%   Position: σx={cov.get('x_std', 0):.6f}, σy={cov.get('y_std', 0):.6f}, σz={cov.get('z_std', 0):.6f}")
+                print(f"%   Velocity: σlin={cov.get('velocity_std', 0):.6f}, σang={cov.get('angular_std', 0):.6f}")
+                print(f"%   Angle:    σyaw={cov.get('yaw_std', 0):.6f}, σpitch={cov.get('pitch_std', 0):.6f}")
+        else:
+            print(f"% WARNING: Unknown state format. Keys: {list(state.keys())}")
         
-        # Orientation
-        if 'orientation' in state:
-            ori = state['orientation']
-            print(f"% Angle:     Yaw={ori.get('yaw', 0):.4f} rad, Pitch={ori.get('pitch', 0):.4f} rad")
+        # Show measurements if available
+        if 'measurements' in state and state['measurements']:
+            meas = state['measurements']
+            print("% ")
+            print("% Raw Measurements (all 17 channels):")
+            
+            # Define measurement names for grouped display
+            meas_order = [
+                "pose_x_enc", "pose_y_enc", "pose_z_enc",
+                "vel_enc", "omega_gyro", "yaw_enc", "omega_enc",
+                "pose_x_vision", "pose_y_vision", "pose_z_vision", "yaw_vision",
+                "vel_acc_integrated", "yaw_imu_integrated", 
+                "yaw_mag_derived", "pitch_acc_derived", "pitch_mag_derived", "pitch_vision"
+            ]
+            
+            # Encoder measurements
+            print("%   Encoder (odometry):")
+            if 'pose_x_enc' in meas:
+                print(f"%     X={meas.get('pose_x_enc', 0):.4f} m, Y={meas.get('pose_y_enc', 0):.4f} m, Z={meas.get('pose_z_enc', 0):.4f} m")
+            if 'vel_enc' in meas:
+                print(f"%     Velocity={meas.get('vel_enc', 0):.4f} m/s, Omega={meas.get('omega_enc', 0):.4f} rad/s")
+            if 'yaw_enc' in meas:
+                print(f"%     Yaw={meas.get('yaw_enc', 0):.4f} rad")
+            
+            # IMU measurements
+            print("%   IMU (gyro/acc):")
+            if 'omega_gyro' in meas:
+                print(f"%     Gyro ω={meas.get('omega_gyro', 0):.4f} rad/s")
+            if 'vel_acc_integrated' in meas:
+                print(f"%     Acc integrated v={meas.get('vel_acc_integrated', 0):.4f} m/s")
+            if 'yaw_imu_integrated' in meas:
+                print(f"%     Yaw integrated={meas.get('yaw_imu_integrated', 0):.4f} rad")
+            if 'pitch_acc_derived' in meas:
+                print(f"%     Pitch (from acc)={meas.get('pitch_acc_derived', 0):.4f} rad")
+            
+            # Vision measurements
+            print("%   Vision:")
+            if 'pose_x_vision' in meas:
+                print(f"%     X={meas.get('pose_x_vision', 0):.4f} m, Y={meas.get('pose_y_vision', 0):.4f} m, Z={meas.get('pose_z_vision', 0):.4f} m")
+                print(f"%     Yaw={meas.get('yaw_vision', 0):.4f} rad, Pitch={meas.get('pitch_vision', 0):.4f} rad")
+            
+            # Magnetometer measurements
+            print("%   Magnetometer (heading):")
+            if 'yaw_mag_derived' in meas:
+                print(f"%     Yaw={meas.get('yaw_mag_derived', 0):.4f} rad")
+                print(f"%     Pitch={meas.get('pitch_mag_derived', 0):.4f} rad")
+            
+            # Show all raw values if available - dump them all
+            print("% ")
+            print("%   All raw values (dict):")
+            for name in meas_order:
+                if name in meas:
+                    val = meas.get(name, 0)
+                    print(f"%     {name:25s} = {val:10.6f}")
         
-        # Velocity
-        if 'velocity' in state:
-            vel = state['velocity']
-            print(f"% Velocity:  Linear={vel.get('linear', 0):.4f} m/s, Angular={vel.get('angular', 0):.4f} rad/s")
-        
-        # Covariance (uncertainty)
-        if 'covariance_diag' in state:
-            cov = state['covariance_diag']
-            print(f"% Uncertainty (std dev):")
-            print(f"%   Position: σx={cov.get('x_std', 0):.6f}, σy={cov.get('y_std', 0):.6f}, σz={cov.get('z_std', 0):.6f}")
-            print(f"%   Velocity: σlin={cov.get('velocity_std', 0):.6f}, σang={cov.get('angular_std', 0):.6f}")
-            print(f"%   Angle:    σyaw={cov.get('yaw_std', 0):.6f}, σpitch={cov.get('pitch_std', 0):.6f}")
-        
-        # Raw state if available
-        if 'raw_state' in state:
-            raw = state['raw_state']
-            print(f"% Raw state: {raw}")
+        # Show metadata if present
+        if 'source' in state:
+            print(f"% ")
+            print(f"% Source: {state.get('source')}")
         
         print("% " + "-" * 70)
     

@@ -314,6 +314,7 @@ class UService:
       "time": t.time(),
       "has_estimate": kalman.has_estimate(),
       "u": kalman.last_input(),
+      "measurements": kalman.get_measurements(),
     }
     if kalman.has_estimate():
       x = kalman.estimate()

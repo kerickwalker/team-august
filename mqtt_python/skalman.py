@@ -98,6 +98,7 @@ class SKalman:
     # accelerometer-integrated velocity
     # IMU-integrated yaw
     # magnetometer-derived yaw
+    # accelerometer-derived pitch
     # magnetometer-derived pitch
     # vision pitch
     MEAS_NAMES = [
@@ -115,6 +116,7 @@ class SKalman:
         "vel_acc_integrated",
         "yaw_imu_integrated",
         "yaw_mag_derived",
+        "pitch_acc_derived",
         "pitch_mag_derived",
         "pitch_vision",
     ]
@@ -136,11 +138,15 @@ class SKalman:
         self.teleop_cmd = None  # {"linear_velocity": float, "angular_velocity": float}
         self.teleop_cmd_time = None
         self.teleop_enabled = False
-        self.teleop_timeout_s = 5.0  # Stop if no command for 5s
+        self.teleop_timeout_s = float('inf')  # Commands persist until new input; set to finite value (e.g., 5.0) to auto-stop
         
         # State publishing
         self.last_state_publish_time = datetime.now()
         self.state_publish_interval = 0.1  # Publish state every 100ms
+        
+        # Measurement storage for monitoring
+        self.last_measurement = None
+        self.measurement_names = self.MEAS_NAMES
 
     def _create_filter(self):
         from spose import pose
@@ -187,15 +193,16 @@ class SKalman:
         H[4, 4] = 1.0  # gyro angular velocity
         H[5, 5] = 1.0  # encoder yaw
         H[6, 4] = 1.0  # encoder angular velocity
-        H[7, 0] = 1.0  # vision x
-        H[8, 1] = 1.0  # vision y
-        H[9, 2] = 1.0  # vision z
-        H[10, 5] = 1.0  # vision yaw
-        H[11, 3] = 1.0  # integrated-acc velocity
-        H[12, 5] = 1.0  # imu-integrated yaw
-        H[13, 5] = 1.0  # magnetometer-derived yaw
-        H[14, 6] = 1.0  # magnetometer-derived pitch
-        H[15, 6] = 1.0  # vision pitch
+        H[7, 0] = 0.0  # vision x
+        H[8, 1] = 0.0  # vision y
+        H[9, 2] = 0.0  # vision z
+        H[10, 5] = 0.0  # vision yaw
+        H[11, 3] = 0.0  # integrated-acc velocity
+        H[12, 5] = 0.0  # imu-integrated yaw
+        H[13, 5] = 0.0  # magnetometer-derived yaw
+        H[14, 6] = 1.0  # accelerometer-derived pitch
+        H[15, 6] = 0.0  # magnetometer-derived pitch 
+        H[16, 6] = 0.0  # vision pitch
         return H
 
     def _base_measurement_variances(self):
@@ -214,7 +221,8 @@ class SKalman:
             0.20,  # vel_acc_integrated
             0.10,  # yaw_imu_integrated
             0.20,  # yaw_mag_derived
-            0.20,  # pitch_mag_derived
+            0.12,  # pitch_acc_derived (accelerometer-based)
+            0.20,  # pitch_mag_derived (magnetometer-based)
             0.08,  # pitch_vision
         ]
 
@@ -251,18 +259,18 @@ class SKalman:
             z[8, 0] = float(self.vision_pose[1, 0])
             z[9, 0] = float(self.vision_pose[2, 0])
             z[10, 0] = _unwrap_near(float(self.vision_pose[3, 0]), yaw_ref)
-            z[15, 0] = _unwrap_near(float(self.vision_pose[4, 0]), pitch_ref)
+            z[16, 0] = _unwrap_near(float(self.vision_pose[4, 0]), pitch_ref)
         else:
             z[7, 0] = float(x_pred[0, 0])
             z[8, 0] = float(x_pred[1, 0])
             z[9, 0] = float(x_pred[2, 0])
             z[10, 0] = float(x_pred[5, 0])
-            z[15, 0] = float(x_pred[6, 0])
+            z[16, 0] = float(x_pred[6, 0])
             variances[7] = missing_var
             variances[8] = missing_var
             variances[9] = missing_var
             variances[10] = missing_var
-            variances[15] = missing_var
+            variances[16] = missing_var
 
         # Extra velocity from accelerometer integration.
         if imu_derived.acc_velocity_upd_cnt > 0:
@@ -285,12 +293,24 @@ class SKalman:
             z[13, 0] = float(x_pred[5, 0])
             variances[13] = missing_var
 
-        # Extra pitch from magnetometer field direction.
-        if imu_derived.mag_pitch_upd_cnt > 0:
-            z[14, 0] = _unwrap_near(float(imu_derived.mag_pitch), pitch_ref)
+        # Pitch from accelerometer (NEW - index 14)
+        # pitch = atan2(acc_x, sqrt(acc_y^2 + acc_z^2))
+        if imu.accUpdCnt > 0:
+            acc_x = float(imu.acc[0])
+            acc_y = float(imu.acc[1])
+            acc_z = float(imu.acc[2])
+            pitch_acc = math.atan2(acc_x, math.sqrt(acc_y**2 + acc_z**2))
+            z[14, 0] = _unwrap_near(pitch_acc, pitch_ref)
         else:
             z[14, 0] = float(x_pred[6, 0])
             variances[14] = missing_var
+
+        # Pitch from magnetometer (RESTORED - index 15)
+        if imu_derived.mag_pitch_upd_cnt > 0:
+            z[15, 0] = _unwrap_near(float(imu_derived.mag_pitch), pitch_ref)
+        else:
+            z[15, 0] = float(x_pred[6, 0])
+            variances[15] = missing_var
 
         R = np.diag(variances).astype(float)
         return z, R
@@ -369,6 +389,12 @@ class SKalman:
         if self.manual_u is not None:
             return self.manual_u.copy()
         return self._control_vector()
+    
+    def get_measurements(self):
+        """Return last measurement vector as dict with named channels."""
+        if self.last_measurement is None:
+            return {}
+        return {name: val for name, val in zip(self.MEAS_NAMES, self.last_measurement)}
     
     def publish_state(self) -> bool:
         """Publish current state estimate to MQTT.
@@ -579,6 +605,7 @@ class SKalman:
         z, R = self._measurement_vector_and_cov(self.kf.x)
         self.kf.H = self._fixed_measurement_matrix()
         self.kf.R = R
+        self.last_measurement = z.flatten().tolist()  # Store for publishing
         self.kf.update(z)
 
         self.kf.x[5, 0] = _wrap_angle_rad(float(self.kf.x[5, 0]))
