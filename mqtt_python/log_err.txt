@@ -8,3 +8,5 @@
 (mqtt-client:1326): GStreamer-CRITICAL **: 12:27:12.668: gst_structure_get_fraction: assertion 'structure != NULL' failed
 [ WARN:0@66.631] global cap_gstreamer.cpp:1722 open OpenCV | GStreamer warning: cannot query video fps
 [ WARN:0@66.632] global cap_gstreamer.cpp:1777 open OpenCV | GStreamer warning: Cannot query video position: status=0, value=-1, duration=-1
+/usr/bin/python3: can't open file '/home/local/svn/robobot/mqtt_python/mqtt_linefollow.py': [Errno 2] No such file or directory
+/usr/bin/python3: can't open file '/home/local/svn/robobot/mqtt_python/mqtt_linefollow.py': [Errno 2] No such file or directory

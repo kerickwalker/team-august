@@ -1,0 +1,38 @@
+[
+{
+  "directory": "/home/chr/aaa/svn/robobot/ip_disp/build2",
+  "command": "/usr/bin/c++ -I/usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/ip_disp.dir/src/main.cpp.o -c /home/chr/aaa/svn/robobot/ip_disp/src/main.cpp",
+  "file": "/home/chr/aaa/svn/robobot/ip_disp/src/main.cpp",
+  "output": "CMakeFiles/ip_disp.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/ip_disp/build2",
+  "command": "/usr/bin/c++ -I/usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/ip_disp.dir/src/steensy.cpp.o -c /home/chr/aaa/svn/robobot/ip_disp/src/steensy.cpp",
+  "file": "/home/chr/aaa/svn/robobot/ip_disp/src/steensy.cpp",
+  "output": "CMakeFiles/ip_disp.dir/src/steensy.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/ip_disp/build2",
+  "command": "/usr/bin/c++ -I/usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/ip_disp.dir/src/sgpiod.cpp.o -c /home/chr/aaa/svn/robobot/ip_disp/src/sgpiod.cpp",
+  "file": "/home/chr/aaa/svn/robobot/ip_disp/src/sgpiod.cpp",
+  "output": "CMakeFiles/ip_disp.dir/src/sgpiod.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/ip_disp/build2",
+  "command": "/usr/bin/c++ -I/usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/ip_disp.dir/src/umqtt.cpp.o -c /home/chr/aaa/svn/robobot/ip_disp/src/umqtt.cpp",
+  "file": "/home/chr/aaa/svn/robobot/ip_disp/src/umqtt.cpp",
+  "output": "CMakeFiles/ip_disp.dir/src/umqtt.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/ip_disp/build2",
+  "command": "/usr/bin/c++ -I/usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/ip_disp.dir/src/uservice.cpp.o -c /home/chr/aaa/svn/robobot/ip_disp/src/uservice.cpp",
+  "file": "/home/chr/aaa/svn/robobot/ip_disp/src/uservice.cpp",
+  "output": "CMakeFiles/ip_disp.dir/src/uservice.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/ip_disp/build2",
+  "command": "/usr/bin/c++ -I/usr/include/opencv4  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/ip_disp.dir/src/utime.cpp.o -c /home/chr/aaa/svn/robobot/ip_disp/src/utime.cpp",
+  "file": "/home/chr/aaa/svn/robobot/ip_disp/src/utime.cpp",
+  "output": "CMakeFiles/ip_disp.dir/src/utime.cpp.o"
+}
+]
