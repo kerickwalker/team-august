@@ -416,7 +416,8 @@ class UService:
     flog.writeRemark(f"{topic} {param}")
     if r[0] == 0:
       self.sendCnt += 1
-      if self.sendCnt > 100 and self.gotCnt < 2:
+      allow_no_hbt = hasattr(self, "args") and bool(getattr(self.args, "allow_no_hbt", False))
+      if (not allow_no_hbt) and self.sendCnt > 100 and self.gotCnt < 2:
         print(f"Seems like there is no connection to Teensy (tx:{self.sendCnt}, got:{self.gotCnt}); is Teensy_interface running?")
         self.stop = True
       # print(f"% published {topic} with {param}")
