@@ -437,6 +437,10 @@ class SKalman:
         from spose import pose
         from simu import imu
 
+        # MQTT callbacks can arrive before setup() in startup races.
+        if self.kf is None:
+            self._create_filter()
+
         imu_derived.update_from_streams()
 
         x0 = self.default_state.copy()
