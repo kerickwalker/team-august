@@ -3,16 +3,23 @@
 """Teleoperation input client with prompt-based velocity commands.
 
 Publishes velocity input vectors [linear_velocity, angular_velocity] to MQTT.
+Supports both velocity mode (linear/angular) and motor mode (left/right velocities).
+
 These values are consumed by:
   1. Kalman filter (skalman.py) for model-based predictions
   2. Motor control (via teensy_interface) for actual robot movement
+  3. uservice.py to send direct RC motor commands
 
 Usage:
     python3 teleop_input.py [options]
     
-    When running, enter velocity commands as two space-separated values:
+    Velocity mode (default): enter linear and angular velocities
     Example: 0.5 0.2
     (sends linear_vel=0.5 m/s, angular_vel=0.2 rad/s)
+    
+    Motor mode (-m): enter left and right motor velocities
+    Example: 1.0 1.0
+    (sends left=1.0 m/s, right=1.0 m/s)
     
     Type 'help' for commands
     Type 'q' or 'quit' to exit
@@ -35,15 +42,17 @@ except ImportError:
 class PromptTeleopInput:
     """Teleoperation via prompt-based velocity input."""
     
-    def __init__(self, mqtt_host='localhost', mqtt_port=1883):
+    def __init__(self, mqtt_host='localhost', mqtt_port=1883, motor_mode=False):
         self.mqtt_host = mqtt_host
         self.mqtt_port = mqtt_port
         self.client = None
         self.connected = False
+        self.motor_mode = motor_mode  # If True, input is left/right motor velocities
         
         # Input limits
         self.max_linear_vel = 1.0   # m/s
         self.max_angular_vel = 2.0  # rad/s
+        self.max_motor_vel = 1.0    # m/s for direct motor mode
         self.last_publish_time = datetime.now()
         
         self.setup_mqtt()
@@ -51,7 +60,15 @@ class PromptTeleopInput:
     def setup_mqtt(self):
         """Connect to MQTT broker."""
         try:
-            self.client = mqtt_client.Client("teleop-input-prompt")
+            if hasattr(mqtt_client, "CallbackAPIVersion"):
+                # Paho MQTT v2: avoid positional-arg mismatch and keep v1 callbacks.
+                self.client = mqtt_client.Client(
+                    client_id="teleop-input-prompt",
+                    callback_api_version=mqtt_client.CallbackAPIVersion.VERSION1,
+                )
+            else:
+                # Paho MQTT v1.
+                self.client = mqtt_client.Client(client_id="teleop-input-prompt")
             self.client.on_connect = self.on_connect
             self.client.on_disconnect = self.on_disconnect
             
@@ -88,25 +105,37 @@ class PromptTeleopInput:
             print(f"% Unexpected disconnection with code {rc}")
             self.connected = False
     
-    def publish_velocity_input(self, linear_vel, angular_vel):
+    def publish_velocity_input(self, val1, val2):
         """Publish velocity input vector to MQTT.
         
         Args:
-            linear_vel (float): Linear velocity in m/s
-            angular_vel (float): Angular velocity in rad/s
+            val1 (float): Left motor velocity (motor mode) or linear velocity
+            val2 (float): Right motor velocity (motor mode) or angular velocity
         """
         if not self.connected:
             print("% ERROR: Not connected to MQTT broker")
             return False
         
-        # Clamp values to safe limits
-        linear_vel = max(-self.max_linear_vel, min(self.max_linear_vel, float(linear_vel)))
-        angular_vel = max(-self.max_angular_vel, min(self.max_angular_vel, float(angular_vel)))
+        if self.motor_mode:
+            # Direct motor velocity mode
+            left_vel = max(-self.max_motor_vel, min(self.max_motor_vel, float(val1)))
+            right_vel = max(-self.max_motor_vel, min(self.max_motor_vel, float(val2)))
+            # Convert to linear/angular for Kalman filter
+            linear_vel = (left_vel + right_vel) / 2.0
+            angular_vel = (right_vel - left_vel) / 0.23  # wheelbase = 0.23m
+        else:
+            # Linear/angular mode
+            linear_vel = max(-self.max_linear_vel, min(self.max_linear_vel, float(val1)))
+            angular_vel = max(-self.max_angular_vel, min(self.max_angular_vel, float(val2)))
+            left_vel = linear_vel - (0.23/2.0) * angular_vel
+            right_vel = linear_vel + (0.23/2.0) * angular_vel
         
         # Create input vector message
         cmd = {
             "linear_velocity": linear_vel,
             "angular_velocity": angular_vel,
+            "v_left": left_vel,
+            "v_right": right_vel,
             "timestamp": datetime.now().isoformat()
         }
         
@@ -116,7 +145,10 @@ class PromptTeleopInput:
         
         try:
             self.client.publish(topic, payload, qos=1)
-            print(f"✓ Published: [{linear_vel:.3f}, {angular_vel:.3f}] -> {topic}")
+            if self.motor_mode:
+                print(f"✓ Published motor: L={left_vel:.3f}, R={right_vel:.3f} m/s")
+            else:
+                print(f"✓ Published: linear={linear_vel:.3f}, angular={angular_vel:.3f}")
             return True
         except Exception as e:
             print(f"% ERROR: Failed to publish: {e}")
@@ -126,20 +158,33 @@ class PromptTeleopInput:
         """Print help message."""
         print("\n% Teleoperation Input Commands:")
         print("% ==============================")
-        print("% Enter velocity input as two space-separated values:")
-        print("%   <linear_vel> <angular_vel>")
-        print("% ")
-        print("% Examples:")
-        print("%   0.5 0.0      -> Forward at 0.5 m/s")
-        print("%   -0.5 0.0     -> Backward at 0.5 m/s")
-        print("%   0.0 0.5      -> Turn left at 0.5 rad/s")
-        print("%   0.0 -0.5     -> Turn right at 0.5 rad/s")
-        print("%   0.3 0.3      -> Forward-left")
-        print("%   0.3 -0.3     -> Forward-right")
-        print("%   0.0 0.0      -> STOP")
-        print("% ")
-        print(f"% Limits: linear_vel [{-self.max_linear_vel}, {self.max_linear_vel}] m/s")
-        print(f"%         angular_vel [{-self.max_angular_vel}, {self.max_angular_vel}] rad/s")
+        if self.motor_mode:
+            print("% MOTOR MODE: Direct left and right motor velocities")
+            print("%   <left_vel> <right_vel>")
+            print("% ")
+            print("% Examples:")
+            print("%   1.0 1.0       -> Both motors at 1.0 m/s (forward)")
+            print("%   -1.0 -1.0     -> Both motors at -1.0 m/s (backward)")
+            print("%   0.5 1.0       -> Left 0.5, Right 1.0 (turn right)")
+            print("%   1.0 0.5       -> Left 1.0, Right 0.5 (turn left)")
+            print("%   0.0 0.0       -> STOP")
+            print("% ")
+            print(f"% Limits: motor vel [{-self.max_motor_vel}, {self.max_motor_vel}] m/s")
+        else:
+            print("% VELOCITY MODE: Linear and angular velocities")
+            print("%   <linear_vel> <angular_vel>")
+            print("% ")
+            print("% Examples:")
+            print("%   0.5 0.0      -> Forward at 0.5 m/s")
+            print("%   -0.5 0.0     -> Backward at 0.5 m/s")
+            print("%   0.0 0.5      -> Turn left at 0.5 rad/s")
+            print("%   0.0 -0.5     -> Turn right at 0.5 rad/s")
+            print("%   0.3 0.3      -> Forward-left")
+            print("%   0.3 -0.3     -> Forward-right")
+            print("%   0.0 0.0      -> STOP")
+            print("% ")
+            print(f"% Limits: linear [{-self.max_linear_vel}, {self.max_linear_vel}] m/s")
+            print(f"%         angular [{-self.max_angular_vel}, {self.max_angular_vel}] rad/s")
         print("% ")
         print("% Commands:")
         print("%   help, h, ?   -> Show this help")
@@ -148,13 +193,15 @@ class PromptTeleopInput:
     
     def run(self):
         """Start teleoperation input loop."""
-        print("\n% ===== Teleoperation Input (Velocity Prompt) =====")
-        print("% Connected and ready for velocity commands")
+        mode_str = "Motor (L/R)" if self.motor_mode else "Velocity (lin/ang)"
+        print(f"\n% ===== Teleoperation Input ({mode_str}) =====")
+        print("% Connected and ready for commands")
         self.print_help()
         
         while True:
             try:
-                user_input = input("Enter velocity [linear angular] or command: ").strip()
+                prompt = "[L/R m/s]" if self.motor_mode else "[lin ang]"
+                user_input = input(f"Enter velocity {prompt} or command: ").strip()
                 
                 if not user_input:
                     continue
@@ -173,14 +220,17 @@ class PromptTeleopInput:
                     parts = user_input.split()
                     if len(parts) != 2:
                         print(f"% ERROR: Expected 2 values, got {len(parts)}")
-                        print("% Usage: <linear_velocity> <angular_velocity>")
+                        if self.motor_mode:
+                            print("% Usage: <left_velocity> <right_velocity>")
+                        else:
+                            print("% Usage: <linear_velocity> <angular_velocity>")
                         continue
                     
-                    linear_vel = float(parts[0])
-                    angular_vel = float(parts[1])
+                    val1 = float(parts[0])
+                    val2 = float(parts[1])
                     
                     # Publish the velocity vector
-                    self.publish_velocity_input(linear_vel, angular_vel)
+                    self.publish_velocity_input(val1, val2)
                     
                 except ValueError as e:
                     print(f"% ERROR: Invalid input - {e}")
@@ -202,8 +252,6 @@ class PromptTeleopInput:
         print("% Teleoperation Input Stopped")
 
 
-
-
 if __name__ == "__main__":
     import argparse
     
@@ -212,7 +260,8 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s
+  %(prog)s                           # Velocity mode (default)
+  %(prog)s -m                        # Motor mode (direct L/R velocities)
   %(prog)s -i 192.168.1.100 -p 1883
   %(prog)s --max-vel 0.8 --max-turn 1.5
         """)
@@ -221,6 +270,8 @@ Examples:
                        help='MQTT broker host (default: localhost)')
     parser.add_argument('-p', '--port', type=int, default=1883,
                        help='MQTT broker port (default: 1883)')
+    parser.add_argument('-m', '--motor', action='store_true',
+                       help='Motor mode: input left and right motor velocities directly')
     parser.add_argument('--max-vel', type=float, default=1.0,
                        help='Maximum linear velocity in m/s (default: 1.0)')
     parser.add_argument('--max-turn', type=float, default=2.0,
@@ -228,7 +279,7 @@ Examples:
     
     args = parser.parse_args()
     
-    teleop = PromptTeleopInput(mqtt_host=args.host, mqtt_port=args.port)
+    teleop = PromptTeleopInput(mqtt_host=args.host, mqtt_port=args.port, motor_mode=args.motor)
     teleop.max_linear_vel = args.max_vel
     teleop.max_angular_vel = args.max_turn
     

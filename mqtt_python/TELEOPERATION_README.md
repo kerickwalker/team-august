@@ -6,7 +6,7 @@ This guide explains how to use the prompt-based teleoperation system with Kalman
 
 The teleoperation system has three main components:
 
-1. **teleop_input.py** - Sends velocity commands via MQTT
+1. **teleop_input.py** - Sends velocity commands via MQTT (two modes: velocity or motor)
 2. **mqtt-client.py** - Receives and executes commands on the robot
 3. **Kalman Filter (skalman.py)** - Fuses teleoperation input with sensors for state estimation
 4. **kalman_output.py** - Reads and displays the Kalman-estimated robot state
@@ -14,33 +14,29 @@ The teleoperation system has three main components:
 ### Data Flow
 
 ```
-┌─────────────┐
-│  Teleoperation │  [User inputs: "0.5 0.2"]
-│  Input Prompt   │
-└────────┬────┘
+┌─────────────────────┐
+│  Teleoperation Input  │  
+│  Prompt or Motor      │  [User: "0.5 0.2" or "1.0 1.0"]
+└────────┬─────────────┘
          │ MQTT: robobot/teleop/cmd
-         │ {"linear_velocity": 0.5, "angular_velocity": 0.2}
+         │ {"linear_velocity": 0.5, "angular_velocity": 0.2, 
+         │  "v_left": 0.42, "v_right": 0.58, "timestamp": "..."}
          │
          ├──────────────────────┬────────────────────────┐
          │                      │                        │
     ┌────▼────┐          ┌────▼────┐          ┌─────▼──┐
     │  Kalman  │          │  Motor   │          │ Sensors│
-    │  Filter  │          │ Control  │          │ (IMU,  │
-    │          │          │          │          │ Encoder)
+    │  Filter  │          │  Control │          │ (IMU,  │
+    │  (State  │          │  (RC cmd)│          │ Encoder)
+    │ Estimate)│          │          │          │        │
     └────┬────┘          └────┬────┘          └─────┬──┘
          │                    │                     │
-         │ State estimate      │ Motor commands      │ Sensor readings
+         │ State estimate      │ Motor PWM/commands │ Sensor readings
          │                    │                     │
          └─────────┬────────────────┬──────────────┘
                    │                │
               MQTT publish     MQTT publish
               robobot/state    robobot/sensors
-                   │
-         ┌─────────▼──────────┐
-         │  kalman_output.py  │
-         │  (Display merged   │
-         │   state estimate)  │
-         └────────────────────┘
 ```
 
 ## Setup: Two Terminal Method
@@ -60,43 +56,31 @@ The system will connect to MQTT and wait for teleoperation commands.
 
 In a separate terminal, run the teleoperation input client:
 
+#### Velocity Mode (Default)
 ```bash
 cd mqtt_python
 python3 teleop_input.py -i localhost
 ```
 
-You'll see:
+Enter linear velocity (m/s) and angular velocity (rad/s):
 ```
-% Connecting to MQTT broker localhost:1883...
-% Connected to MQTT Broker at localhost:1883
-
-% ===== Teleoperation Input (Velocity Prompt) =====
-% Connected and ready for velocity commands
-
-% Teleoperation Input Commands:
-% ==============================
-% Enter velocity input as two space-separated values:
-%   <linear_vel> <angular_vel>
-%
-% Examples:
-%   0.5 0.0      -> Forward at 0.5 m/s
-%   -0.5 0.0     -> Backward at 0.5 m/s
-%   0.0 0.5      -> Turn left at 0.5 rad/s
-%   0.0 -0.5     -> Turn right at 0.5 rad/s
-%   0.3 0.3      -> Forward-left
-%   0.3 -0.3     -> Forward-right
-%   0.0 0.0      -> STOP
-%
-% Limits: linear_vel [-1.0, 1.0] m/s
-%         angular_vel [-2.0, 2.0] rad/s
-%
-% Commands:
-%   help, h, ?   -> Show this help
-%   q, quit      -> Exit
-% ==============================
-
-Enter velocity [linear angular] or command:
+Enter velocity [lin ang] or command: 0.5 0.2
+✓ Published: linear=0.500, angular=0.200
 ```
+
+#### Motor Mode (Direct left/right motor velocities)
+```bash
+cd mqtt_python
+python3 teleop_input.py -i localhost -m
+```
+
+Enter left and right motor velocities (m/s):
+```
+Enter velocity [L/R m/s] or command: 1.0 1.0
+✓ Published motor: L=1.000, R=1.000 m/s
+```
+
+You'll see interactive prompts for each mode with examples and limits.
 
 ### Terminal 3 (Optional): Monitor Kalman State
 
@@ -109,46 +93,89 @@ python3 kalman_output.py -i localhost
 
 ## Usage Examples
 
-### Example 1: Drive Forward
+### Velocity Mode (Linear / Angular)
+
+#### Example 1: Drive Forward
 
 ```
-Enter velocity [linear angular] or command: 0.5 0.0
-✓ Published: [0.500, 0.000] -> robobot/teleop/cmd
+Enter velocity [lin ang] or command: 0.5 0.0
+✓ Published: linear=0.500, angular=0.000
 ```
 
 The robot drives forward at 0.5 m/s.
 
-### Example 2: Turn Left
+#### Example 2: Turn Left
 
 ```
-Enter velocity [linear angular] or command: 0.0 0.5
-✓ Published: [0.000, 0.500] -> robobot/teleop/cmd
+Enter velocity [lin ang] or command: 0.0 0.5
+✓ Published: linear=0.000, angular=0.500
 ```
 
 The robot turns left at 0.5 rad/s.
 
-### Example 3: Drive Forward-Right
+#### Example 3: Drive Forward-Right
 
 ```
-Enter velocity [linear angular] or command: 0.4 -0.3
-✓ Published: [0.400, -0.300] -> robobot/teleop/cmd
+Enter velocity [lin ang] or command: 0.4 -0.3
+✓ Published: linear=0.400, angular=-0.300
 ```
 
 The robot drives forward while turning right.
 
-### Example 4: Stop
+#### Example 4: Stop
 
 ```
-Enter velocity [linear angular] or command: 0.0 0.0
-✓ Published: [0.000, 0.000] -> robobot/teleop/cmd
+Enter velocity [lin ang] or command: 0.0 0.0
+✓ Published: linear=0.000, angular=0.000
 ```
 
-The robot stops.
+### Motor Mode (Direct Left/Right Motor Velocities)
 
-### Example 5: Show Help
+Start with `-m` flag:
+```bash
+python3 teleop_input.py -i localhost -m
+```
+
+#### Example 1: Both Motors Forward at 1.0 m/s
 
 ```
-Enter velocity [linear angular] or command: help
+Enter velocity [L/R m/s] or command: 1.0 1.0
+✓ Published motor: L=1.000, R=1.000 m/s
+```
+
+Both wheels drive forward.
+
+#### Example 2: Turn Right (differential speed)
+
+```
+Enter velocity [L/R m/s] or command: 0.5 1.0
+✓ Published motor: L=0.500, R=1.000 m/s
+```
+
+Left wheel slower, right wheel faster → robot turns right.
+
+#### Example 3: Spin Left (opposite speeds)
+
+```
+Enter velocity [L/R m/s] or command: -0.5 0.5
+✓ Published motor: L=-0.500, R=0.500 m/s
+```
+
+Motors in opposite directions → robot spins in place.
+
+#### Example 4: Stop
+
+```
+Enter velocity [L/R m/s] or command: 0.0 0.0
+✓ Published motor: L=0.000, R=0.000 m/s
+```
+
+### General Commands
+
+In either mode, type:
+```
+help     -> Show velocity examples and limits
+q, quit  -> Exit teleoperation
 ```
 
 ## Configuration Options
@@ -156,15 +183,32 @@ Enter velocity [linear angular] or command: help
 ### teleop_input.py
 
 ```bash
+# Velocity mode (default): linear and angular velocities
+python3 teleop_input.py -i localhost
+
+# Motor mode: direct left and right motor velocities
+python3 teleop_input.py -i localhost -m
+
 # Custom MQTT broker host and port
 python3 teleop_input.py -i 10.197.217.80 -p 1883
 
-# Adjust velocity limits
+# Adjust velocity limits (velocity mode)
 python3 teleop_input.py --max-vel 0.8 --max-turn 1.5
 
-# Combined
-python3 teleop_input.py -i 192.168.1.100 --max-vel 1.2 --max-turn 2.5
+# Motor mode with custom host
+python3 teleop_input.py -m -i 192.168.1.100
+
+# All options combined
+python3 teleop_input.py -m -i 192.168.1.100 -p 1883 --max-vel 1.2 --max-turn 2.5
 ```
+
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `-i, --host` | localhost | MQTT broker hostname |
+| `-p, --port` | 1883 | MQTT broker port |
+| `-m, --motor` | False | Enable motor mode (direct L/R velocities) |
+| `--max-vel` | 1.0 | Max linear velocity (m/s) |
+| `--max-turn` | 2.0 | Max angular velocity (rad/s) |
 
 ### kalman_output.py
 
@@ -182,23 +226,30 @@ python3 kalman_output.py -i localhost -r 0.1
 
 | Topic | Direction | Content | Source |
 |-------|-----------|---------|--------|
-| `robobot/teleop/cmd` | → | Velocity input `{linear_velocity, angular_velocity}` | teleop_input.py |
+| `robobot/teleop/cmd` | → | Velocity input with motors `{linear_velocity, angular_velocity, v_left, v_right, timestamp}` | teleop_input.py |
 | `robobot/state` | ← | Kalman-filtered state estimate | skalman.py |
-| `robobot/cmd/ti` | → | Motor control commands (`rc {v} {w}`) | mqtt-client.py |
+| `robobot/cmd/ti` | → | Motor control commands (`rc {v} {w}`) sent directly from teleoperation | uservice.py |
 | `robobot/sensors/*` | ← | Raw sensor data (IMU, encoders) | Robot hardware |
 
 ### Processing Flow
 
 1. **Teleoperation Input**
-   - User enters: `0.5 0.2`
+   - **Velocity Mode**: User enters: `0.5 0.2` → linear_velocity=0.5, angular_velocity=0.2
+   - **Motor Mode**: User enters: `1.0 1.0` → v_left=1.0, v_right=1.0 (converted to linear/angular)
    - Published to: `robobot/teleop/cmd`
-   - Message: `{"linear_velocity": 0.5, "angular_velocity": 0.2, "timestamp": "..."}`
+   - Message includes both linear/angular and v_left/v_right for flexibility
 
-2. **Kalman Filter Processing** (skalman.py)
+2. **Direct Motor Control** (uservice.py)
+   - `uservice.py` intercepts `robobot/teleop/cmd`
+   - Immediately sends `rc {linear_velocity} {angular_velocity}` to teensy_interface
+   - Enables real-time motor response without waiting for Kalman filter cycle
+
+3. **Kalman Filter Processing** (skalman.py)
    - Receives teleoperation input via `uservice.on_message()`
    - Calls: `kalman.decode_teleoperation(msg)`
    - Uses input as control input for model-based state prediction
    - Sensor readings update the state estimate (fusion)
+   - Publishes merged state estimate to `robobot/state`
 
 3. **Motor Control** (mqtt-client.py)
    - Converts velocity commands to motor control signals
@@ -211,6 +262,29 @@ python3 kalman_output.py -i localhost -r 0.1
      - Position (x, y, heading)
      - Velocity (linear, angular)
      - Sensor readings (left/right wheel encoders, IMU)
+
+## Recent Updates & Fixes
+
+### Motor Control Integration (Direct RC Commands)
+- Teleoperation commands now directly send `rc` motor commands to the teensy interface
+- Eliminates the control lag between teleoperation input and motor response
+- Both channels publish to MQTT: Kalman filter (for state estimation) and motor controller (for immediate action)
+
+### Dual Input Modes
+- **Velocity Mode** (default): Input linear velocity (m/s) and angular velocity (rad/s)
+  - Useful for mission planning and high-level control
+- **Motor Mode** (`-m` flag): Input left and right motor velocities directly
+  - Better for hands-on teleoperation and debugging motor response
+
+### Kalman Filter Robustness
+- Fixed startup race condition where MQTT messages could arrive before Kalman filter initialization
+- Kalman filter now auto-initializes if measurements arrive early
+- Prevents `"NoneType' object has no attribute 'x"` crash
+
+### Paho MQTT v2 Compatibility
+- Updated teleoperation input to support both paho-mqtt v1 and v2
+- Uses `CallbackAPIVersion.VERSION1` for v2 to maintain compatibility
+- Automatic fallback for v1 installations
 
 ## Troubleshooting
 

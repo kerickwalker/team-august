@@ -292,6 +292,17 @@ class UService:
     elif topic == "robobot/teleop/cmd":
       # Handle teleoperation commands
       kalman.decode_teleoperation(msg)
+      # Also send direct RC motor command to teensy for immediate response
+      try:
+        import json
+        data = json.loads(msg)
+        if 'linear_velocity' in data and 'angular_velocity' in data:
+          lin_vel = float(data.get('linear_velocity', 0.0))
+          ang_vel = float(data.get('angular_velocity', 0.0))
+          # Send RC command: rc <linear_velocity> <angular_velocity>
+          service.send("robobot/cmd/ti", f"rc {lin_vel:.3f} {ang_vel:.3f}")
+      except Exception as e:
+        print(f"# Teleoperation RC command failed: {e}")
       used = True
     if not used:
       print("% Service:: message not used " + topic + " " + msg)
