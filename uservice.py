@@ -72,6 +72,9 @@ class UService:
   confirmedNotMaster = False
   parser = argparse.ArgumentParser(description='Robobot app 2024')
 
+  def is_quiet(self):
+    return hasattr(self, "args") and bool(getattr(self.args, "silent", False))
+
   def setup(self, mqtt_host):
     #
     print(self.startTime.strftime("Started %Y-%m-%d %H:%M:%S.%f"))
