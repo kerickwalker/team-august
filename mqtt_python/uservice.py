@@ -102,6 +102,9 @@ class UService:
                 help='Turn 180 degrees (Pi) and stop')
     self.parser.add_argument('-e', '--edge', action='store_true',
                 help='Find line and follow the left edge')
+    self.parser.add_argument('--motpwm', type=float, nargs=3, default=None,
+          metavar=('LEFT', 'RIGHT', 'DURATION_S'),
+          help='One-shot motor command as left right duration_s (handled as velocity-mode test)')
     self.parser.add_argument('-u', '--usestate', type=int, default = 0,
                 help='set mission state to this value')
     self.args = self.parser.parse_args()
