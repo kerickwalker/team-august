@@ -7,7 +7,44 @@ import time as t
 
 import numpy as np
 
-from Kalman_filter_seperate_files.Kalman_class import KalmanFilter
+try:
+    from Kalman_filter_seperate_files.Kalman_class import KalmanFilter
+except ModuleNotFoundError:
+    class KalmanFilter:
+        """Minimal linear Kalman filter fallback.
+
+        This fallback is used when the external Kalman module is not present
+        on the runtime machine. It supports the subset of API used by SKalman.
+        """
+
+        def __init__(self, A, B, H, Q, R):
+            self.A = np.array(A, dtype=float)
+            self.B = np.array(B, dtype=float)
+            self.H = np.array(H, dtype=float)
+            self.Q = np.array(Q, dtype=float)
+            self.R = np.array(R, dtype=float)
+
+            n = self.A.shape[0]
+            self.x = np.zeros((n, 1), dtype=float)
+            self.P = np.eye(n, dtype=float)
+
+        def predict(self, u=None):
+            if u is None:
+                u = np.zeros((self.B.shape[1], 1), dtype=float)
+            u = np.array(u, dtype=float).reshape((self.B.shape[1], 1))
+            self.x = self.A @ self.x + self.B @ u
+            self.P = self.A @ self.P @ self.A.T + self.Q
+
+        def update(self, z):
+            z = np.array(z, dtype=float).reshape((self.H.shape[0], 1))
+            y = z - self.H @ self.x
+            S = self.H @ self.P @ self.H.T + self.R
+            # Use pseudo-inverse for robustness when S is near-singular.
+            K = self.P @ self.H.T @ np.linalg.pinv(S)
+            self.x = self.x + K @ y
+            I = np.eye(self.P.shape[0], dtype=float)
+            self.P = (I - K @ self.H) @ self.P
+
 from imu_derived_measurements import imu_derived
 
 
