@@ -83,25 +83,39 @@ class SKalman:
 
     STATE_NAMES = ["x", "y", "z", "velocity", "angular_velocity", "yaw", "pitch"]
     UPDATE_TOPICS = {"T0/pose", "T0/vel", "T0/gyro", "T0/acc", "T0/yawg", "T0/mag", "T0/vision_pose"}
-    # Fixed stacked measurement channels (m = 16).
-    # encoder x
-    # encoder y
-    # encoder z
-    # encoder velocity
-    # gyro angular velocity
-    # encoder yaw
-    # encoder angular velocity
-    # vision x
-    # vision y
-    # vision z
-    # vision yaw
-    # accelerometer-integrated velocity
-    # IMU-integrated yaw
-    # magnetometer-derived yaw
-    # accelerometer-derived pitch
-    # magnetometer-derived pitch
-    # vision pitch
+    # Fixed stacked measurement channels (expanded to 20 for all IMU-derived).
+    # ========== ENCODER/ODOMETRY (0-6) ==========
+    # 0: encoder x
+    # 1: encoder y
+    # 2: encoder z (fixed to 0)
+    # 3: encoder velocity
+    # 4: gyro angular velocity
+    # 5: encoder yaw
+    # 6: encoder angular velocity
+    #
+    # ========== VISION (7-11) - DISABLED when not available ==========
+    # 7: vision x
+    # 8: vision y
+    # 9: vision z
+    # 10: vision yaw
+    # 11: vision pitch
+    #
+    # ========== IMU DERIVED - ACCELEROMETER (12-14) ==========
+    # 12: accel_velocity (integrated from acc_x)
+    # 13: accel_pitch (atan2(acc_x, -acc_z))
+    # 14: accel_pitch_interval (dt of last update)
+    #
+    # ========== IMU DERIVED - GYRO (15-17) ==========
+    # 15: gyro_yaw_integrated (IMU integrated yaw from gyro)
+    # 16: gyro_yaw_interval (dt of last update)
+    # 17: gyro_omega_z (raw gyro Z rate, same as encoder omega)
+    #
+    # ========== IMU DERIVED - MAGNETOMETER (18-19) - DISABLED ==========
+    # 18: mag_yaw (magnetometer heading - DISABLED, hardware not working)
+    # 19: mag_pitch (magnetometer pitch - DISABLED, hardware not working)
+    #
     MEAS_NAMES = [
+        # Encoder/Odometry
         "pose_x_enc",
         "pose_y_enc",
         "pose_z_enc",
@@ -109,16 +123,23 @@ class SKalman:
         "omega_gyro",
         "yaw_enc",
         "omega_enc",
+        # Vision (disabled when inactive)
         "pose_x_vision",
         "pose_y_vision",
         "pose_z_vision",
         "yaw_vision",
-        "vel_acc_integrated",
-        "yaw_imu_integrated",
-        "yaw_mag_derived",
-        "pitch_acc_derived",
-        "pitch_mag_derived",
         "pitch_vision",
+        # IMU Derived - Accelerometer
+        "vel_acc_integrated",
+        "pitch_acc_derived",
+        "acc_pitch_interval",
+        # IMU Derived - Gyro
+        "yaw_gyro_integrated",
+        "gyro_yaw_interval",
+        "omega_gyro_z",
+        # IMU Derived - Magnetometer (DISABLED)
+        "yaw_mag_derived",
+        "pitch_mag_derived",
     ]
 
     def __init__(self):
@@ -184,46 +205,72 @@ class SKalman:
         self.last_u = np.zeros((2, 1), dtype=float)
 
     def _fixed_measurement_matrix(self) -> np.ndarray:
-        # One fixed H for all updates; duplicate rows model multiple sensors observing same state.
+        # One fixed H for all updates; expanded to 20 measurements.
+        # STATE: [x, y, z, velocity, angular_velocity, yaw, pitch]
         H = np.zeros((len(self.MEAS_NAMES), len(self.STATE_NAMES)), dtype=float)
+        
+        # ========== ENCODER/ODOMETRY (0-6) ==========
         H[0, 0] = 1.0  # encoder x
         H[1, 1] = 1.0  # encoder y
         H[2, 2] = 1.0  # encoder z
         H[3, 3] = 1.0  # encoder velocity
         H[4, 4] = 1.0  # gyro angular velocity
         H[5, 5] = 1.0  # encoder yaw
-        H[6, 4] = 1.0  # encoder angular velocity
-        H[7, 0] = 0.0  # vision x
-        H[8, 1] = 0.0  # vision y
-        H[9, 2] = 0.0  # vision z
-        H[10, 5] = 0.0  # vision yaw
-        H[11, 3] = 0.0  # integrated-acc velocity
-        H[12, 5] = 0.0  # imu-integrated yaw
-        H[13, 5] = 0.0  # magnetometer-derived yaw
-        H[14, 6] = 1.0  # accelerometer-derived pitch
-        H[15, 6] = 0.0  # magnetometer-derived pitch 
-        H[16, 6] = 0.0  # vision pitch
+        H[6, 4] = 1.0  # encoder angular velocity (duplicate omega)
+        
+        # ========== VISION (7-11) - DISABLED when not available ==========
+        # These measure x, y, z, yaw, pitch but will be set to 0 with infinite variance
+        H[7, 0] = 0.0   # vision x (disabled)
+        H[8, 1] = 0.0   # vision y (disabled)
+        H[9, 2] = 0.0   # vision z (disabled)
+        H[10, 5] = 0.0  # vision yaw (disabled)
+        H[11, 6] = 0.0  # vision pitch (disabled)
+        
+        # ========== IMU DERIVED - ACCELEROMETER (12-14) ==========
+        H[12, 3] = 1.0  # accel_velocity measures linear velocity
+        H[13, 6] = 1.0  # accel_pitch measures pitch
+        # H[14] is acc_pitch_interval - not a state measurement, just metadata
+        
+        # ========== IMU DERIVED - GYRO (15-17) ==========
+        H[15, 5] = 1.0  # gyro_yaw_integrated measures yaw
+        # H[16] is gyro_yaw_interval - not a state measurement, just metadata
+        H[17, 4] = 1.0  # gyro_omega_z measures angular velocity
+        
+        # ========== IMU DERIVED - MAGNETOMETER (18-19) - DISABLED ==========
+        # H[18] = mag_yaw (disabled - hardware not working)
+        # H[19] = mag_pitch (disabled - hardware not working)
+        H[18, 5] = 0.0  # mag_yaw disabled
+        H[19, 6] = 0.0  # mag_pitch disabled
+        
         return H
 
     def _base_measurement_variances(self):
         return [
-            0.05,  # pose_x_enc
-            0.05,  # pose_y_enc
-            4.0,  # pose_z_enc
-            0.08,  # vel_enc
-            0.08,  # omega_gyro
-            0.05,  # yaw_enc
-            0.10,  # omega_enc
-            0.03,  # pose_x_vision
-            0.03,  # pose_y_vision
-            0.10,  # pose_z_vision
-            0.04,  # yaw_vision
-            0.20,  # vel_acc_integrated
-            0.10,  # yaw_imu_integrated
-            0.20,  # yaw_mag_derived
-            0.12,  # pitch_acc_derived (accelerometer-based)
-            0.20,  # pitch_mag_derived (magnetometer-based)
-            0.08,  # pitch_vision
+            # ========== ENCODER/ODOMETRY (0-6) ==========
+            0.05,   # 0: pose_x_enc
+            0.05,   # 1: pose_y_enc
+            4.0,    # 2: pose_z_enc
+            0.08,   # 3: vel_enc
+            0.08,   # 4: omega_gyro
+            0.05,   # 5: yaw_enc
+            0.10,   # 6: omega_enc
+            # ========== VISION (7-11) - ALL DISABLED ==========
+            1e6,    # 7: pose_x_vision (DISABLED - no vision system)
+            1e6,    # 8: pose_y_vision (DISABLED - no vision system)
+            1e6,    # 9: pose_z_vision (DISABLED - no vision system)
+            1e6,    # 10: yaw_vision (DISABLED - no vision system)
+            1e6,    # 11: pitch_vision (DISABLED - no vision system)
+            # ========== IMU DERIVED - ACCELEROMETER (12-14) ==========
+            0.20,   # 12: vel_acc_integrated (from accel integration)
+            0.12,   # 13: pitch_acc_derived (from atan2(acc_x, -acc_z))
+            1.0,    # 14: acc_pitch_interval (time delta, not a measurable state)
+            # ========== IMU DERIVED - GYRO (15-17) ==========
+            0.10,   # 15: yaw_gyro_integrated (from gyro integration)
+            1.0,    # 16: gyro_yaw_interval (time delta, not a measurable state)
+            0.08,   # 17: omega_gyro_z (raw gyro Z rate)
+            # ========== IMU DERIVED - MAGNETOMETER (18-19) - ALL DISABLED ==========
+            1e6,    # 18: yaw_mag_derived (DISABLED - hardware reading 0.0)
+            1e6,    # 19: pitch_mag_derived (DISABLED - hardware reading 0.0)
         ]
 
     def _measurement_vector_and_cov(self, predicted_state: np.ndarray):
@@ -240,77 +287,80 @@ class SKalman:
         variances = self._base_measurement_variances()
         missing_var = 1e6
 
-        # Encoder/odometry channels.
-        z[0, 0] = float(pose.pose[0])
-        z[1, 0] = float(pose.pose[1])
-        z[2, 0] = 0.0
-        z[3, 0] = float(pose.velocity())
+        # ========== ENCODER/ODOMETRY (0-6) ==========
+        z[0, 0] = float(pose.pose[0])                      # encoder x
+        z[1, 0] = float(pose.pose[1])                      # encoder y
+        z[2, 0] = 0.0                                       # encoder z (fixed)
+        z[3, 0] = float(pose.velocity())                   # encoder velocity
+        
         if imu.gyroUpdCnt > 0:
-            z[4, 0] = float(imu.gyro[2])
+            z[4, 0] = float(imu.gyro[2])                   # gyro omega Z
         else:
-            z[4, 0] = float(x_pred[4, 0])
+            z[4, 0] = 0.0
             variances[4] = missing_var
-        z[5, 0] = _unwrap_near(float(pose.pose[2]), yaw_ref)
-        z[6, 0] = float(pose.turnrate())
+        
+        z[5, 0] = _unwrap_near(float(pose.pose[2]), yaw_ref)  # encoder yaw
+        z[6, 0] = float(pose.turnrate())                   # encoder omega (turnrate)
 
-        # Vision channels (same states observed by a second independent sensor).
-        if self.vision_pose_count > 0:
-            z[7, 0] = float(self.vision_pose[0, 0])
-            z[8, 0] = float(self.vision_pose[1, 0])
-            z[9, 0] = float(self.vision_pose[2, 0])
-            z[10, 0] = _unwrap_near(float(self.vision_pose[3, 0]), yaw_ref)
-            z[16, 0] = _unwrap_near(float(self.vision_pose[4, 0]), pitch_ref)
-        else:
-            z[7, 0] = float(x_pred[0, 0])
-            z[8, 0] = float(x_pred[1, 0])
-            z[9, 0] = float(x_pred[2, 0])
-            z[10, 0] = float(x_pred[5, 0])
-            z[16, 0] = float(x_pred[6, 0])
-            variances[7] = missing_var
-            variances[8] = missing_var
-            variances[9] = missing_var
-            variances[10] = missing_var
-            variances[16] = missing_var
+        # ========== VISION (7-11) ==========
+        # Vision system not active: always zero with infinite variance
+        z[7, 0] = 0.0   # vision x (DISABLED)
+        z[8, 0] = 0.0   # vision y (DISABLED)
+        z[9, 0] = 0.0   # vision z (DISABLED)
+        z[10, 0] = 0.0  # vision yaw (DISABLED)
+        z[11, 0] = 0.0  # vision pitch (DISABLED)
+        variances[7] = missing_var
+        variances[8] = missing_var
+        variances[9] = missing_var
+        variances[10] = missing_var
+        variances[11] = missing_var
 
-        # Extra velocity from accelerometer integration.
+        # ========== IMU DERIVED - ACCELEROMETER (12-14) ==========
+        # Velocity from accelerometer integration (imu_derived.acc_velocity)
         if imu_derived.acc_velocity_upd_cnt > 0:
-            z[11, 0] = float(imu_derived.acc_velocity)
+            z[12, 0] = float(imu_derived.acc_velocity)     # accel velocity
         else:
-            z[11, 0] = float(x_pred[3, 0])
-            variances[11] = missing_var
-
-        # Extra yaw from gyro integration.
-        if imu.yawgUpdCnt > 0:
-            z[12, 0] = _unwrap_near(float(imu.yawg), yaw_ref)
-        else:
-            z[12, 0] = float(x_pred[5, 0])
+            z[12, 0] = 0.0
             variances[12] = missing_var
-
-        # Extra yaw from magnetometer heading.
-        if imu_derived.mag_yaw_upd_cnt > 0:
-            z[13, 0] = _unwrap_near(float(imu_derived.mag_yaw), yaw_ref)
-        else:
-            z[13, 0] = float(x_pred[5, 0])
-            variances[13] = missing_var
-
-        # Pitch from accelerometer (NEW - index 14)
-        # pitch = atan2(acc_x, sqrt(acc_y^2 + acc_z^2))
+        
+        # Pitch from accelerometer: atan2(acc_x, -acc_z)
         if imu.accUpdCnt > 0:
             acc_x = float(imu.acc[0])
-            acc_y = float(imu.acc[1])
             acc_z = float(imu.acc[2])
-            pitch_acc = math.atan2(acc_x, math.sqrt(acc_y**2 + acc_z**2))
-            z[14, 0] = _unwrap_near(pitch_acc, pitch_ref)
+            pitch_acc = math.atan2(acc_x, -acc_z)
+            z[13, 0] = _unwrap_near(pitch_acc, pitch_ref)  # accel pitch
         else:
-            z[14, 0] = float(x_pred[6, 0])
-            variances[14] = missing_var
+            z[13, 0] = 0.0
+            variances[13] = missing_var
+        
+        # Accelerometer pitch update interval (metadata, not a state)
+        z[14, 0] = float(imu_derived.acc_pitch_interval) if imu_derived.acc_pitch_upd_cnt > 0 else 0.0
 
-        # Pitch from magnetometer (RESTORED - index 15)
-        if imu_derived.mag_pitch_upd_cnt > 0:
-            z[15, 0] = _unwrap_near(float(imu_derived.mag_pitch), pitch_ref)
+        # ========== IMU DERIVED - GYRO (15-17) ==========
+        # Yaw from gyro integration (imu.yawg)
+        if imu.yawgUpdCnt > 0:
+            z[15, 0] = _unwrap_near(float(imu.yawg), yaw_ref)  # gyro integrated yaw
         else:
-            z[15, 0] = float(x_pred[6, 0])
+            z[15, 0] = 0.0
             variances[15] = missing_var
+        
+        # Gyro yaw update interval (metadata, not a state)
+        # Using imu_derived rhythm since imu doesn't track it
+        z[16, 0] = 0.0  # No timestamp exposed; leave as 0
+        
+        # Gyro omega Z (same as channel 4, but explicitly from gyro integration tracking)
+        if imu.gyroUpdCnt > 0:
+            z[17, 0] = float(imu.gyro[2])                  # gyro omega Z
+        else:
+            z[17, 0] = 0.0
+            variances[17] = missing_var
+
+        # ========== IMU DERIVED - MAGNETOMETER (18-19) - DISABLED ==========
+        # Magnetometer hardware not working (reading all zeros), disabled entirely
+        z[18, 0] = 0.0  # mag yaw (DISABLED - hardware broken)
+        z[19, 0] = 0.0  # mag pitch (DISABLED - hardware broken)
+        variances[18] = missing_var
+        variances[19] = missing_var
 
         R = np.diag(variances).astype(float)
         return z, R
