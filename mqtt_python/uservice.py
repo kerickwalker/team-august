@@ -298,6 +298,10 @@ class UService:
           if dt >= self.masterClaimGraceSec:
             self.confirmedNotMaster = True
             print("% I am not robot master, quitting!")
+            try:
+              self.clientOut.publish("robobot/cmd/ti", "rc 0 0")
+            except Exception:
+              pass
         # print(f"% got master {msg} my ID is {str(self.startTime)}")
         pass
       else:

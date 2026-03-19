@@ -26,18 +26,28 @@ import time as t
 from datetime import *
 
 gpioFound = False
+_busy_pins = []
 try:
   import RPi.GPIO as GPIO
   GPIO.setmode(GPIO.BCM)
-  list = [6, 12, 13, 16, 19, 26, 21, 20]  # 6=red/stop, 13=green/start
-  GPIO.setup(list, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+  for _pin in [6, 12, 13, 16, 19, 26, 21, 20]:  # 6=red/stop, 13=green/start
+    try:
+      GPIO.setup(_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    except Exception:
+      _busy_pins.append(_pin)
   gpioFound = True
   try:
     from uservice import service
     if not service.is_quiet():
-      print("% BCM GPIO found OK")
+      if _busy_pins:
+        print(f"% BCM GPIO found OK (busy/skipped pins: {_busy_pins})")
+      else:
+        print("% BCM GPIO found OK")
   except Exception:
-    print("% BCM GPIO found OK")
+    if _busy_pins:
+      print(f"% BCM GPIO found OK (busy/skipped pins: {_busy_pins})")
+    else:
+      print("% BCM GPIO found OK")
 except:
   print("% No GPIO (not on a Pi?) - continue without GPIO support")
   pass
@@ -54,8 +64,12 @@ class SGpio:
           print("% GPIO setup start")
         GPIO.setwarnings(False)
         # list = [13, 12, 16, 19, 26, 21, 20]
-        GPIO.setup(6, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        for _p in [6, 13]:  # 6=stop, 13=start
+          try:
+            GPIO.setup(_p, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+          except Exception:
+            if not service.is_quiet():
+              print(f"% GPIO pin {_p} busy/unavailable - skipped")
         if not service.is_quiet():
           print("% GPIO setup finished (pin 6=stop, 13=start)")
         self.onPi = True

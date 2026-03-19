@@ -410,3 +410,31 @@ In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 
 - `notes/line_following.md` — new section "Mission and crossing behavior (implemented)".
 - `notes/change_log.md` — this entry.
 
+---
+
+## 2026-03-19: GPIO fix, master stop, teensy_interface auto-management
+
+### GPIO per-pin init fix (sgpio.py)
+- **Root cause:** GPIO 13 (hardware PWM1, claimed by `ip_disp`) caused `GPIO.setup()` of the full 8-pin list to throw, leaving `gpioFound = False` and all GPIO disabled.
+- **Fix:** Each pin is now set up individually in a `try/except`; busy/unavailable pins are skipped and reported. `gpioFound` is set `True` as long as the GPIO module loaded, so pin 6 (red stop) still works even when pin 13 is busy.
+- **Note:** GPIO 13 is used by `ip_disp` to monitor the green button and run `mission_start.bash`. `test_start_button()` in Python will always return False while `ip_disp` holds pin 13 — that is expected and fine.
+
+### Stop robot on master loss (uservice.py)
+- When `confirmedNotMaster` is set (grace period expired), `clientOut.publish("robobot/cmd/ti", "rc 0 0")` is called directly (bypassing `service.send()` which refuses to send when not master). Robot now stops immediately instead of continuing the last command until the Python process exits.
+
+### teensy_interface auto-management (mqtt-linefollow.py)
+- `start_teensy_interface()`: kills any running `teensy_interface` instance (`pkill -x teensy_interfac`, 15-char kernel comm limit), waits 1.5 s for USB release, starts a fresh subprocess, logs its output to `teensy_interface/build/out_console.txt`, waits 3 s for full init, and checks the process is still alive. Guarantees a clean master every run.
+- `stop_teensy_interface()`: sends SIGINT to the subprocess, waits up to 3 s, force-kills if needed, always calls `wait()` to reap the child and prevent zombie processes.
+- Called automatically in the `__main__` block: `start_teensy_interface()` before `service.setup()`, `stop_teensy_interface()` after `service.terminate()`.
+- **`mission_start.bash` compatibility:** `ip_disp` monitors GPIO 13 and runs the bash script on button press; the script starts `mqtt-linefollow.py` in the background. Auto-management works correctly in this path too.
+
+### Master system explanation
+- `teensy_interface` tracks the current master by the Python client's start timestamp (sent in `alive` messages). Only one client can be master at a time.
+- If you kill and restart `teensy_interface` while keeping the MQTT broker running, the stale master timestamp persists; new Python sessions see a mismatch and quit after 12 s. Auto-management solves this by always restarting `teensy_interface` fresh.
+- On robot reboot both broker and `teensy_interface` start clean, so the first Python session always wins.
+
+### Modified files
+- `mqtt_python/sgpio.py` — per-pin GPIO setup with individual try/except; busy pins reported and skipped.
+- `mqtt_python/uservice.py` — `clientOut.publish("rc 0 0")` on master loss.
+- `mqtt_python/mqtt-linefollow.py` — `start_teensy_interface()`, `stop_teensy_interface()`; zombie-safe `wait()` calls.
+
