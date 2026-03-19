@@ -26,8 +26,6 @@
 #import sys
 #import threading
 import time as t
-import subprocess
-import signal
 import os
 #import select
 import numpy as np
@@ -43,6 +41,7 @@ from sedge import edge
 from sgpio import gpio
 from scam import cam
 from uservice import service
+from uteensy import start_teensy_interface, stop_teensy_interface
 
 ############################################################
 
@@ -359,6 +358,43 @@ def driveDistance(meters, velocity=0.2):
   if not service.is_quiet():
     print("% Driving forward ------------------------- end")
 
+def driveArc(angle_deg, radius_m, direction, velocity=0.2):
+  """Drive a circular arc.
+  angle_deg : total heading change in degrees (e.g. 270 for a roundabout exit on the same side)
+  radius_m  : radius of the arc in metres (robot path radius, not kerb radius)
+  direction : 'left' or 'right'
+  velocity  : forward speed in m/s (default 0.2)
+  turn_rate is computed as velocity / radius_m; stop when odometry heading change >= angle_rad.
+  """
+  angle_rad = np.radians(angle_deg)
+  sign = 1.0 if direction == "left" else -1.0
+  turn_rate = sign * velocity / radius_m
+  state = 0
+  pose.tripBreset()
+  if not service.is_quiet():
+    print(f"% driveArc: {angle_deg:.0f}° {direction}, R={radius_m:.2f} m, v={velocity:.2f} m/s -> w={turn_rate:.3f} rad/s")
+  service.send("robobot/cmd/T0", "leds 16 0 100 0")
+  while not service.stop:
+    if state == 0:
+      service.send("robobot/cmd/ti", f"rc {velocity:.3f} {turn_rate:.3f}")
+      state = 1
+    elif state == 1:
+      if abs(pose.tripBh) >= angle_rad:
+        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+        state = 2
+    elif state == 2:
+      if abs(pose.velocity()) < 0.001 and abs(pose.turnrate()) < 0.001:
+        state = 99
+    else:
+      if not service.is_quiet():
+        print(f"# driveArc: turned {np.degrees(pose.tripBh):.1f}° in {pose.tripBtimePassed():.2f} s")
+      service.send("robobot/cmd/ti", "rc 0.0 0.0")
+      break
+    t.sleep(0.05)
+  service.send("robobot/cmd/T0", "leds 16 0 0 0")
+  if not service.is_quiet():
+    print("% driveArc ------------------------- end")
+
 def driveTurnPi():
   state = 0
   pose.tripBreset()
@@ -512,59 +548,6 @@ def loop():
   pass
 
 ############################################################
-
-TEENSY_INTERFACE_BIN = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "../teensy_interface/build/teensy_interface"
-)
-_ti_proc = None  # subprocess handle for the teensy_interface we started
-
-def start_teensy_interface():
-  """Kill any existing teensy_interface, start a fresh one, and wait for it to connect."""
-  global _ti_proc
-  # kill existing instances so the new session can become master immediately
-  try:
-    subprocess.run(["pkill", "-x", "teensy_interfac"], check=False)  # 15-char kernel comm limit
-    t.sleep(1.5)  # wait for process exit and USB device release
-  except Exception:
-    pass
-  bin_path = os.path.realpath(TEENSY_INTERFACE_BIN)
-  if not os.path.isfile(bin_path):
-    print(f"% start_teensy_interface: binary not found at {bin_path}")
-    return False
-  log_path = os.path.join(os.path.dirname(bin_path), "out_console.txt")
-  log_file = open(log_path, "w")
-  _ti_proc = subprocess.Popen(
-      [bin_path, "-l", "-d"],
-      cwd=os.path.dirname(bin_path),
-      stdout=log_file,
-      stderr=log_file,
-  )
-  print(f"% teensy_interface started (pid {_ti_proc.pid}), log: {log_path}")
-  t.sleep(3.0)  # wait for USB + MQTT connection to fully establish
-  if _ti_proc.poll() is not None:
-    _ti_proc.wait()  # reap zombie so it doesn't linger in process table
-    print(f"% teensy_interface exited early (code {_ti_proc.returncode}) - check {log_path}")
-    _ti_proc = None
-    return False
-  return True
-
-def stop_teensy_interface():
-  """Stop the teensy_interface subprocess we started (if any)."""
-  global _ti_proc
-  if _ti_proc is None:
-    return
-  if _ti_proc.poll() is None:
-    print(f"% stopping teensy_interface (pid {_ti_proc.pid})")
-    _ti_proc.send_signal(signal.SIGINT)
-    try:
-      _ti_proc.wait(timeout=3)
-    except subprocess.TimeoutExpired:
-      _ti_proc.kill()
-      _ti_proc.wait()  # reap after force-kill
-  else:
-    _ti_proc.wait()  # process already exited; reap zombie
-  _ti_proc = None
 
 ############################################################
 
