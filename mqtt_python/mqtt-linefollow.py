@@ -176,7 +176,8 @@ def driveToLine():
   service.send("robobot/cmd/T0", "leds 16 0 100 0") # green
   while not (service.stop):
     if state == 0: # forward towards line
-      if ir.ir[0] < 0.2:
+      # When started with -n/--now, skip waiting for the IR threshold.
+      if getattr(service.args, "now", False) or ir.ir[0] < 0.2:
         service.send("robobot/cmd/T0", "servo 1 -800 100")
         service.send("robobot/cmd/ti","rc 0.2 0.0") # (forward m/s, turn-rate rad/sec)
         service.send("robobot/cmd/T0/","lognow 3") # (start Teensy log)

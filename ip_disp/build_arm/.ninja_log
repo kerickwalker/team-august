@@ -1,0 +1,8 @@
+# ninja log v6
+1	8568	1773930992613462639	CMakeFiles/ip_disp.dir/src/main.cpp.o	7bf003d343d9be55
+2	12650	1773930992613462639	CMakeFiles/ip_disp.dir/src/steensy.cpp.o	bda7b9423c36e573
+2	14774	1773930992617462629	CMakeFiles/ip_disp.dir/src/umqtt.cpp.o	e3fbbe07cd787362
+12651	16230	1773931005265431071	CMakeFiles/ip_disp.dir/src/utime.cpp.o	5688f1075be31cde
+2	18025	1773930992613462639	CMakeFiles/ip_disp.dir/src/sgpiod2.cpp.o	855c0119762eccde
+8571	51340	1773931001185441238	CMakeFiles/ip_disp.dir/src/uservice.cpp.o	635f2cf4bc01a346
+51341	51642	1773931043953335111	ip_disp	5d596b3168a4b3cc

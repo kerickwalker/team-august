@@ -438,3 +438,39 @@ In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 
 - `mqtt_python/uservice.py` — `clientOut.publish("rc 0 0")` on master loss.
 - `mqtt_python/mqtt-linefollow.py` — `start_teensy_interface()`, `stop_teensy_interface()`; zombie-safe `wait()` calls.
 
+### Teensy tilt / gyro “wrong-way” spike — analysis only (no firmware change committed)
+
+**Context**
+- Roundabout / pitch testing used `mqtt-roundabout-test.py` `PITCH_TEST` to print Teensy tilt (`pose.pose[3]`), accelerometer-derived pitch `accAng_deg = atan2(-acc[0], -acc[2])`, gyro Y, and a reconstructed filter input `u`.
+- Logs (e.g. `teensy_interface/build/log_.../log_t0_gyro_1.txt`) and live prints showed a short transient where tilt jumped the “wrong” way before settling.
+- **Conclusion:** the **gyro term** in the Teensy tilt fusion dominates that transient (not a pure acc noise or wrap-only artifact).
+
+**Where it is implemented**
+- `teensy_firmware_8/src/uimu2.cpp` — `UImu2::estimateTilt()`
+- Published angle: `encoder.pose[3]` (radians), exposed on the pose topic as tilt.
+
+**Current firmware math (as of this log entry)**
+- `accAng = atan2(-acc[0], -acc[2])` (rad), unwrapped to stay near previous `encoder.pose[3]`.
+- `gyroTiltRate = gyro[1] * (π/180)` (rad/s).
+- Complementary (bilinear) coefficients use sample period `T = sampleTime_us * 1e-6` and a time constant `tau = 1.0` s:
+  - `b = T / (T + 2*tau)`, `a = -(T - 2*tau) / (T + 2*tau)`
+- **Filter input:** `u = accAng + gyroTiltRate * tau` (i.e. **`tau` is also multiplied into the gyro term**, currently `* 1.0` second).
+- State update: `est = a * encoder.pose[3] + b * u + b * tiltu1` (with extra branches for π folding); then `tiltu1` is updated from `u` (or folded variants using the same gyro scaling).
+
+**Why the gyro can spike “the other way”**
+- The `u` line adds a **gyro-derived contribution** to the angle input every IMU tick. Any short burst on `gyro[1]` (vibration, impact, or real pitch rate) feeds straight into `u`.
+- **Dimensional note (recommended fix to evaluate later):** a per-step gyro increment is usually **`gyroTiltRate * T`** (rad/s × s = rad). Reusing the **filter** time constant `tau` (1 s) in `u` while `T ≈ 1 ms` means the gyro term in `u` is **~1000× larger** than a naive “integrate gyro over one sample” would be, unless that was intentional. That would amplify transients and make `u_deg` in Python (which mirrors `accAng + gyro_deg/s * 1.0`) look like a huge lever on tilt whenever rate spikes — consistent with observed behavior.
+
+**Recommended changes (when you choose to touch firmware) — pick one or combine**
+1. **Strong primary fix:** In `estimateTilt()`, use **`u = accAng + gyroTiltRate * T`** (and the same substitution in the `tiltu1` fold branches where `gyroTiltRate * tau` appears). Keep **`tau` only** in `b` and `a` for the complementary time constant.
+2. **Tuning:** After (1), if tilt is too noisy or slow, adjust **`tau`** in `b`/`a` only (e.g. slightly larger = smoother / more gyro trust in the long term, depending on desired feel).
+3. **Optional:** Low-pass `gyro[1]` (or `gyroTiltRate`) lightly before forming `u`; or gate gyro when `|acc|` is far from 1 g (high linear acceleration) or when gyro is near saturation.
+
+**Python debug (`mqtt-roundabout-test.py` `pitch_test`)**
+- `u_deg` is meant to mirror the Teensy **`u`** term. While firmware uses `gyroTiltRate * tau` with `tau = 1.0`, the script uses **`accAng_deg + gyroY_deg_s * 1.0`** (same idea in degrees).
+- If firmware is later changed to `* T`, update the script to **`accAng_deg + gyroY_deg_s * (sampleTime_us * 1e-6)`** (or a configured dt) so columns stay comparable.
+
+**Files touched for this documentation**
+- `notes/change_log.md` — this subsection only.
+- Firmware **not** changed per decision to defer; `uimu2.cpp` remains with `u = accAng + gyroTiltRate * tau`.
+
