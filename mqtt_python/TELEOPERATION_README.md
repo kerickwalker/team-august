@@ -2,6 +2,24 @@
 
 This guide explains how to use the prompt-based teleoperation system with Kalman filtering for model-based predictions.
 
+## Quick Start
+
+**Requirements:** `paho-mqtt` installed (`pip install paho-mqtt`)
+
+| Terminal | Command | Purpose |
+|----------|---------|---------|
+| 1 | `mosquitto` | Start MQTT broker (if not running) |
+| 2 | `cd mqtt_python && python3 mqtt-client.py -i localhost` | Start robot control |
+| 3 | `cd mqtt_python && python3 teleop_input.py -i localhost` | Send teleoperation commands |
+| 4 *(optional)* | `cd mqtt_python && python3 kalman_output.py -i localhost` | Monitor Kalman state |
+
+Common velocity commands (velocity mode):
+```
+0.5 0.0   -> Forward      -0.5 0.0  -> Backward
+0.0 0.5   -> Turn left     0.0 -0.5 -> Turn right
+0.0 0.0   -> Stop
+```
+
 ## Overview
 
 The teleoperation system has three main components:
