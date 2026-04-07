@@ -43,6 +43,7 @@ from scam import cam
 from sedge import edge
 from sgpio import gpio
 from ulog import flog
+from spath_follow import path_follow
 import psutil
 
 class UService:
@@ -111,6 +112,8 @@ class UService:
                 help='set mission state to this value')
     self.parser.add_argument('--motpwm', nargs=3, type=float, metavar=('LEFT', 'RIGHT', 'DURATION_S'),
           help='Run one motor PWM test: left right duration_s (range about -4096..4096)')
+    self.parser.add_argument('-d', '--debug', action='store_true',
+                help='Debug mode: print sensor data without running mission')
     self.args = self.parser.parse_args()
     # if not isinstance(self.args.usestate, int):
     #   self.args.usestate = int(0)
@@ -138,6 +141,7 @@ class UService:
     imu.setup()
     cam.setup()
     edge.setup()
+    path_follow.setup()
     if not self.is_quiet():
       print(f"% (uservice.py) Setup finished with connected={self.connected}")
     if self.args.level:
@@ -385,6 +389,7 @@ class UService:
     pose.terminate()
     ir.terminate()
     edge.terminate()
+    path_follow.terminate()
     cam.terminate()
     gpio.terminate()
     flog.terminate()
