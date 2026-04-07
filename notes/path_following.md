@@ -153,6 +153,20 @@ python3 mqtt_client_path_follow.py
 ```
 No flags needed — the mission starts immediately on launch.
 
+### Debug mode — verify Kalman pose without moving the robot
+```bash
+python3 mqtt_client_path_follow.py --debug   # or -d
+```
+Connects to the broker, subscribes to `robobot/kalman/state`, and prints the pose at ~1 Hz.
+No `rc` commands are sent.  Use this to confirm the Kalman filter is publishing before
+attempting a full run.
+
+Example output:
+```
+% Debug mode — printing Kalman pose. Ctrl-C to stop.
+% Kalman pose:  x=0.000 m  y=0.000 m  heading=0.0000 rad  speed=0.000 m/s
+```
+
 ### Monitor commands (separate terminal)
 ```bash
 mosquitto_sub -t "robobot/cmd/ti" -v

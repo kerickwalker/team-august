@@ -354,6 +354,23 @@ In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 
 - **Missions (mqtt-client.py, mqtt-linefollow.py):** In state 10 (following), no longer stop immediately when `lineValidCnt < 2`; start lost-line timer and keep line control on so sedge recovery runs. Stop only after `edge.recovery_timeout_s` (default 5 s) without line; if line re-found before that, resume following. `recovery_timeout_s` moved to sedge tuning block and read as `edge.recovery_timeout_s`.
 - **Notes:** Crossing logic (Phase 1 slow, Phase 2 pause/choose) and "Other features we can implement" (B speed vs confidence, D1 ramp, C2 distance stop, min/max speed) added to `notes/line_following.md` for later.
 
+## 2026-04-07: Added --debug mode to mqtt_client_path_follow.py
+
+**Problem:** Before running the full path-following mission it was useful to verify that the
+Kalman pose is arriving on `robobot/kalman/state` without sending any motion commands to
+the robot.
+
+**Solution:** Added a `-d` / `--debug` CLI flag.  In debug mode the script connects normally,
+subscribes to the Kalman topic via `path_follow.setup()`, and prints pose at ~1 Hz until
+Ctrl-C.  No `rc` commands are ever sent.
+
+**Modified files:**
+- `mqtt_python/uservice.py` — added `-d` / `--debug` argument to the shared argparse parser
+- `mqtt_python/mqtt_client_path_follow.py` — added `debugPose()` function; dispatch in
+  `__main__` now chooses between `debugPose()` and `loop()` based on `service.args.debug`
+
+---
+
 ## 2026-04-07: Removed unused debug utility
 
 **Problem:** `mqtt_python/get-pose.py` was a standalone script that subscribed to `robobot/kalman/state` and printed pose — it was never imported or called by any other file.

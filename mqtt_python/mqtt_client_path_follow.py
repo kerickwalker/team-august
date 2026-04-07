@@ -65,6 +65,21 @@ def drivePathFollow():
     service.send("robobot/cmd/T0", "leds 16 0 0 0")
 
 # ═══════════════════════════════════════════════════════════════════════════
+# debugPose() — debug mode: print Kalman pose without sending any commands
+# ═══════════════════════════════════════════════════════════════════════════
+def debugPose():
+    print("% Debug mode — printing Kalman pose. Ctrl-C to stop.")
+    while not service.stop:
+        if path_follow._pose_received:
+            print(f"% Kalman pose:  x={path_follow._x:.3f} m  "
+                  f"y={path_follow._y:.3f} m  "
+                  f"heading={path_follow._heading:.4f} rad  "
+                  f"speed={path_follow._speed:.3f} m/s")
+        else:
+            print("% Waiting for Kalman pose on robobot/kalman/state ...")
+        t.sleep(1.0)
+
+# ═══════════════════════════════════════════════════════════════════════════
 # loop() — top-level state machine
 #
 #   101 → drivePathFollow() → 100 (return-to-idle)
@@ -118,6 +133,9 @@ if __name__ == "__main__":
         setproctitle("mqtt-client")
         service.setup("localhost")
         if service.connected:
-            loop()
+            if service.args.debug:
+                debugPose()
+            else:
+                loop()
         service.terminate()
     print("% Main Terminated")

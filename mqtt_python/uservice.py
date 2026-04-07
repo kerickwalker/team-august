@@ -112,6 +112,8 @@ class UService:
                 help='set mission state to this value')
     self.parser.add_argument('--motpwm', nargs=3, type=float, metavar=('LEFT', 'RIGHT', 'DURATION_S'),
           help='Run one motor PWM test: left right duration_s (range about -4096..4096)')
+    self.parser.add_argument('-d', '--debug', action='store_true',
+                help='Debug mode: print sensor data without running mission')
     self.args = self.parser.parse_args()
     # if not isinstance(self.args.usestate, int):
     #   self.args.usestate = int(0)
