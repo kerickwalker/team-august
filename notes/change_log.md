@@ -354,3 +354,12 @@ In `teensy_interface/src/uservice.cpp`, when master is lost (no "alive" for > 4 
 - **Missions (mqtt-client.py, mqtt-linefollow.py):** In state 10 (following), no longer stop immediately when `lineValidCnt < 2`; start lost-line timer and keep line control on so sedge recovery runs. Stop only after `edge.recovery_timeout_s` (default 5 s) without line; if line re-found before that, resume following. `recovery_timeout_s` moved to sedge tuning block and read as `edge.recovery_timeout_s`.
 - **Notes:** Crossing logic (Phase 1 slow, Phase 2 pause/choose) and "Other features we can implement" (B speed vs confidence, D1 ramp, C2 distance stop, min/max speed) added to `notes/line_following.md` for later.
 
+## 2026-04-07: Removed unused debug utility
+
+**Problem:** `mqtt_python/get-pose.py` was a standalone script that subscribed to `robobot/kalman/state` and printed pose — it was never imported or called by any other file.
+
+**Solution:** Deleted the file and removed all references to it:
+- Deleted `mqtt_python/get-pose.py`
+- Removed `(matched exactly to get-pose.py logic)` from `spath_follow.py` docstring
+- Removed `get-pose.py` row from file tables in `notes/path_following.md` and `mqtt_python/CLAUDE.md`
+

@@ -62,7 +62,7 @@ class SPathFollow:
     def _on_kalman_message(self, client, userdata, msg):
         """
         Parse the Kalman state JSON.  Handles two schemas published by the
-        Kalman filter node (matched exactly to get-pose.py logic):
+        Kalman filter node:
 
           Schema A: {"x": {"x": ..., "y": ..., "yaw": ..., "velocity": ..., ...}}
           Schema B: {"position": {"x":..., "y":...}, "orientation": {"yaw":...},

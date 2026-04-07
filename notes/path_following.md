@@ -27,7 +27,6 @@ which is more accurate than raw encoder odometry for closed-loop trajectory trac
 | `mqtt_python/spath_follow.py` | MQTT integration — Kalman subscriber + `rc` publisher |
 | `mqtt_python/mqtt_client_path_follow.py` | **Entry point** — run this file to start the mission |
 | `mqtt_python/trajectory.csv` | Input trajectory — place here before running |
-| `mqtt_python/get-pose.py` | Standalone debug tool for the Kalman topic |
 
 ---
 
