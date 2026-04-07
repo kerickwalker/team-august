@@ -10,9 +10,7 @@ Do not overwrite the entire file when updating notes.
 Only add or change the specific lines needed for the update, unless a full rewrite is explicitly requested.
 
 ## Keeping notes up to date
-When we complete tasks, change behavior, fix bugs, or add features that affect the robot (e.g. line following, path following, calibration, sensors, firmware, workflow), update the relevant `notes/*.md` files so the next session has current context. Examples: `overview.md` (priorities, dates), `change_log.md` (what was done and why), `commands_and_workflow.md`, `line_following.md`, `path_following.md`, `sensor_reference.md`, `system_architecture.md`, `test_plan_and_analysis.md`. Do this as part of the same session; do not leave the notes stale.
-
-Also update `mqtt_python/CLAUDE.md` — it is the Claude Code session bootstrap file and must stay in sync with the actual codebase. If a file is added or removed, update its file map. If an entry point or command changes, update the command examples. The full maintenance checklist is in the "Maintenance instructions" section at the top of that file.
+When we complete tasks, change behavior, fix bugs, or add features that affect the robot (e.g. line following, calibration, sensors, firmware, workflow), update the relevant `notes/*.md` files so the next session has current context. Examples: `overview.md` (priorities, dates), `change_log.md` (what was done and why), `commands_and_workflow.md`, `line_following.md`, `sensor_reference.md`, `system_architecture.md`, `test_plan_and_analysis.md`. Do this as part of the same session; do not leave the notes stale.
 
 ## What this means in practice
 - avoid making broad destructive edits
