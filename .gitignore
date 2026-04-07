@@ -6,6 +6,7 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.vscode/
 
 # Build output directories
 # Ignore only log folders/files inside build, but include all other build contents
