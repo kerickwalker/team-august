@@ -3,7 +3,7 @@
 This bundle reorganizes `notes.md` into separate reference files without repeating the same explanations in multiple places.
 
 ## Current date in notes
-- 2026-03-12
+- 2026-04-07
 
 ## Main objective
 - Collect trial data for sensor calibration and validation.
@@ -11,9 +11,9 @@ This bundle reorganizes `notes.md` into separate reference files without repeati
 - Estimate and tune covariance matrices `Q` (process noise) and `R` (measurement noise).
 
 ## Immediate next-session priority
-1. **Line following (current focus):** Calibrate, run existing system, then test the Python patch. Order: `--white` → `--meter` → `--edge`. See `line_following.md` for architecture, patch summary, and workflow. Magnetometer is deferred until line following is in a good state.
-2. **Magnetometer (after line following):** Firmware/interface/MQTT path verified; failure is at I2C (AK8963 unreachable). Next step: enable I2C bypass (INT_PIN_CFG 0x37, BYPASS_EN) and re-test; see `change_log.md` and `sensor_reference.md` (Magnetometer).
-3. Use the existing stationary dataset without magnetometer as the baseline for later fusion work; after mag fix, collect new stationary data with magnetometer and compare.
+1. **Path following (current focus):** Pure Pursuit controller implemented. Next step: generate a `trajectory.csv`, verify Kalman filter is publishing on `robobot/kalman/state`, then run `--usestate 105`. See `path_following.md`.
+2. **Magnetometer (deferred):** AK8963 unreachable on I2C (0x0C). Fix: enable BYPASS_EN in INT_PIN_CFG (0x37). See `change_log.md` and `sensor_reference.md`.
+3. Use existing stationary dataset as baseline for Kalman fusion work; after mag fix, collect new stationary data with magnetometer.
 
 ## What each file is for
 
@@ -37,6 +37,9 @@ Use this for how each sensor-derived signal is produced, what the main signals m
 
 ### `line_following.md`
 Use this for the line-following stack: active controller in Python, Teensy vs interface vs Python roles, first Python patch (weighted center, center-follow, dropout recovery), and calibration/test workflow (`--white`, `--meter`, `--edge`).
+
+### `path_following.md`
+Use this for the Pure Pursuit trajectory-following controller: algorithm, file structure, CSV format, tuning guide, edge cases, and how to swap to a Stanley controller.
 
 ### `llm_operator_rules.md`
 Use this for the Copilot/LLM-specific rules and the preferred way of working in future sessions.

@@ -43,6 +43,7 @@ from scam import cam
 from sedge import edge
 from sgpio import gpio
 from ulog import flog
+from spath_follow import path_follow
 import psutil
 
 class UService:
@@ -138,6 +139,7 @@ class UService:
     imu.setup()
     cam.setup()
     edge.setup()
+    path_follow.setup()
     if not self.is_quiet():
       print(f"% (uservice.py) Setup finished with connected={self.connected}")
     if self.args.level:
@@ -385,6 +387,7 @@ class UService:
     pose.terminate()
     ir.terminate()
     edge.terminate()
+    path_follow.terminate()
     cam.terminate()
     gpio.terminate()
     flog.terminate()
