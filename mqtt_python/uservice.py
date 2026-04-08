@@ -29,6 +29,7 @@ def signal_handler(sig, frame):
 import signal
 import argparse
 import time as t
+import json
 import random
 from paho.mqtt import client as mqtt_client
 #from paho.mqtt.enums import CallbackAPIVersion
@@ -42,6 +43,7 @@ from srobot import robot
 from scam import cam
 from sedge import edge
 from sgpio import gpio
+from skalman import kalman
 from ulog import flog
 from spath_follow import path_follow
 import psutil
@@ -52,6 +54,7 @@ class UService:
   topic = "robobot/drive/"
   topicCmd = "robobot/cmd/" # send to Teensy T0 (Teensy), T1, or ti (teensy_interface)
   topicCmdT0 = "robobot/cmd/T0/" # send to Teensy T0
+  topicKalmanState = "robobot/kalman/state"
   # Generate a Client ID with the subscribe prefix.
   client = []
   client_id = 'mqtt-client-in'
@@ -71,20 +74,14 @@ class UService:
   terminating = False
   confirmedMaster = False
   confirmedNotMaster = False
-  masterMismatchCnt = 0
-  masterMismatchFirst = datetime.min
-  masterClaimGraceSec = 12.0
   parser = argparse.ArgumentParser(description='Robobot app 2024')
 
   def is_quiet(self):
-    """True if -s or -t: suppress normal prints. Test prints still shown only when -t."""
-    a = getattr(self, 'args', None)
-    return getattr(a, 'silent', False) or getattr(a, 'test', False)
+    return hasattr(self, "args") and bool(getattr(self.args, "silent", False))
 
   def setup(self, mqtt_host):
     #
-    if not self.is_quiet():
-      print(self.startTime.strftime("Started %Y-%m-%d %H:%M:%S.%f"))
+    print(self.startTime.strftime("Started %Y-%m-%d %H:%M:%S.%f"))
     from ulog import flog
     flog.setup()
     self.host = mqtt_host
@@ -98,8 +95,6 @@ class UService:
                 help='Calibrate horizontal (not implemented, but maybe an idea)')
     self.parser.add_argument('-s', '--silent', action='store_true',
                 help='Print less to console')
-    self.parser.add_argument('-t', '--test', action='store_true',
-                help='Test mode: quiet like --silent but show test prints (e.g. periodic line sensor)')
     self.parser.add_argument('-n', '--now', action='store_true',
                 help='Start drive now (do not wait for the start button)')
     self.parser.add_argument('-m', '--meter', action='store_true',
@@ -108,10 +103,13 @@ class UService:
                 help='Turn 180 degrees (Pi) and stop')
     self.parser.add_argument('-e', '--edge', action='store_true',
                 help='Find line and follow the left edge')
+    self.parser.add_argument('--motpwm', type=float, nargs=3, default=None,
+          metavar=('LEFT', 'RIGHT', 'DURATION_S'),
+          help='One-shot motor command as left right duration_s (handled as velocity-mode test)')
+    self.parser.add_argument('--allow-no-hbt', action='store_true',
+          help='Continue startup even if T0/hbt heartbeat is missing (testing only)')
     self.parser.add_argument('-u', '--usestate', type=int, default = 0,
                 help='set mission state to this value')
-    self.parser.add_argument('--motpwm', nargs=3, type=float, metavar=('LEFT', 'RIGHT', 'DURATION_S'),
-          help='Run one motor PWM test: left right duration_s (range about -4096..4096)')
     self.parser.add_argument('-d', '--debug', action='store_true',
                 help='Debug mode: print sensor data without running mission')
     self.args = self.parser.parse_args()
@@ -142,29 +140,30 @@ class UService:
     cam.setup()
     edge.setup()
     path_follow.setup()
-    if not self.is_quiet():
-      print(f"% (uservice.py) Setup finished with connected={self.connected}")
+    kalman.setup()
+    print(f"% (uservice.py) Setup finished with connected={self.connected}")
     if self.args.level:
       print(f"% Command line argument '--level'={self.args.level} but not implemented")
       self.stop = True
+    if self.args.silent:
+      print(f"% Command line argument '--silent'={self.args.silent}")
 
   def run(self):
     # print("% MQTT service - thread running")
     self.client.subscribe(self.topic + "#")
+    self.client.subscribe("robobot/teleop/#")  # Subscribe to teleoperation commands
     self.client.on_message = self.on_message
     # self.subscribe(self.client)
     while not self.stop:
       self.client.loop()
-    if not self.is_quiet():
-      print("% Service - thread stopped")
+    print("% Service - thread stopped")
 
   def runOut(self):
     # print("% MQTT service - out thread running")
     self.clientOut.on_message = self.on_messageOut
     while not self.stop:
       self.clientOut.loop()
-    if not self.is_quiet():
-      print("% Service - thread stopped")
+    print("% Service - thread stopped")
 
   def runAlive(self):
     loop = 0;
@@ -182,17 +181,15 @@ class UService:
 
   def on_connect(self, client, userdata, flags, rc, properties = []):
     if rc == 0:
+      print(f"% Connected to MQTT Broker {self.host} on {self.port}")
       self.connected = True
-      self.client2 = client
-      if not self.is_quiet():
-        print(f"% Connected to MQTT Broker {self.host} on {self.port}")
+      self.client2=client
 
   def on_connectOut(self, client, userdata, flags, rc, properties = []):
     if rc == 0:
+      print(f"% ConnectedOut to MQTT Broker {self.host} on {self.port}")
       self.connectedOut = True
-      self.clientOut2 = client
-      if not self.is_quiet():
-        print(f"% ConnectedOut to MQTT Broker {self.host} on {self.port}")
+      self.clientOut2=client
 
   def connect_mqtt(self):
     import platform
@@ -253,8 +250,7 @@ class UService:
       # print("# Message out, topic '" + msg.topic + "' payload:" + str(msg.payload))
     except:
       print("% Message exception (illegal char?) - continues, topic '" + msg.topic + "' payload:" + str(msg.payload))
-    if not self.args.silent and not getattr(self.args, 'test', False):
-      print(f"% MQTT got message on the output channel {msg.topic}")
+    print(f"% MQTT got message on the output channel {msg.topic}")
 
   def decode(self, topic, msg):
     used = True # state.decode(msg, msgTime)
@@ -275,42 +271,169 @@ class UService:
       elif gpio.decode(subtopic, msg):
         pass
       elif subtopic == "T0/info":
-        if not self.args.silent and not getattr(self.args, 'test', False):
+        if not self.args.silent:
           print(f"% Teensy info {msg}", end="")
       elif subtopic == "master":
         # skip timestamp to get real masters starttime
         realMasterTime = msg[msg.find(" ")+1:]
         if str(self.startTime) == realMasterTime:
-          if not self.confirmedMaster and not self.is_quiet():
+          if not self.confirmedMaster:
             print(f"% I am now accepted as master of robot {robot.robotName}")
           self.confirmedMaster = True
-          self.confirmedNotMaster = False
-          self.masterMismatchCnt = 0
-          self.masterMismatchFirst = datetime.min
         else:
-          # Allow a short grace period at startup to survive stale master topic messages.
-          # This avoids immediate quit while teensy_interface is timing out the old master.
-          now = datetime.now()
-          if self.masterMismatchCnt == 0:
-            self.masterMismatchFirst = now
-          self.masterMismatchCnt += 1
-          dt = (now - self.masterMismatchFirst).total_seconds()
-          if dt >= self.masterClaimGraceSec:
-            self.confirmedNotMaster = True
-            print("% I am not robot master, quitting!")
+          self.confirmedNotMaster = True
+          print("% I am not robot master, quitting!")
         # print(f"% got master {msg} my ID is {str(self.startTime)}")
         pass
+      elif subtopic == "kalman/cmd":
+        used = self.handle_kalman_cmd(msg)
       else:
         used = False
+      # Kalman is updated as a side-effect module when relevant sensor topics arrive.
+      updated = kalman.decode(subtopic, msg)
+      if updated:
+        self.publish_kalman_state("sensor_update")
+    elif topic == "robobot/teleop/cmd":
+      # Handle teleoperation commands
+      kalman.decode_teleoperation(msg)
+      # Also send direct RC motor command to teensy for immediate response
+      try:
+        import json
+        data = json.loads(msg)
+        if 'linear_velocity' in data and 'angular_velocity' in data:
+          lin_vel = float(data.get('linear_velocity', 0.0))
+          ang_vel = float(data.get('angular_velocity', 0.0))
+          # Send RC command: rc <linear_velocity> <angular_velocity>
+          service.send("robobot/cmd/ti", f"rc {lin_vel:.3f} {ang_vel:.3f}")
+      except Exception as e:
+        print(f"# Teleoperation RC command failed: {e}")
+      used = True
     if not used:
-      if not self.args.silent and not getattr(self.args, 'test', False):
-        print("% Service:: message not used " + topic + " " + msg)
+      print("% Service:: message not used " + topic + " " + msg)
     return used
+
+  def publish_kalman_state(self, source = "state"):
+    payload = {
+      "source": source,
+      "time": t.time(),
+      "has_estimate": kalman.has_estimate(),
+      "u": kalman.last_input(),
+      "measurements": kalman.get_measurements(),
+    }
+    if kalman.has_estimate():
+      x = kalman.estimate()
+      payload["x"] = {
+        "x": x[0],
+        "y": x[1],
+        "z": x[2],
+        "velocity": x[3],
+        "angular_velocity": x[4],
+        "yaw": x[5],
+        "pitch": x[6],
+      }
+      # Add predicted state (model prediction before measurement update)
+      x_pred = kalman.predict()
+      if x_pred:
+        payload["x_pred"] = {
+          "x": x_pred[0],
+          "y": x_pred[1],
+          "z": x_pred[2],
+          "velocity": x_pred[3],
+          "angular_velocity": x_pred[4],
+          "yaw": x_pred[5],
+          "pitch": x_pred[6],
+        }
+    self.clientOut.publish(self.topicKalmanState, json.dumps(payload))
+
+  def handle_kalman_cmd(self, msg):
+    """Handle manual Kalman commands received on robobot/drive/kalman/cmd."""
+    words = msg.strip().split()
+    if len(words) == 0:
+      self.clientOut.publish(self.topicKalmanState, json.dumps({
+        "source": "cmd_error",
+        "error": "empty command",
+      }))
+      return True
+
+    cmd = words[0].lower()
+    try:
+      if cmd == "state":
+        self.publish_kalman_state("cmd_state")
+      elif cmd == "set_u" and len(words) >= 3:
+        kalman.set_manual_input(float(words[1]), float(words[2]))
+        self.publish_kalman_state("cmd_set_u")
+      elif cmd == "clear_u":
+        kalman.clear_manual_input()
+        self.publish_kalman_state("cmd_clear_u")
+      elif cmd == "reset":
+        # reset -> origin state, reset m -> current sensor measurement,
+        # reset x y z v w yaw pitch -> explicit start state
+        if len(words) == 1:
+          kalman.reset()
+          self.publish_kalman_state("cmd_reset_default")
+        elif len(words) == 2 and words[1].lower() in ["m", "meas", "measurement"]:
+          kalman.reset_from_measurement()
+          self.publish_kalman_state("cmd_reset_measurement")
+        elif len(words) == 8:
+          kalman.reset([float(v) for v in words[1:8]])
+          self.publish_kalman_state("cmd_reset_custom")
+        else:
+          self.clientOut.publish(self.topicKalmanState, json.dumps({
+            "source": "cmd_error",
+            "error": "reset usage: reset | reset m | reset x y z v w yaw pitch",
+            "received": msg,
+          }))
+      elif cmd == "predict" and len(words) >= 2:
+        dt_s = float(words[1])
+        if len(words) >= 4:
+          ok = kalman.predict_only(dt_s, float(words[2]), float(words[3]))
+        else:
+          ok = kalman.predict_only(dt_s)
+        if ok:
+          self.publish_kalman_state("cmd_predict")
+        else:
+          self.clientOut.publish(self.topicKalmanState, json.dumps({
+            "source": "cmd_error",
+            "error": "predict failed",
+          }))
+      elif cmd == "enable" and len(words) >= 2:
+        kalman.enabled = int(words[1]) != 0
+        self.clientOut.publish(self.topicKalmanState, json.dumps({
+          "source": "cmd_enable",
+          "enabled": kalman.enabled,
+        }))
+      elif cmd == "help":
+        self.clientOut.publish(self.topicKalmanState, json.dumps({
+          "source": "cmd_help",
+          "commands": [
+            "state",
+            "reset",
+            "reset m",
+            "reset <x y z v w yaw pitch>",
+            "set_u <left_mps> <right_mps>",
+            "clear_u",
+            "predict <dt_s> [left_mps right_mps]",
+            "enable <0|1>",
+          ],
+        }))
+      else:
+        self.clientOut.publish(self.topicKalmanState, json.dumps({
+          "source": "cmd_error",
+          "error": "unknown command",
+          "received": msg,
+        }))
+    except Exception as ex:
+      self.clientOut.publish(self.topicKalmanState, json.dumps({
+        "source": "cmd_error",
+        "error": str(ex),
+        "received": msg,
+      }))
+    return True
 
   def send(self, topic, param):
     # print(self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f"))
-    if not self.args.silent and not getattr(self.args, 'test', False):
-      print(f"% {self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f")}: sending: '{topic}' with '{param}' len(param)={len(param)}, not master {self.confirmedNotMaster}, master {self.confirmedMaster}")
+    ts = self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f")
+    print(f"% {ts}: sending: '{topic}' with '{param}' len(param)={len(param)}, not master {self.confirmedNotMaster}, master {self.confirmedMaster}")
     if self.confirmedNotMaster:
       # self.terminate()
       self.stop = True
@@ -321,7 +444,8 @@ class UService:
     flog.writeRemark(f"{topic} {param}")
     if r[0] == 0:
       self.sendCnt += 1
-      if self.sendCnt > 100 and self.gotCnt < 2:
+      allow_no_hbt = hasattr(self, "args") and bool(getattr(self.args, "allow_no_hbt", False))
+      if (not allow_no_hbt) and self.sendCnt > 100 and self.gotCnt < 2:
         print(f"Seems like there is no connection to Teensy (tx:{self.sendCnt}, got:{self.gotCnt}); is Teensy_interface running?")
         self.stop = True
       # print(f"% published {topic} with {param}")
@@ -347,10 +471,9 @@ class UService:
       return
     if not self.connected:
       return
-    if not self.is_quiet():
-      print("% shutting down")
+    print("% shutting down")
     if self.connected and not self.confirmedNotMaster:
-      edge.lineControl(0)  # make sure line control is off
+      edge.lineControl(0, 0) # make sure line control is off
       try:
         t.sleep(0.02)
         service.send("robobot/cmd/ti","rc 0 0") # stop robot control loop
@@ -372,18 +495,15 @@ class UService:
     try:
       self.th.join()
     except:
-      if not self.is_quiet():
-        print("% Service thread not running")
+      print("% Service thread not running")
     try:
       self.th2.join()
     except:
-      if not self.is_quiet():
-        print("% Service thread 2 not running")
+      print("% Service thread 2 not running")
     try:
       self.thAlive.join()
     except:
-      if not self.is_quiet():
-        print("% Service thread Alive not running")
+      print("% Service thread Alive not running")
     imu.terminate()
     robot.terminate()
     pose.terminate()
@@ -392,10 +512,10 @@ class UService:
     path_follow.terminate()
     cam.terminate()
     gpio.terminate()
+    kalman.terminate()
     flog.terminate()
     self.startTime = datetime.now()
-    if not self.is_quiet():
-      print(self.startTime.strftime("Ended at %Y-%m-%d %H:%M:%S.%f"))
+    print(self.startTime.strftime("Ended at %Y-%m-%d %H:%M:%S.%f"))
 
 # create the service object
 service = UService()

@@ -39,6 +39,7 @@ from scam import cam
 from sedge import edge
 from sgpio import gpio
 from scam import cam
+from skalman import kalman
 from uservice import service
 
 ############################################################
@@ -327,7 +328,10 @@ def loop():
       state = 100
     elif state == 200: # stationary mode - just wait for stop signal
       service.send("robobot/cmd/T0","leds 16 0 100 0") # green: stationary
-      service.send("robobot/cmd/ti","rc 0.0 0.0") # ensure stopped
+      # Only send stop if teleoperation is NOT active
+      # (teleoperation handles its own RC commands via uservice)
+      if not kalman.teleop_enabled:
+        service.send("robobot/cmd/ti","rc 0.0 0.0") # ensure stopped
       if stateTimePassed() > 300.0:
         print("% Stationary timeout reached (60s), stopping")
         state = 99
