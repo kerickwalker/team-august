@@ -77,7 +77,10 @@ class UService:
   parser = argparse.ArgumentParser(description='Robobot app 2024')
 
   def is_quiet(self):
-    return hasattr(self, "args") and bool(getattr(self.args, "silent", False))
+    return hasattr(self, "args") and (
+      bool(getattr(self.args, "silent", False)) or
+      bool(getattr(self.args, "debug", False))
+    )
 
   def setup(self, mqtt_host):
     #
@@ -271,7 +274,7 @@ class UService:
       elif gpio.decode(subtopic, msg):
         pass
       elif subtopic == "T0/info":
-        if not self.args.silent:
+        if not self.is_quiet():
           print(f"% Teensy info {msg}", end="")
       elif subtopic == "master":
         # skip timestamp to get real masters starttime
@@ -308,7 +311,7 @@ class UService:
       except Exception as e:
         print(f"# Teleoperation RC command failed: {e}")
       used = True
-    if not used:
+    if not used and not self.is_quiet():
       print("% Service:: message not used " + topic + " " + msg)
     return used
 
@@ -433,7 +436,8 @@ class UService:
   def send(self, topic, param):
     # print(self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f"))
     ts = self.startTime.strftime("At %Y-%m-%d %H:%M:%S.%f")
-    print(f"% {ts}: sending: '{topic}' with '{param}' len(param)={len(param)}, not master {self.confirmedNotMaster}, master {self.confirmedMaster}")
+    if not self.is_quiet():
+      print(f"% {ts}: sending: '{topic}' with '{param}' len(param)={len(param)}, not master {self.confirmedNotMaster}, master {self.confirmedMaster}")
     if self.confirmedNotMaster:
       # self.terminate()
       self.stop = True
