@@ -161,6 +161,11 @@ class SKalman:
         # Predicted state storage (for monitoring/display)
         self.x_pred_last = np.zeros((7, 1), dtype=float)  # Last predicted state from motion model
 
+        # Yaw offsets captured at reset() time — all measurements are made relative to these
+        self._yaw_offset_encoder = 0.0
+        self._yaw_offset_gyro    = 0.0
+        self._yaw_offset_mag     = 0.0
+
     def _create_filter(self):
         from spose import pose
 
@@ -280,7 +285,7 @@ class SKalman:
             z[4, 0] = 0.0
             variances[4] = missing_var
         
-        z[5, 0] = _unwrap_near(float(pose.pose[2]), yaw_ref)  # encoder yaw
+        z[5, 0] = _unwrap_near(float(pose.pose[2]) - self._yaw_offset_encoder, yaw_ref)  # encoder yaw (relative to reset)
         z[6, 0] = float(pose.turnrate())                   # encoder omega (turnrate)
 
         # ========== VISION (7-11) ==========
@@ -306,14 +311,14 @@ class SKalman:
         # ========== IMU DERIVED - YAW SOURCES (12-13) ==========
         # Yaw from gyro integration (imu.yawg)
         if imu.yawgUpdCnt > 0:
-            z[12, 0] = _unwrap_near(float(imu.yawg), yaw_ref)  # gyro integrated yaw
+            z[12, 0] = _unwrap_near(float(imu.yawg) - self._yaw_offset_gyro, yaw_ref)  # gyro yaw (relative to reset)
         else:
             z[12, 0] = 0.0
             variances[12] = missing_var
         
         # Yaw from magnetometer (imu_derived.mag_yaw)
         if imu_derived.mag_yaw_upd_cnt > 0:
-            z[13, 0] = _unwrap_near(float(imu_derived.mag_yaw), yaw_ref)  # magnetometer yaw
+            z[13, 0] = _unwrap_near(float(imu_derived.mag_yaw) - self._yaw_offset_mag, yaw_ref)  # mag yaw (relative to reset)
         else:
             z[13, 0] = 0.0
             variances[13] = missing_var
@@ -580,9 +585,20 @@ class SKalman:
         x0[6, 0] = _wrap_angle_rad(float(x0[6, 0]))
         self.kf.x = x0
         self.kf.P = np.eye(7, dtype=float)
-        self.last_update_time = None
-        self.update_count = 1
         self.last_u = np.zeros((2, 1), dtype=float)
+        # Capture current absolute yaw from each sensor as offsets,
+        # so all future measurements are relative to this orientation.
+        from spose import pose
+        from simu import imu
+        self._yaw_offset_encoder = float(pose.pose[2])
+        self._yaw_offset_gyro    = float(imu.yawg) if imu.yawgUpdCnt > 0 else float(pose.pose[2])
+        self._yaw_offset_mag     = float(imu_derived.mag_yaw) if imu_derived.mag_yaw_upd_cnt > 0 else float(pose.pose[2])
+        # Set last_update_time to now (not None) to skip _bootstrap_from_measurement()
+        # on the next decode — otherwise bootstrap immediately overwrites yaw=0
+        # with the raw absolute sensor value. The first dt_s will be ~0 and
+        # the decode returns early harmlessly (dt_s <= 1e-6 guard).
+        self.last_update_time = datetime.now()
+        self.update_count = 1
 
     def reset_from_measurement(self):
         """Reset state directly from latest measurement vector."""

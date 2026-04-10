@@ -1,7 +1,7 @@
 import numpy as np
 import csv
 
-LOOKAHEAD_DIST = 0.5   # metres — distance ahead on trajectory to aim for
+LOOKAHEAD_DIST = 1.0   # metres — distance ahead on trajectory to aim for
 MAX_LINVEL     = 0.3   # m/s   — constant forward speed during tracking
 MAX_TURNRATE   = 1.0   # rad/s — saturation limit for angular velocity output
 SEARCH_WINDOW  = 30    # max points to scan forward when finding nearest point
