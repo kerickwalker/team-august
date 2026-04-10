@@ -69,7 +69,7 @@ class SPurePursuit:
             return True
         return self._nearest_idx >= len(self._traj) - 1
 
-    def compute_command(self, x: float, y: float, heading: float, speed: float):
+    def compute_command(self, x: float, y: float, heading: float, speed: float, linvel: float = None):
         """
         Compute (linvel, turnrate) for one control step.
 
@@ -131,8 +131,10 @@ class SPurePursuit:
         kappa = 2.0 * dy_r / l_sq
 
         # --- Step 5: output ---
-        linvel   = float(MAX_LINVEL)
-        turnrate = float(np.clip(kappa * MAX_LINVEL, -MAX_TURNRATE, MAX_TURNRATE))
+        if linvel is None:
+            linvel = float(MAX_LINVEL)
+        turnrate = float(np.clip(kappa * linvel, -MAX_TURNRATE, MAX_TURNRATE))
+        linvel   = float(linvel)
         return (linvel, turnrate)
 
 

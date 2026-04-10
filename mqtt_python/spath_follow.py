@@ -115,7 +115,7 @@ class SPathFollow:
         if not self._active or not self._pose_received:
             return
         linvel, turnrate = pursuit.compute_command(
-            self._x, self._y, self._heading, self._speed)
+            self._x, self._y, self._heading, self._speed, self._velocity)
         self._last_linvel   = linvel
         self._last_turnrate = turnrate
         from uservice import service
