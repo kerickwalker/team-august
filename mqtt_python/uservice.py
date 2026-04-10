@@ -112,7 +112,7 @@ class UService:
                 help='set mission state to this value')
     self.parser.add_argument('-d', '--debug', action='store_true',
                 help='Debug mode: print sensor data without running mission')
-    self.args = self.parser.parse_args()
+    self.args = self.parser.parse_known_args()[0]
     # if not isinstance(self.args.usestate, int):
     #   self.args.usestate = int(0)
     # print(f"% command line arguments: white {self.args.white}, gyro={self.args.gyro}, level={self.args.level}")
@@ -132,15 +132,18 @@ class UService:
     # do the setup and check of data streams
     # enable interface logging (into teensy_interface/build/log_2025...)
     service.send("robobot/cmd/ti", "log 1")
-    gpio.setup()
-    robot.setup()
-    ir.setup()
-    pose.setup()
-    imu.setup()
-    cam.setup()
-    edge.setup()
-    path_follow.setup()
-    kalman.setup()
+    if True:
+      kalman.setup()
+      gpio.setup()
+      robot.setup()
+      ir.setup()
+      pose.setup()
+      imu.setup()
+      kalman.reset([4.775, 0.235, 0.0, 0.0, 0.0, 1.5708, 0.0])
+      service.send("robobot/kalman/cmd", "reset 4.7750 0.2350 0.0000 0 0 1.5708 0")
+      cam.setup()
+      edge.setup()
+      path_follow.setup()
     print(f"% (uservice.py) Setup finished with connected={self.connected}")
     if self.args.level:
       print(f"% Command line argument '--level'={self.args.level} but not implemented")
@@ -519,4 +522,3 @@ class UService:
 
 # create the service object
 service = UService()
-
