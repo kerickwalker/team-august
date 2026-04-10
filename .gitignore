@@ -29,4 +29,4 @@ log*.txt
 # Ignore all JPEG images
 *.jpg
 
-mqtt_python/CLAUDE.md
+CLAUDE.md

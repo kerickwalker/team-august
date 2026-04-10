@@ -371,6 +371,82 @@ Ctrl-C.  No `rc` commands are ever sent.
 
 ---
 
+## 2026-04-10: Pure Pursuit coordinate convention, speed control, silent mode, and Kalman yaw fix
+
+### Silent mode suppresses all service noise (`uservice.py`)
+**Problem:** Running any script produced heavy MQTT logging (`sending:`, `message not used`, Teensy info) regardless of `--silent` or `--debug`.
+
+**Fix:** Extended `is_quiet()` to return `True` when `--debug` is active (in addition to `--silent`).  Wrapped the three noisy print sites with `if not self.is_quiet()`:
+- `send()` verbose publish log
+- `decode()` "message not used" warning
+- `decode()` Teensy info (`T0/info`)
+
+**Modified file:** `mqtt_python/uservice.py`
+
+---
+
+### Silent-mode status print in path-following (`mqtt_client_path_follow.py`)
+**Added:** When running with `-s`, prints one line per 100 ms instead of silence:
+```
+x=0.123 m  y=-0.045 m  hdg=0.038 rad  rc=0.150 m/s  0.250 rad/s
+```
+`y` and `hdg` are negated relative to the Kalman state to match the user's coordinate convention (+y = right).  `rc` turnrate sign is NOT negated (positive = turn left, matching the `rc` command).
+
+Last linvel and turnrate are stored in `spath_follow._last_linvel` / `_last_turnrate` (added to `spath_follow.py`) so the mission loop can read them.
+
+**Modified files:** `mqtt_python/mqtt_client_path_follow.py`, `mqtt_python/spath_follow.py`
+
+---
+
+### Kalman state reset to heading=0 at mission start (`mqtt_client_path_follow.py`, `skalman.py`)
+**Problem:** `kalman.reset()` set `kf.x[5]=0` but the very next sensor decode called `_bootstrap_from_measurement()`, which overwrote yaw=0 with the raw Teensy gyro accumulation (`imu.yawg`), so heading never actually started at 0.
+
+**Fix — three changes in `skalman.py`:**
+1. Added `_yaw_offset_encoder/gyro/mag` fields (init to 0).
+2. `reset()` now captures the current absolute sensor yaw values as offsets and sets `last_update_time = datetime.now()` (not `None`) to skip the bootstrap on the next decode.
+3. `_measurement_vector_and_cov()` subtracts the offsets from `z[5]`, `z[12]`, `z[13]` before the Kalman update, making all yaw measurements relative to the orientation at reset time.
+
+`drivePathFollow()` already calls `kalman.reset()` at start, so heading now correctly reads 0.000 on mission launch.
+
+**Modified files:** `mqtt_python/skalman.py`, `mqtt_python/mqtt_client_path_follow.py`
+
+---
+
+### Trajectory y-axis convention flip in Pure Pursuit (`spursuit.py`)
+**Problem:** The trajectory CSV uses `+y = right` convention, but the robot's Kalman state uses `+y = left`.  Pure Pursuit was computing the lateral error in the wrong direction, causing the robot to turn right when the trajectory said go left.
+
+**Fix:** In `compute_command()`, negate trajectory y before use:
+- Nearest-point distance: `seg_y = -traj[..., 1] - y`
+- Lookahead point: `y_l = -traj[lookahead_idx, 1]`
+
+The rest of the algorithm (robot-frame transform, curvature) is unchanged.
+
+**Modified file:** `mqtt_python/spursuit.py`
+
+---
+
+### Speed controlled by `pathControl()` rather than hardcoded constant (`spursuit.py`, `spath_follow.py`)
+**Problem:** Changing `path_follow.pathControl(0.1)` had no effect; `compute_command()` always used the hardcoded `MAX_LINVEL = 0.3`.
+
+**Fix:** Added optional `linvel` parameter to `compute_command()`.  `spath_follow.update()` passes `self._velocity` (set by `pathControl()`) as this argument.  `MAX_LINVEL` is now only the fallback default.
+
+**Modified files:** `mqtt_python/spursuit.py`, `mqtt_python/spath_follow.py`
+
+---
+
+### Pure Pursuit tuning — lookahead and turnrate (`spursuit.py`)
+**Problem:** `LOOKAHEAD_DIST=0.3m` and `MAX_TURNRATE=4.0 rad/s` caused the robot to overshoot heading during turns (reaching >60° when trajectory only needed 41°), then spiral.
+
+**Root cause:** Lookahead shorter than the trajectory's turn radius (~0.9 m) makes Pure Pursuit unstable.  High `MAX_TURNRATE` allowed heading to overshoot before the lateral error could correct it.
+
+**New values:**
+- `LOOKAHEAD_DIST = 1.0 m` (was 0.3 m → 0.5 m → 1.0 m)
+- `MAX_TURNRATE = 1.0 rad/s` (was 4.0 rad/s; at 0.15 m/s, >1.5 rad/s causes inner-wheel reversal)
+
+**Modified file:** `mqtt_python/spursuit.py`
+
+---
+
 ## 2026-04-07: Removed unused debug utility
 
 **Problem:** `mqtt_python/get-pose.py` was a standalone script that subscribed to `robobot/kalman/state` and printed pose — it was never imported or called by any other file.

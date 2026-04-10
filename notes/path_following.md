@@ -121,16 +121,40 @@ function then calls `pathControl(0)` and sends `rc 0.0 0.0`.
 
 ---
 
+## Coordinate convention
+
+The stack uses **two** y-axis conventions that must be kept consistent:
+
+| Layer | +y direction | File |
+|-------|-------------|------|
+| Robot Kalman state (internal) | **Left** (standard math, CCW positive) | `skalman.py`, `spose.py`, `simu.py` |
+| Trajectory CSV | **Right** (`+y` = right, `-y` = left) | `trajectory.csv` |
+| Status display (silent mode) | **Right** (negated before printing) | `mqtt_client_path_follow.py` |
+
+The Pure Pursuit controller bridges these by **negating trajectory y** inside `compute_command()` before the robot-frame transform (`spursuit.py`, steps 1 and 2).  The Kalman heading follows the same flip: displayed heading is `-Kalman_yaw`.
+
+**rc command sign convention:**
+- Positive angular velocity → turn **left**
+- Negative angular velocity → turn **right**
+
+---
+
 ## Tunable parameters
 
 All in `spursuit.py` (top of file):
 
-| Constant | Default | Effect |
+| Constant | Current value | Effect |
 |----------|---------|--------|
-| `LOOKAHEAD_DIST` | 0.3 m | Distance ahead on path to aim for. Larger = smoother but slower error correction. Smaller = more responsive but can oscillate. |
-| `MAX_LINVEL` | 0.3 m/s | Constant forward speed during tracking. Also scales turn rate (κ · linvel). |
-| `MAX_TURNRATE` | 4.0 rad/s | Saturation clamp on angular velocity output. |
-| `SEARCH_WINDOW` | 30 pts | Max points scanned forward per step (~1.5 m at 0.05 m spacing). Increase if the robot can skip >1.5 m between updates. |
+| `LOOKAHEAD_DIST` | 1.0 m | Distance ahead on path to aim for. Larger = smoother but cuts corners more. Smaller = more precise but oscillates on tight curves. Rule of thumb: `LOOKAHEAD_DIST ≥ turn_radius` of tightest curve. |
+| `MAX_LINVEL` | 0.3 m/s | Fallback speed if `pathControl()` is not used. In practice the speed is set by `path_follow.pathControl(v)` which passes it through `compute_command(..., linvel=v)`. |
+| `MAX_TURNRATE` | 1.0 rad/s | Saturation clamp on angular velocity. At 0.15 m/s, >1.5 rad/s causes the inner wheel to spin backwards. |
+| `SEARCH_WINDOW` | 30 pts | Max points scanned forward per step (~1.5 m at 0.05 m spacing). |
+
+**Setting speed at runtime** — use `pathControl()`, not the constant:
+```python
+path_follow.pathControl(0.15)   # 0.15 m/s
+```
+This value is forwarded to `compute_command()` as `linvel` and overrides `MAX_LINVEL`.
 
 The trajectory file path is in `spath_follow.py`:
 ```python
@@ -151,7 +175,17 @@ TRAJECTORY_CSV = "trajectory.csv"
 cd mqtt_python
 python3 mqtt_client_path_follow.py
 ```
-No flags needed — the mission starts immediately on launch.
+
+### Silent mode — clean status output at 10 Hz
+```bash
+python3 mqtt_client_path_follow.py -s
+```
+Suppresses all MQTT/service noise and instead prints one status line per 100 ms:
+```
+x=0.123 m  y=-0.045 m  hdg=0.038 rad  rc=0.150 m/s  0.250 rad/s
+```
+- `y` and `hdg` are displayed in the **user convention** (+y = right, positive hdg = turned right)
+- `rc` turnrate sign: positive = turning left, negative = turning right
 
 ### Debug mode — verify Kalman pose without moving the robot
 ```bash
@@ -182,9 +216,14 @@ mosquitto_sub -t "robobot/kalman/state" -v
 
 ## Tuning guide
 
-### Oscillation / weaving
+### Oscillation / spinning on turns
+Increase `LOOKAHEAD_DIST`.  Pure Pursuit is unstable when `LOOKAHEAD_DIST < turn_radius`.
+At 0.15 m/s with a 0.9 m turn radius, 1.0 m lookahead is the minimum stable value.
+Also ensure `MAX_TURNRATE` is ≤ 1.0 rad/s at low speeds (higher values cause wheel slip and heading overshoot).
+
+### Oscillation / weaving on straights
 Reduce `LOOKAHEAD_DIST` (robot reacts to more local path shape) OR reduce `MAX_LINVEL`.
-Typical oscillation means the lookahead is too short relative to speed.
+Typical oscillation means the lookahead is too long relative to the straight-line error.
 
 ### Cutting corners
 Increase `LOOKAHEAD_DIST`.  Cutting corners means the robot is turning late because the
