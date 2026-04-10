@@ -17,7 +17,7 @@ from uservice import service
 from uteensy import start_teensy_interface, stop_teensy_interface
 
 # --- pitch test mode: drive forward for 2 s while printing pitch ---
-PITCH_TEST          = False   # True = drive 2 s forward while printing pitch, then stop
+PITCH_TEST          = True   # True = drive 2 s forward while printing pitch, then stop
 
 # --- platform approach ---
 SKIP_PLATFORM       = False   # True = skip drive-onto-platform (arc only)

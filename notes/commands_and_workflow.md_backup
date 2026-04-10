@@ -20,19 +20,6 @@ python3 mqtt-client.py -s  # stationary + quiet mode; auto log1 on setup and log
 
 ## Script and flag reference
 
-## Teensy firmware flash (verified)
-
-From `robobot/teensy_firmware_8`:
-
-```bash
-cd /home/local/svn/robobot/teensy_firmware_8
-chmod +x compile upload
-./compile
-./upload
-```
-
-Use this when you need to rebuild and flash the Teensy firmware.
-
 ### Main script
 - `robobot/mqtt_python/mqtt-client.py`
 

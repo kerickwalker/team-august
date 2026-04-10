@@ -1,25 +1,64 @@
-# UService:: created directory log_20260319_115035.291/
+# UService:: created directory log_20260410_105610.123/
 # UService:: no logging at start
+# UMqtt:: Waiting for (drive) Mosquitto (1)
+# UMqtt:: Waiting for (drive) Mosquitto (2)
+# UMqtt:: Waiting for (drive) Mosquitto (3)
+# UMqtt:: Waiting for (drive) Mosquitto (4)
+# UMqtt:: Waiting for (drive) Mosquitto (5)
+# UMqtt:: Waiting for (drive) Mosquitto (6)
+# UMqtt:: Waiting for (drive) Mosquitto (7)
 # UMqtt:: connection to MQTT broker on tcp://localhost:1883 established
 # UMqttIn:: connection to MQTT broker on tcp://localhost:1883 established
 # STeensy:: opening to USB /dev/ttyACM0
 # STeensy:: just connected 
-# SRobot:: (t0) found IP 0: wlan0 10.197.218.17
+# SRobot:: (t0) found IP 0: wlan0 10.197.219.117
 # SGpiod::setup GPIO disabled (in robot.ini)
 # UService:: setup of Teensy 0 modules finished OK.
 # SRobot::setRobotName (section robot0) new robot name August
-# MQTT decode:: (err=0) new master '2026-03-19 11:50:33.658533'
+# STeensy[0]:: time glitch of 2944.900 sec, 17.8 secs after app start, maybe an NTP update
+# 1775814342.0539 UMqttIn:: Connection lost (rc=(null)) at 2026-04-10 11:45:42.053
+# 1775814346.0934 MQTT (cmd) reconnect (2026-04-10 11:45:46.093)
+# 1775814346.0934 MQTT (cmd) reconnected (2026-04-10 11:45:46.093)
+# MQTT decode:: (err=0) new master '2026-04-10 11:46:20.450591'
 # Started logging
-# Teensy[0]::message queue compare err: '!enc0
-' != ';61!confw 0.075 0.075 19 68 0.22
-'
-# CMixer::setVelocity: vel=0.200 (m/s), turnrate=0.000 (rad/sec)
+# UService::run: master lost (2026-04-10 11:46:20.450591), no alive in 4.07 sec — stopping robot
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# MQTT decode:: (err=0) new master '2026-04-10 11:46:34.121179'
+# Started logging
+# UService::run: master lost (2026-04-10 11:46:34.121179), no alive in 4.04 sec — stopping robot
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# MQTT decode:: (err=0) new master '2026-04-10 11:48:16.888335'
+# Started logging
+# UService::run: master lost (2026-04-10 11:48:16.888335), no alive in 4.05 sec — stopping robot
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# MQTT decode:: (err=0) new master '2026-04-10 11:48:31.206476'
+# Started logging
+# UService::run: master lost (2026-04-10 11:48:31.206476), no alive in 4.01 sec — stopping robot
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# MQTT decode:: (err=0) new master '2026-04-10 11:51:21.845472'
+# Started logging
 # CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
 # CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
 # CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
-# signal_callback_handler: setting stopNowRequest to true
-# --------- terminating -----------
-# STeensy: close USB
-# UMqtt:: client shutdown
-# UMqttIn:: client shutdown
-# ---- Teensy_interface has ended (nicely) ----
+# MQTT decode:: (err=11) master overload 'alive 2026-04-10 11:51:24.718239' != '2026-04-10 11:51:21.845472'
+# Started logging
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# UService::run: master lost (2026-04-10 11:51:21.845472), no alive in 4.08 sec — stopping robot
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# MQTT decode:: (err=0) new master '2026-04-10 11:56:16.542530'
+# Started logging
+# UService::run: master lost (2026-04-10 11:56:16.542530), no alive in 4.00 sec — stopping robot
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# MQTT decode:: (err=0) new master '2026-04-10 12:04:13.251793'
+# Started logging
+# UService::run: master lost (2026-04-10 12:04:13.251793), no alive in 4.06 sec — stopping robot
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# MQTT decode:: (err=0) new master '2026-04-10 12:07:41.413469'
+# Started logging
+# UService::run: master lost (2026-04-10 12:07:41.413469), no alive in 4.09 sec — stopping robot
+# CMixer::setVelocity: vel=0.000 (m/s), turnrate=0.000 (rad/sec)
+# STeensy[0]:: time glitch of 2.526 sec, 2791.37 secs after app start, maybe an NTP update
+# STeensy[0]:: time glitch of 3.886 sec, 2797.68 secs after app start, maybe an NTP update
