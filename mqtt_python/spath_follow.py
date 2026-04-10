@@ -33,6 +33,9 @@ class SPathFollow:
         self._speed         = 0.0
         self._pose_received = False
         self._client        = None
+        # Last velocity command sent (read by mission loop for status prints)
+        self._last_linvel   = 0.0
+        self._last_turnrate = 0.0
 
     def setup(self):
         """
@@ -113,6 +116,8 @@ class SPathFollow:
             return
         linvel, turnrate = pursuit.compute_command(
             self._x, self._y, self._heading, self._speed)
+        self._last_linvel   = linvel
+        self._last_turnrate = turnrate
         from uservice import service
         service.send("robobot/cmd/ti", f"rc {linvel:.3f} {turnrate:.3f}")
 

@@ -47,6 +47,7 @@ def drivePathFollow():
     pose.tripBreset()
     service.send("robobot/cmd/T0", "leds 16 0 100 0")
     path_follow.pathControl(0.3)    # arm: load trajectory.csv, set velocity 0.3 m/s
+    last_print = datetime.now()
     while not service.stop:
         if state == 0:
             state = 1
@@ -61,6 +62,11 @@ def drivePathFollow():
                 state = 99
         else:
             break
+        if service.is_quiet() and (datetime.now() - last_print).total_seconds() >= 0.1:
+            print(f"x={path_follow._x:.3f} m  y={path_follow._y:.3f} m  "
+                  f"hdg={path_follow._heading:.3f} rad  "
+                  f"rc={path_follow._last_linvel:.3f} m/s  {path_follow._last_turnrate:.3f} rad/s")
+            last_print = datetime.now()
         t.sleep(0.02)               # ~50 Hz control loop
     service.send("robobot/cmd/T0", "leds 16 0 0 0")
 
