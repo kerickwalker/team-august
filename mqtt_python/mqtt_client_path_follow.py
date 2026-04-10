@@ -65,8 +65,8 @@ def drivePathFollow():
         else:
             break
         if service.is_quiet() and (datetime.now() - last_print).total_seconds() >= 0.1:
-            print(f"x={path_follow._x:.3f} m  y={path_follow._y:.3f} m  "
-                  f"hdg={path_follow._heading:.3f} rad  "
+            print(f"x={path_follow._x:.3f} m  y={-path_follow._y:.3f} m  "
+                  f"hdg={-path_follow._heading:.3f} rad  "
                   f"rc={path_follow._last_linvel:.3f} m/s  {path_follow._last_turnrate:.3f} rad/s")
             last_print = datetime.now()
         t.sleep(0.02)               # ~50 Hz control loop
