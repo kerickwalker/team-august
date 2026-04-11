@@ -33,13 +33,13 @@ class SHole:
     # --- CLAHE (local contrast enhancement) ---
     # Amplifies the subtle brightness difference between the hole and the track
     # before thresholding. Higher clip_limit = more aggressive enhancement.
-    clahe_clip      = 3.0    # contrast limit per tile (1.0 = off, 2-4 typical)
-    clahe_tile      = 8      # tile grid size (NxN pixels per tile)
+    clahe_clip      = 3.2    # contrast limit per tile (1.0 = off, 2-4 typical)
+    clahe_tile      = 2      # tile grid size (NxN pixels per tile)
 
     # --- Dark region threshold ---
     # After CLAHE, pixels below this value are treated as the hole interior.
     # Tune with calibrate_hole.py — depends on track brightness after CLAHE.
-    dark_threshold  = 80     # 0-255
+    dark_threshold  = 63     # 0-255
 
     # --- Contour size filter ---
     # Reject blobs that are clearly too small (noise) or too large (shadows,
@@ -56,7 +56,7 @@ class SHole:
     # 4π·area/perimeter² — 1.0 = perfect circle, lower = more irregular.
     # Drops sharply for jagged/non-convex shapes even if their bounding ellipse
     # looks reasonable. Raise this to be more strict (0.6–0.8 is a useful range).
-    min_circularity  = 0.55
+    min_circularity  = 0.28
 
     # --- Ground ROI ---
     # Only search the bottom fraction of the frame where the ground is visible.
