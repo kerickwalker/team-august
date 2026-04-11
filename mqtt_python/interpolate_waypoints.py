@@ -26,8 +26,73 @@ import math
 import sys
 
 import numpy as np
-from scipy.interpolate import CubicSpline
 
+
+# ── Numpy-only natural cubic spline ──────────────────────────────────────────
+
+def _make_spline(s, vals):
+    """
+    Build a natural cubic spline through (s, vals) using only numpy.
+
+    Returns a callable f(t, deriv=0) that evaluates the spline value (deriv=0)
+    or first derivative (deriv=1) at an array of parameter values t.
+
+    Algorithm: solves the symmetric tridiagonal system for the interior second
+    derivatives M[1..n-2] (natural boundary: M[0] = M[n-1] = 0), then
+    evaluates using the standard piecewise-cubic formula.
+    """
+    s    = np.asarray(s,    dtype=float)
+    vals = np.asarray(vals, dtype=float)
+    n    = len(s)
+    h    = np.diff(s)           # interval widths
+
+    if n < 3:
+        # Only 2 points — fall back to linear
+        def _linear(t, deriv=0):
+            t = np.asarray(t, dtype=float)
+            if deriv == 0:
+                return np.interp(t, s, vals)
+            slope = (vals[-1] - vals[0]) / h[0] if h[0] != 0 else 0.0
+            return np.full(t.shape, slope)
+        return _linear
+
+    # Right-hand side of the tridiagonal system
+    rhs = 6.0 * ((vals[2:] - vals[1:-1]) / h[1:]
+                - (vals[1:-1] - vals[:-2]) / h[:-1])
+
+    # Diagonal and super/sub-diagonal
+    diag = 2.0 * (h[:-1] + h[1:])
+    off  = h[1:-1]
+
+    # Build and solve (size n-2 system)
+    A        = np.diag(diag) + np.diag(off, 1) + np.diag(off, -1)
+    M_int    = np.linalg.solve(A, rhs)
+    M        = np.concatenate([[0.0], M_int, [0.0]])   # full second-derivative vector
+
+    def _eval(t, deriv=0):
+        t   = np.asarray(t, dtype=float)
+        idx = np.searchsorted(s, t, side="right") - 1
+        idx = np.clip(idx, 0, n - 2)
+
+        hi = h[idx]
+        ta = s[idx + 1] - t          # distance to right knot
+        tb = t - s[idx]              # distance from left knot
+
+        if deriv == 0:
+            return (M[idx]     * ta**3 / (6.0 * hi)
+                  + M[idx + 1] * tb**3 / (6.0 * hi)
+                  + (vals[idx]     - M[idx]     * hi**2 / 6.0) * ta / hi
+                  + (vals[idx + 1] - M[idx + 1] * hi**2 / 6.0) * tb / hi)
+        else:   # first derivative
+            return (-M[idx]     * ta**2 / (2.0 * hi)
+                  +  M[idx + 1] * tb**2 / (2.0 * hi)
+                  + (vals[idx + 1] - vals[idx]) / hi
+                  - (M[idx + 1] - M[idx]) * hi / 6.0)
+
+    return _eval
+
+
+# ── Waypoint helpers ──────────────────────────────────────────────────────────
 
 def load_waypoints(path: str):
     """Read CSV waypoints → (xs, ys) numpy arrays."""
@@ -62,20 +127,18 @@ def chord_cumulative(xs, ys):
 
 def interpolate(xs, ys, spacing: float):
     """
-    Fit a cubic spline through (xs, ys) parameterised by chord length,
+    Fit a natural cubic spline through (xs, ys) parameterised by chord length,
     then resample at `spacing` metre intervals.
 
     Returns (x_out, y_out, heading_out, cumdist_out) as numpy arrays.
     """
     s = chord_cumulative(xs, ys)
 
-    # Fit independent splines for x(s) and y(s)
-    cs_x = CubicSpline(s, xs)
-    cs_y = CubicSpline(s, ys)
+    cs_x = _make_spline(s, xs)
+    cs_y = _make_spline(s, ys)
 
     # Dense sample points
     s_dense = np.arange(0.0, s[-1], spacing)
-    # Always include the endpoint
     if s_dense[-1] < s[-1]:
         s_dense = np.append(s_dense, s[-1])
 
@@ -83,12 +146,11 @@ def interpolate(xs, ys, spacing: float):
     y_out = cs_y(s_dense)
 
     # Heading from spline tangent (CCW+, radians)
-    dx = cs_x(s_dense, 1)   # first derivative
-    dy = cs_y(s_dense, 1)
+    dx = cs_x(s_dense, deriv=1)
+    dy = cs_y(s_dense, deriv=1)
     heading_out = np.arctan2(dy, dx)
 
     # Recompute cumulative distance from actual dense point positions
-    # (s_dense is a chord-length parameter, not exact arc length)
     cumdist = np.zeros(len(x_out))
     for i in range(1, len(x_out)):
         ddx = x_out[i] - x_out[i - 1]

@@ -245,7 +245,7 @@ Example output:
 % Done. Load with: python3 mqtt_client_path_follow.py -s
 ```
 
-**Requires:** `numpy`, `scipy` (both available on standard Pi Python install).
+**Requires:** `numpy` only — the cubic spline is implemented directly, no scipy needed.
 
 ### Step 3 — Run the mission
 
