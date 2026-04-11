@@ -50,7 +50,13 @@ class SHole:
     # --- Ellipse shape filter ---
     # Rejects elongated shapes that can't plausibly be a round hole in perspective.
     # Ratio of major to minor axis; 1.0 = perfect circle, higher = more elongated.
-    max_aspect_ratio = 4.0
+    max_aspect_ratio = 3.0
+
+    # --- Circularity filter ---
+    # 4π·area/perimeter² — 1.0 = perfect circle, lower = more irregular.
+    # Drops sharply for jagged/non-convex shapes even if their bounding ellipse
+    # looks reasonable. Raise this to be more strict (0.6–0.8 is a useful range).
+    min_circularity  = 0.55
 
     # --- Ground ROI ---
     # Only search the bottom fraction of the frame where the ground is visible.
@@ -78,6 +84,7 @@ class SHole:
         print(f"%         dark_threshold={self.dark_threshold}")
         print(f"%         min_area={self.min_area}  max_area={self.max_area}")
         print(f"%         max_aspect_ratio={self.max_aspect_ratio}  "
+              f"min_circularity={self.min_circularity}  "
               f"roi_fraction={self.roi_fraction}")
 
     ##########################################################
@@ -116,8 +123,9 @@ class SHole:
         # 6. Find contours of dark blobs
         contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-        # 7. Filter contours by area and ellipse shape, pick the largest valid one
-        best_area    = 0
+        # 7. Filter contours by area, circularity, and ellipse shape.
+        #    Score by circularity so the most circle-like blob wins.
+        best_score   = -1.0
         best_ellipse = None
 
         for cnt in contours:
@@ -126,6 +134,13 @@ class SHole:
                 continue
             if len(cnt) < 5:          # fitEllipse requires at least 5 points
                 continue
+
+            perimeter = cv.arcLength(cnt, closed=True)
+            if perimeter == 0:
+                continue
+            circularity = (4 * np.pi * area) / (perimeter * perimeter)
+            if circularity < self.min_circularity:
+                continue            # too irregular — not a round hole
 
             ellipse = cv.fitEllipse(cnt)
             (ex, ey), (d1, d2), ang = ellipse
@@ -137,8 +152,8 @@ class SHole:
             if (major_r / minor_r) > self.max_aspect_ratio:
                 continue            # too elongated — not a round hole
 
-            if area > best_area:
-                best_area    = area
+            if circularity > best_score:
+                best_score   = circularity
                 best_ellipse = ellipse
 
         if best_ellipse is not None:

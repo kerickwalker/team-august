@@ -37,33 +37,35 @@ def nothing(_):
 
 
 def build_controls(clahe_clip_x10, clahe_tile, dark_thresh,
-                   min_area, max_area, max_aspect_x10, roi_pct):
+                   min_area, max_area, max_aspect_x10, min_circ_x100, roi_pct):
     cv.namedWindow(WINDOW_CTRL, cv.WINDOW_NORMAL)
-    cv.resizeWindow(WINDOW_CTRL, 440, 380)
-    cv.createTrackbar("CLAHE clip (x10)",   WINDOW_CTRL, clahe_clip_x10, 100,  nothing)
-    cv.createTrackbar("CLAHE tile",         WINDOW_CTRL, clahe_tile,     32,   nothing)
-    cv.createTrackbar("Dark threshold",     WINDOW_CTRL, dark_thresh,    255,  nothing)
-    cv.createTrackbar("Min area (px^2)",    WINDOW_CTRL, min_area,       5000, nothing)
-    cv.createTrackbar("Max area (x100px^2)",WINDOW_CTRL, max_area,       1000, nothing)
-    cv.createTrackbar("Max aspect (x10)",   WINDOW_CTRL, max_aspect_x10, 100,  nothing)
-    cv.createTrackbar("ROI % from bottom",  WINDOW_CTRL, roi_pct,        100,  nothing)
+    cv.resizeWindow(WINDOW_CTRL, 440, 420)
+    cv.createTrackbar("CLAHE clip (x10)",   WINDOW_CTRL, clahe_clip_x10,  100,  nothing)
+    cv.createTrackbar("CLAHE tile",         WINDOW_CTRL, clahe_tile,      32,   nothing)
+    cv.createTrackbar("Dark threshold",     WINDOW_CTRL, dark_thresh,     255,  nothing)
+    cv.createTrackbar("Min area (px^2)",    WINDOW_CTRL, min_area,        5000, nothing)
+    cv.createTrackbar("Max area (x100px^2)",WINDOW_CTRL, max_area,        1000, nothing)
+    cv.createTrackbar("Max aspect (x10)",   WINDOW_CTRL, max_aspect_x10,  100,  nothing)
+    cv.createTrackbar("Min circular (x100)",WINDOW_CTRL, min_circ_x100,   100,  nothing)
+    cv.createTrackbar("ROI % from bottom",  WINDOW_CTRL, roi_pct,         100,  nothing)
 
 
 def read_controls():
-    clip_x10      = max(cv.getTrackbarPos("CLAHE clip (x10)",    WINDOW_CTRL), 1)
-    tile          = max(cv.getTrackbarPos("CLAHE tile",          WINDOW_CTRL), 2)
-    dark_thresh   = cv.getTrackbarPos("Dark threshold",          WINDOW_CTRL)
-    min_area      = cv.getTrackbarPos("Min area (px^2)",         WINDOW_CTRL)
-    max_area_x100 = max(cv.getTrackbarPos("Max area (x100px^2)", WINDOW_CTRL), 1)
-    aspect_x10    = max(cv.getTrackbarPos("Max aspect (x10)",    WINDOW_CTRL), 10)
-    roi_pct       = max(cv.getTrackbarPos("ROI % from bottom",   WINDOW_CTRL), 1)
+    clip_x10      = max(cv.getTrackbarPos("CLAHE clip (x10)",     WINDOW_CTRL), 1)
+    tile          = max(cv.getTrackbarPos("CLAHE tile",           WINDOW_CTRL), 2)
+    dark_thresh   = cv.getTrackbarPos("Dark threshold",           WINDOW_CTRL)
+    min_area      = cv.getTrackbarPos("Min area (px^2)",          WINDOW_CTRL)
+    max_area_x100 = max(cv.getTrackbarPos("Max area (x100px^2)",  WINDOW_CTRL), 1)
+    aspect_x10    = max(cv.getTrackbarPos("Max aspect (x10)",     WINDOW_CTRL), 10)
+    circ_x100     = cv.getTrackbarPos("Min circular (x100)",      WINDOW_CTRL)
+    roi_pct       = max(cv.getTrackbarPos("ROI % from bottom",    WINDOW_CTRL), 1)
     return (clip_x10 / 10.0, tile, dark_thresh,
             min_area, max_area_x100 * 100,
-            aspect_x10 / 10.0, roi_pct / 100.0)
+            aspect_x10 / 10.0, circ_x100 / 100.0, roi_pct / 100.0)
 
 
 def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
-                    min_area, max_area, max_aspect, roi_fraction):
+                    min_area, max_area, max_aspect, min_circularity, roi_fraction):
     h, w = img.shape[:2]
     roi_y = int(h * (1.0 - roi_fraction))
     roi   = img[roi_y:, :]
@@ -85,7 +87,7 @@ def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
     contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
     overlay      = img.copy()
-    best_area    = 0
+    best_score   = -1.0
     best_ellipse = None
     grey         = (160, 160, 160)
 
@@ -95,18 +97,26 @@ def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
             continue
         if len(cnt) < 5:
             continue
+        perimeter = cv.arcLength(cnt, closed=True)
+        if perimeter == 0:
+            continue
+        circularity = (4 * np.pi * area) / (perimeter * perimeter)
+        if circularity < min_circularity:
+            continue
         ellipse = cv.fitEllipse(cnt)
         (ex, ey), (d1, d2), ang = ellipse
         minor_r = min(d1, d2) / 2.0
         major_r = max(d1, d2) / 2.0
         if minor_r == 0 or (major_r / minor_r) > max_aspect:
             continue
-        # Draw all passing candidates in dim grey
+        # Draw all passing candidates in dim grey, labelled with circularity
         center = (int(ex), int(ey) + roi_y)
         axes   = (int(minor_r), int(major_r))
         cv.ellipse(overlay, center, axes, ang, 0, 360, (80, 80, 80), 1)
-        if area > best_area:
-            best_area    = area
+        cv.putText(overlay, f"{circularity:.2f}", (center[0] + int(major_r) + 2, center[1]),
+                   cv.FONT_HERSHEY_PLAIN, 0.9, (80, 80, 80), 1)
+        if circularity > best_score:
+            best_score   = circularity
             best_ellipse = (ellipse, roi_y)
 
     # Draw ROI boundary
@@ -124,7 +134,8 @@ def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
         cv.circle(overlay, (cx, cy), 3, grey, -1)
         avg_r = (minor_r + major_r) // 2
         err   = (cx - w / 2.0) / (w / 2.0)
-        label = f"Hole: r={avg_r}px  err={err:+.2f}  aspect={major_r/max(minor_r,1):.1f}"
+        label = (f"Hole: r={avg_r}px  err={err:+.2f}  "
+                 f"aspect={major_r/max(minor_r,1):.1f}  circ={best_score:.2f}")
         cv.putText(overlay, label, (cx + major_r + 4, cy),
                    cv.FONT_HERSHEY_PLAIN, 1.1, grey, 2)
     else:
@@ -145,7 +156,7 @@ def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
 
 
 def print_values(clahe_clip, clahe_tile, dark_thresh,
-                 min_area, max_area, max_aspect, roi_fraction):
+                 min_area, max_area, max_aspect, min_circularity, roi_fraction):
     print("\n--- Copy these values into shole.py ---")
     print(f"    clahe_clip       = {clahe_clip}")
     print(f"    clahe_tile       = {clahe_tile}")
@@ -153,6 +164,7 @@ def print_values(clahe_clip, clahe_tile, dark_thresh,
     print(f"    min_area         = {min_area}")
     print(f"    max_area         = {max_area}")
     print(f"    max_aspect_ratio = {max_aspect}")
+    print(f"    min_circularity  = {min_circularity}")
     print(f"    roi_fraction     = {roi_fraction}")
     print("---------------------------------------\n")
 
@@ -191,7 +203,8 @@ def calibrate(img):
         dark_thresh=80,
         min_area=400,
         max_area=400,        # 400 * 100 = 40000 px²
-        max_aspect_x10=40,   # 4.0
+        max_aspect_x10=30,   # 3.0
+        min_circ_x100=55,    # 0.55
         roi_pct=60,
     )
 
@@ -204,10 +217,10 @@ def calibrate(img):
 
     while True:
         (clahe_clip, clahe_tile, dark_thresh,
-         min_area, max_area, max_aspect, roi_frac) = read_controls()
+         min_area, max_area, max_aspect, min_circ, roi_frac) = read_controls()
 
         overlay, debug = detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
-                                         min_area, max_area, max_aspect, roi_frac)
+                                         min_area, max_area, max_aspect, min_circ, roi_frac)
 
         cv.imshow(WINDOW_SRC,  overlay)
         cv.imshow(WINDOW_MASK, debug)
@@ -217,7 +230,7 @@ def calibrate(img):
             break
         if key == ord('s'):
             print_values(clahe_clip, clahe_tile, dark_thresh,
-                         min_area, max_area, max_aspect, roi_frac)
+                         min_area, max_area, max_aspect, min_circ, roi_frac)
 
     cv.destroyAllWindows()
 
