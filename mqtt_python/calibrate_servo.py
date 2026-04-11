@@ -5,21 +5,27 @@
 # Connects directly to the robot's MQTT broker and sends servo commands
 # so you can observe arm movement and record the positions for sservo.py.
 #
+# Servo command format:  servo <id> <position> <speed>
+#   id       — channel number (typically 1)
+#   position — -1000 to +1000; values outside this range disable the servo
+#   speed    — 0 = full speed; 1-1000 = positions moved per second (500 = fast, 20 = slow)
+#
 # Usage:
 #   python3 calibrate_servo.py <robot-ip>
 #   python3 calibrate_servo.py 10.197.217.81
 #
 # At the prompt, type servo commands or shortcuts:
 #   servo <id> <position> <speed>   — send a raw servo command
-#   <position>                      — resend last id/speed with new position
-#   open   <position>               — record the "open/scoop" position
-#   carry  <position>               — record the "carry" position
-#   putt   <position>               — record the "putt/release" position
+#   <position>                      — move to position (uses current id/speed)
+#   open   <position>               — move and record the "open/scoop" position
+#   carry  <position>               — move and record the "carry" position
+#   putt   <position>               — move and record the "putt/release" position
 #   id     <n>                      — change the default servo id
-#   speed  <n>                      — change the default speed
+#   speed  <n>                      — change the default speed (0=full, 500=fast, 20=slow)
+#   disable                         — relax servo (send out-of-range position)
 #   show                            — print currently recorded positions
 #   save                            — print values to copy into sservo.py
-#   q / quit                        — exit
+#   q / quit                        — exit (also disables servo)
 
 import sys
 import time
