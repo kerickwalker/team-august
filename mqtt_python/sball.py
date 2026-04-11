@@ -30,10 +30,13 @@ from datetime import datetime
 
 class SBall:
 
-    # --- Brightness threshold for isolating the white ball ---
-    brightness_threshold = 180    # 0-255; tune with a saved frame if needed
+    # --- HSV colour filter for isolating the orange ball ---
+    # Bright orange sits at lower hue values (closer to red) with high saturation.
+    # Tune with calibrate_ball.py if the ball shade differs from these defaults.
+    hsv_lower = np.array([0,  150, 100], dtype=np.uint8)   # H, S, V
+    hsv_upper = np.array([20, 255, 255], dtype=np.uint8)
 
-    # --- Hough circle parameters (tune if getting false positives/negatives) ---
+    # --- Hough circle parameters ---
     hough_dp            = 1.2    # inverse resolution ratio (1 = full res, higher = faster)
     hough_min_dist      = 50     # minimum pixel distance between detected circle centres
     hough_param1        = 80     # Canny high threshold passed internally to HoughCircles
@@ -55,31 +58,37 @@ class SBall:
 
     ##########################################################
 
-    def setup(self, brightness_threshold=180):
-        self.brightness_threshold = brightness_threshold
+    def setup(self):
         print("% SBall:: ready")
-        print(f"%         brightness_threshold = {self.brightness_threshold}")
+        print(f"%         hsv_lower = {self.hsv_lower.tolist()}  "
+              f"hsv_upper = {self.hsv_upper.tolist()}")
         print(f"%         hough_min_radius = {self.hough_min_radius}  "
               f"hough_max_radius = {self.hough_max_radius}")
 
     ##########################################################
 
     def detect(self, img):
-        """Detect a white golf ball in a BGR image using Hough circle transform.
+        """Detect an orange golf ball in a BGR image using HSV colour filtering
+        and Hough circle transform.
         Updates detected, cx, cy, radius.
         Returns True if a ball was found."""
         h, w = img.shape[:2]
         self._img_w = w
         self._img_h = h
 
-        # 1. Convert to grayscale and threshold to isolate bright regions
-        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-        _, mask = cv.threshold(gray, self.brightness_threshold, 255, cv.THRESH_BINARY)
+        # 1. HSV colour mask to isolate orange regions
+        hsv  = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+        mask = cv.inRange(hsv, self.hsv_lower, self.hsv_upper)
 
-        # 2. Slight blur to reduce noise before circle detection
+        # 2. Morphological cleanup — close small holes, remove specks
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
+        mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel, iterations=2)
+        mask = cv.morphologyEx(mask, cv.MORPH_OPEN,  kernel, iterations=1)
+
+        # 3. Blur before circle detection
         blurred = cv.GaussianBlur(mask, (9, 9), 2)
 
-        # 3. Hough circle transform
+        # 4. Hough circle transform
         circles = cv.HoughCircles(
             blurred,
             cv.HOUGH_GRADIENT,
@@ -91,7 +100,7 @@ class SBall:
             maxRadius=self.hough_max_radius,
         )
 
-        # 4. Pick the most confident circle (first in the list, highest accumulator vote)
+        # 5. Pick the most confident circle (first in the list, highest accumulator vote)
         if circles is not None:
             circles = np.round(circles[0]).astype(int)
             self.cx           = int(circles[0][0])
@@ -129,12 +138,13 @@ class SBall:
         """Draw detection overlay onto img in-place."""
         if not self.detected:
             cv.putText(img, "Ball: not found", (10, 50),
-                       cv.FONT_HERSHEY_PLAIN, 1.4, (0, 0, 200), thickness=2)
+                       cv.FONT_HERSHEY_PLAIN, 1.4, (0, 100, 255), thickness=2)
             return
+        orange = (0, 100, 255)  # BGR orange
         # detected circle
-        cv.circle(img, (self.cx, self.cy), self.radius, (255, 255, 255), thickness=2)
+        cv.circle(img, (self.cx, self.cy), self.radius, orange, thickness=2)
         # centre dot
-        cv.circle(img, (self.cx, self.cy), 3, (255, 255, 255), thickness=-1)
+        cv.circle(img, (self.cx, self.cy), 3, orange, thickness=-1)
         # image centre reference line
         cv.line(img, (self._img_w // 2, 0), (self._img_w // 2, self._img_h),
                 (200, 200, 200), thickness=1)
@@ -142,7 +152,7 @@ class SBall:
         err = self.steeringError()
         label = f"Ball: r={self.radius}px  err={err:+.2f}"
         cv.putText(img, label, (self.cx + self.radius + 4, self.cy),
-                   cv.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), thickness=2)
+                   cv.FONT_HERSHEY_PLAIN, 1.2, orange, thickness=2)
 
     ##########################################################
 
