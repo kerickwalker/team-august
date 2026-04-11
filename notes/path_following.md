@@ -26,7 +26,10 @@ which is more accurate than raw encoder odometry for closed-loop trajectory trac
 | `mqtt_python/spursuit.py` | Pure Pursuit math — no MQTT, fully standalone |
 | `mqtt_python/spath_follow.py` | MQTT integration — Kalman subscriber + `rc` publisher |
 | `mqtt_python/mqtt_client_path_follow.py` | **Entry point** — run this file to start the mission |
+| `mqtt_python/mqtt_client_teleop.py` | Keyboard teleoperation + waypoint capture |
+| `mqtt_python/interpolate_waypoints.py` | Cubic-spline resampler: sparse waypoints → dense `trajectory.csv` |
 | `mqtt_python/trajectory.csv` | Input trajectory — place here before running |
+| `mqtt_python/teleop_waypoints.csv` | Sparse waypoints saved by `mqtt_client_teleop.py` (generated) |
 
 ---
 
@@ -159,6 +162,95 @@ This value is forwarded to `compute_command()` as `linvel` and overrides `MAX_LI
 The trajectory file path is in `spath_follow.py`:
 ```python
 TRAJECTORY_CSV = "trajectory.csv"
+```
+
+---
+
+## Trajectory authoring workflow
+
+The Pure Pursuit controller has **no internal interpolation** — it selects
+discrete rows and uses `cumulative_dist` for the lookahead walk.  The existing
+`trajectory.csv` uses ~0.05 m spacing (74 points over 3.6 m).  Sparse points
+(0.5–2 m apart) would cause coarse, jumpy steering and poor curvature
+estimation on turns.
+
+### Step 1 — Capture waypoints with `mqtt_client_teleop.py`
+
+```bash
+cd mqtt_python
+python3 mqtt_client_teleop.py
+```
+
+The script shows a 3-second countdown, then waits for the first Kalman pose
+before printing "Ready".  Controls:
+
+| Key | Action |
+|-----|--------|
+| `w` / `s` | Forward / Backward (0.15 m/s) |
+| `a` / `d` | Turn left / right (0.5 rad/s, in-place) |
+| Space | Stop |
+| `c` | Capture current pose as waypoint |
+| `q` / Ctrl-C | Quit and save → `teleop_waypoints.csv` |
+
+**Display** while running (updates every 1 s, overwrites same line):
+```
+% x=  1.234 m  y= -0.012 m  hdg= 0.031 rad  wps=  4  [FWD]
+```
+
+**Output file** `teleop_waypoints.csv`:
+```
+x,y,heading,cumulative_dist
+0.000,0.000,0.031,0.000
+1.234,-0.012,0.028,1.234
+...
+```
+
+- `y` convention: **+y = right** (trajectory CSV convention, not Kalman convention)
+- `heading`: CCW+ radians (Kalman convention, unchanged)
+- These are **sparse reference points** — NOT suitable for direct Pure Pursuit tracking.
+
+The teleop script always forces silent mode internally (injects `-s` before
+`service.setup()`), suppressing all uservice MQTT noise.
+
+### Step 2 — Interpolate with `interpolate_waypoints.py`
+
+```bash
+python3 interpolate_waypoints.py
+# or with explicit paths/spacing:
+python3 interpolate_waypoints.py -i teleop_waypoints.csv -o trajectory.csv -d 0.05
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `-i` | `teleop_waypoints.csv` | Input sparse waypoints |
+| `-o` | `trajectory.csv` | Output dense trajectory |
+| `-d` | `0.05` | Target arc-length spacing (m) |
+
+**What the script does:**
+1. Fits two independent `CubicSpline`s — `x(s)` and `y(s)` — parameterised by
+   cumulative chord length through the input waypoints.
+2. Resamples at the target spacing using `np.arange`.
+3. Computes heading from the spline tangent: `arctan2(dy/ds, dx/ds)`.
+   This gives geometrically smooth, path-consistent headings regardless of the
+   robot's orientation when each waypoint was captured.
+4. Recomputes `cumulative_dist` from the actual dense point positions.
+5. Writes `trajectory.csv` in the standard 4-column format.
+
+Example output:
+```
+% Input:  12 waypoints, total chord length 5.23 m  (teleop_waypoints.csv)
+% Output: 105 points @ 0.0500 m spacing → trajectory.csv
+% Total path length: 5.23 m
+% Heading range: -0.31 to 0.78 rad
+% Done. Load with: python3 mqtt_client_path_follow.py -s
+```
+
+**Requires:** `numpy`, `scipy` (both available on standard Pi Python install).
+
+### Step 3 — Run the mission
+
+```bash
+python3 mqtt_client_path_follow.py -s
 ```
 
 ---
