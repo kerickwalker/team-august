@@ -123,15 +123,15 @@ def get_key():
 
 
 BANNER = """\
-% ┌─────────────────────────────────────────────────┐
-% │        TELEOPERATION + WAYPOINT CAPTURE         │
-% │                                                 │
-% │  w / s       Forward / Backward (0.15 m/s)      │
-% │  a / d       Turn left / right  (0.5 rad/s)     │
-% │  Space       Stop                               │
-% │  c           Capture waypoint                   │
-% │  q / Ctrl-C  Quit and save waypoints            │
-% └─────────────────────────────────────────────────┘"""
+┌─────────────────────────────────────────────────┐
+│        TELEOPERATION + WAYPOINT CAPTURE         │
+│                                                 │
+│  w / s       Forward / Backward (0.15 m/s)      │
+│  a / d       Turn left / right  (0.5 rad/s)     │
+│  Space       Stop                               │
+│  c           Capture waypoint                   │
+│  q / Ctrl-C  Quit and save waypoints            │
+└─────────────────────────────────────────────────┘"""
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -184,20 +184,23 @@ def drive_teleop():
         # ── State 0: initialise ──────────────────────────────────────────
         if state == 0:
             print(BANNER)
+            for i in range(3, 0, -1):
+                print(f"  Starting in {i} ...", end="\r", flush=True)
+                t.sleep(1.0)
+            print(" " * 20, end="\r")  # clear countdown line
             pose.tripBreset()
             kalman.reset()
             service.send("robobot/cmd/T0", "leds 16 100 50 0")  # amber = teleop
-            print("% Waiting for Kalman pose ...")
             while not teleop.pose_received and not service.stop:
                 t.sleep(0.1)
-            print("% Pose received — you have control.")
+            print("Ready — script is now ready to be used to capture waypoints.")
             state = 1
 
         # ── State 1: control loop ────────────────────────────────────────
         elif state == 1:
             # Periodic pose print (every 0.5 s)
             now = datetime.now()
-            if (now - last_print).total_seconds() >= 0.5:
+            if (now - last_print).total_seconds() >= 1.0:
                 x_d   =  teleop.x
                 y_d   = -teleop.y        # display: positive = right
                 hdg_d = -teleop.heading  # display: positive = right turn
@@ -253,6 +256,9 @@ if __name__ == "__main__":
         print("% mqtt-client already running — terminating")
     else:
         setproctitle("mqtt-client")
+        # Suppress uservice verbose output — teleop has its own clean display
+        if "-s" not in sys.argv and "--silent" not in sys.argv:
+            sys.argv.append("-s")
         service.setup("localhost")
         teleop.setup()
 
