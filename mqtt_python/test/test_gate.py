@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
-# Standalone field test for gate detection (sgate.py) and vision-based
-# white line detection (svline.py).
+# Standalone field test for all vision detection modules:
+#   sgate.py  — orange gate uprights
+#   svline.py — white line on ground
+#   sball.py  — white golf ball
+#   shole.py  — golf hole (dark circle)
 # No MQTT or robot connection required — opens the camera stream directly.
 # Runs headless — the final annotated frame is saved to test/ on exit.
 #
@@ -22,6 +25,8 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from sgate import gate
 from svline import vline
+from sball import ball
+from shole import hole
 
 
 def main():
@@ -40,6 +45,8 @@ def main():
 
     gate.setup()
     vline.setup()
+    ball.setup()
+    hole.setup()
 
     # Read one frame to confirm stream is live and print resolution
     ret, frame = cap.read()
@@ -67,6 +74,10 @@ def main():
             gate.paint(frame)
             vline.detect(frame)
             vline.paint(frame)
+            ball.detect(frame)
+            ball.paint(frame)
+            hole.detect(frame)
+            hole.paint(frame)
             last_frame = frame
 
             # Print detection status to terminal at ~2 Hz
@@ -82,6 +93,18 @@ def main():
                           f"conf={vline.lineValidCnt}/20")
                 else:
                     print(f"% Line  not found  conf={vline.lineValidCnt}/20")
+                if ball.detected:
+                    print(f"% Ball  FOUND  r={ball.radius}px  "
+                          f"cx={ball.cx}  steeringErr={ball.steeringError():+.3f}  "
+                          f"close={ball.isClose()}")
+                else:
+                    print("% Ball  not found")
+                if hole.detected:
+                    print(f"% Hole  FOUND  r={hole.radius}px  "
+                          f"cx={hole.cx}  steeringErr={hole.steeringError():+.3f}  "
+                          f"close={hole.isClose()}")
+                else:
+                    print("% Hole  not found")
                 t_last_print = now
 
     except KeyboardInterrupt:
@@ -90,15 +113,18 @@ def main():
     # Save the final annotated frame
     if last_frame is not None:
         ts = datetime.now().strftime('%Y_%b_%d_%H%M%S')
-        fn = os.path.join(save_dir, f"gate_{ts}_{frame_count:04d}.jpg")
+        fn = os.path.join(save_dir, f"vision_{ts}_{frame_count:04d}.jpg")
         cv.imwrite(fn, last_frame)
         print(f"% Saved final frame to {fn}")
 
     cap.release()
     gate.terminate()
     vline.terminate()
+    ball.terminate()
+    hole.terminate()
     print(f"% Done — {frame_count} frames processed")
-    print(f"%         gate detections: {gate.detCnt}  line detections: {vline.detCnt}")
+    print(f"%         gate={gate.detCnt}  line={vline.detCnt}  "
+          f"ball={ball.detCnt}  hole={hole.detCnt}")
 
 
 if __name__ == "__main__":
