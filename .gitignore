@@ -28,3 +28,5 @@ log*.txt
 
 # Ignore all JPEG images
 *.jpg
+
+CLAUDE.md

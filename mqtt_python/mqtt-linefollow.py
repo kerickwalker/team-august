@@ -1,342 +1,82 @@
 #!/usr/bin/env python3
 
-#/***************************************************************************
-#*   Copyright (C) 2024 by DTU
-#*   jcan@dtu.dk
-#*
-#*
-#* The MIT License (MIT)  https://mit-license.org/
-#*
-#* Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-#* and associated documentation files (the “Software”), to deal in the Software without restriction,
-#* including without limitation the rights to use, copy, modify, merge, publish, distribute,
-#* sublicense, and/or sell copies of the Software, and to permit persons to whom the Software
-#* is furnished to do so, subject to the following conditions:
-#*
-#* The above copyright notice and this permission notice shall be included in all copies
-#* or substantial portions of the Software.
-#*
-#* THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-#* INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-#* PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-#* FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-#* ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#* THE SOFTWARE. */
+# Line-following mission for Robobot (DTU).
+#
+# Run with:   python3 mqtt-linefollow.py -e        (normal)
+#             python3 mqtt-linefollow.py -e -s      (silent, no debug prints)
+#             python3 mqtt-linefollow.py -e --now   (skip IR start-gate, go immediately)
+#
+# The robot drives forward until it finds the line, then follows it.
+# It counts crossings and reacts:
+#   crossing 1, 2  → go straight through
+#   crossing 3     → hard 90° turn (left or right, detected from sensor pattern)
+#   crossing 4     → stop, turn 45° right, drive ~1.3 m, done
 
-#import sys
-#import threading
 import time as t
-import os
-#import select
 import numpy as np
-import cv2 as cv
-from datetime import *
+from datetime import datetime
 from setproctitle import setproctitle
-# robot function
-from spose import pose
-from sir import ir
-from srobot import robot
-from scam import cam
-from sedge import edge
-from sgpio import gpio
-from scam import cam
-from uservice import service
+
+# Robot modules
+from spose import pose        # encoder odometry (tripB = distance, tripBh = heading change)
+from sir import ir            # IR distance sensor (used to detect start-gate)
+from sedge import edge        # line/edge sensor array + PD line controller
+from sgpio import gpio        # GPIO (LEDs, start button)
+from uservice import service  # MQTT connection, argparse, send/stop helpers
 from uteensy import start_teensy_interface, stop_teensy_interface
 
 ############################################################
-
-def imageAnalysis(save):
-  if cam.useCam:
-    ok, img, imgTime = cam.getImage()
-    if not ok: # size(img) == 0):
-      if cam.imageFailCnt < 5:
-        print("% Failed to get image.")
-    else:
-      h, w, ch = img.shape
-      if not service.args.silent:
-        # print(f"% At {imgTime}, got image {cam.cnt} of size= {w}x{h}")
-        pass
-      edge.paint(img)
-      if not gpio.onPi:
-        try:
-          cv.imshow('frame for analysis', img)
-        except:
-          print("% mqtt-client::imageAnalysis: failed to show camera image");
-      if save:
-        fn = f"image_{imgTime.strftime('%Y_%b_%d_%H%M%S_')}{cam.cnt:03d}.jpg"
-        cv.imwrite(fn, img)
-        if not service.args.silent:
-          print(f"% Saved image {fn}")
-      else:
-        print("# imageAnalysis:: image not saved")
-      pass
-    pass
-  pass
-
+# Crossing-count tuning constants
 ############################################################
 
-stateTime = datetime.now()
-
-def stateTimePassed():
-  return (datetime.now() - stateTime).total_seconds()
+CROSSING_AT_CNT       = 2    # minimum sensor lines active to call it a crossing
+CROSSINGS_GO_STRAIGHT = 2    # first N crossings: go straight (no hard turn)
+CROSSING_STOP_AT      = 4    # stop at this crossing number (1-based)
+CROSSING_LEAVE_DELAY_S = 0.5 # debounce: must be clear of crossing for this long before counting it
+START_AT_CROSSING     = 0    # debug: set to N to skip ahead (e.g. 4 = place robot before crossing 4)
 
 ############################################################
-
-def driveOneMeter():
-  state = 0
-  pose.tripBreset()
-  print("% Driving 1m -------------------------")
-  service.send("robobot/cmd/T0","leds 16 0 100 0") # green
-  while not (service.stop):
-    if state == 0: # wait for start signal
-      service.send("robobot/cmd/ti","rc 0.2 0.0") # (forward m/s, turn-rate rad/sec)
-      # service.send("robobot/cmd/T0","servo 1 -800 300") # (servo up slow)
-      state = 1
-    elif state == 1:
-      if pose.tripB > 1.0 or pose.tripBtimePassed() > 15:
-        service.send("robobot/cmd/ti","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
-        # service.send("robobot/cmd/T0","servo 1 0 0") # (servo front fast)
-        state = 2
-      pass
-    elif state == 2:
-      if abs(pose.velocity()) < 0.001:
-        state = 99
-    else:
-      print(f"# drive 1m drove {pose.tripB:.3f}m in {pose.tripBtimePassed():.3f} seconds")
-      service.send("robobot/cmd/ti","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
-      break;
-    print(f"# drive {state}, now {pose.tripB:.3f}m in {pose.tripBtimePassed():.3f} seconds; left {edge.posLeft}, right {edge.posRight}")
-    t.sleep(0.05)
-  pass
-  service.send("robobot/cmd/T0","leds 16 0 0 0") # end
-  print("% Driving 1m ------------------------- end")
-
-####################################################################3
-
-def driveMotorsPwmDuration(left_pwm, right_pwm, duration_s):
-  """Drive each motor with requested PWM for a fixed duration.
-
-  teensy_interface drives motors from "rc" commands, not direct incoming
-  motv commands. So left/right PWM-like values are mapped to equivalent
-  (linear velocity, turn rate) and sent as rc.
-  """
-  max_pwm = 4096.0
-  max_linvel = 1  # m/s at full-scale request (conservative)
-  wheelbase = 0.22   # m
-
-  # Keep requested values inside expected range for safe conversion.
-  left_pwm = max(-max_pwm, min(max_pwm, float(left_pwm)))
-  right_pwm = max(-max_pwm, min(max_pwm, float(right_pwm)))
-  duration_s = max(0.0, float(duration_s))
-
-  left_n = left_pwm / max_pwm
-  right_n = right_pwm / max_pwm
-  left_v = left_n * max_linvel
-  right_v = right_n * max_linvel
-
-  linvel = 0.5 * (left_v + right_v)
-  turnrate = (right_v - left_v) / wheelbase
-
-  print("% Drive motors PWM-duration -----------")
-  print(f"# left_pwm={left_pwm:.0f}, right_pwm={right_pwm:.0f}, duration={duration_s:.3f}s")
-  service.send("robobot/cmd/T0", "leds 16 0 0 30") # blue while running
-  service.send("robobot/cmd/ti", f"rc {linvel:.3f} {turnrate:.3f}")
-
-  t0 = t.time()
-  while not service.stop and (t.time() - t0) < duration_s:
-    t.sleep(0.02)
-
-  # Always send stop at end.
-  service.send("robobot/cmd/ti", "rc 0 0")
-  service.send("robobot/cmd/T0", "leds 16 0 100 0") # green: done
-  print("% Drive motors PWM-duration ----------- end")
-
-####################################################################3
-
-# Mission / state machine: crossing-count phases (use crossings to differentiate phases)
-CROSSING_AT_CNT = 2   # we're "at" a crossing when crossingLineCnt >= this (same debounce as hard turn)
-CROSSINGS_GO_STRAIGHT = 2  # first N crossings: go straight (don't hard turn); after that hard turns allowed
-CROSSING_STOP_AT = 4  # at this crossing number (1-based): stop; 3rd crossing = hard turn, 4th = stop
-CROSSING_LEAVE_DELAY_S = 0.5  # only count "left crossing" after we've been clear of crossing for this long (timer resets while crossing still detected)
-START_AT_CROSSING = 0  # 0 = normal (start from first crossing); set 4 to place robot before crossing 4 for testing
-
-def driveToLine():
-  state = 0
-  pose.tripBreset()
-  dist_to_line = 0
-  lost_line_since = None  # when line was first lost (for recovery timeout)
-  last_hard_turn_time = None  # cooldown after a 90° turn
-  hard_turn_cooldown_s = 2.0
-  # Crossing-count state machine: only increment after we've been clear of crossing for CROSSING_LEAVE_DELAY_S
-  crossing_count = 0   # number of crossings we've left (incremented after leave delay)
-  was_at_crossing = False  # True while we were at a crossing and haven't yet completed the leave delay
-  last_time_at_crossing = None  # time when we were last at a crossing (reset every sample while at crossing)
-  if not service.is_quiet():
-    print("% Driving to line ---------------------- right ir start ---")
-  service.send("robobot/cmd/T0", "leds 16 0 100 0") # green
-  while not (service.stop):
-    if state == 0: # forward towards line
-      # When started with -n/--now, skip waiting for the IR threshold.
-      if getattr(service.args, "now", False) or ir.ir[0] < 0.2:
-        service.send("robobot/cmd/T0", "servo 1 -800 100")
-        service.send("robobot/cmd/ti","rc 0.2 0.0") # (forward m/s, turn-rate rad/sec)
-        service.send("robobot/cmd/T0/","lognow 3") # (start Teensy log)
-        # service.send("robobot/cmd/T0","servo 1 -800 300") # (servo up slow)
-        state = 1
-    elif state == 1:
-      if pose.tripB > 1.0 or pose.tripBtimePassed() > 15:
-        service.send("robobot/cmd/ti/","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
-        state = 2
-      if edge.lineValidCnt > 4:
-        # start follow line (center, e=0)
-        edge.lineControl(refPosition=0)
-        # service.send("robobot/cmd/T0","servo 1 0 0") # (move servo to position 0 - front)
-        dist_to_line = pose.tripB
-        pose.tripBreset()
-        lost_line_since = None
-        if START_AT_CROSSING > 0:
-          crossing_count = START_AT_CROSSING - 1
-          if not service.is_quiet():
-            print(f"% start at crossing {START_AT_CROSSING} -> crossing_count={crossing_count}")
-        if not service.is_quiet():
-          print(" to state 10")
-        state = 10
-      pass
-    elif state == 2:
-      if abs(pose.velocity()) < 0.001:
-        if not service.is_quiet():
-          print(" to state 99")
-        state = 99
-    elif state == 10:
-      edge.mission_crossing_count = crossing_count  # for follow-line print
-      # Crossing-count: only count "left crossing" after we've been clear for CROSSING_LEAVE_DELAY_S (timer resets while still at crossing)
-      at_crossing_now = edge.crossingLineCnt >= CROSSING_AT_CNT
-      now = datetime.now()
-      if at_crossing_now:
-        last_time_at_crossing = now
-        was_at_crossing = True
-      else:
-        if was_at_crossing and last_time_at_crossing is not None:
-          if (now - last_time_at_crossing).total_seconds() >= CROSSING_LEAVE_DELAY_S:
-            crossing_count += 1
-            was_at_crossing = False
-            last_time_at_crossing = None
-            if not service.is_quiet():
-              print(f"% left crossing (after {CROSSING_LEAVE_DELAY_S}s clear) -> crossing_count={crossing_count}")
-      # Crossing-only logic: hard turns and 4th-stop are considered only when we're actually at a crossing
-      if at_crossing_now:
-        at_4th_crossing = crossing_count == CROSSING_STOP_AT - 1
-        # 4th crossing: always stop (never treat as hard turn)
-        if at_4th_crossing:
-          if not service.is_quiet():
-            print("% 4th crossing -> stop, then turn 45° right and drive 1.3 m")
-          edge.lineControl(0)
-          service.send("robobot/cmd/ti", "rc 0.0 0.0")
-          state = 20
-        # Hard 90° turns only at crossing 3 (and 5+); never at crossing 1, 2, or 4
-        elif crossing_count >= CROSSINGS_GO_STRAIGHT:
-          now = datetime.now()
-          cooldown_ok = last_hard_turn_time is None or (now - last_hard_turn_time).total_seconds() >= hard_turn_cooldown_s
-          if cooldown_ok:
-            hard_left = (edge.leftmostAboveIndex == 0 and edge.rightmostAboveIndex is not None and edge.rightmostAboveIndex <= 4)
-            hard_right = (edge.rightmostAboveIndex == 7 and edge.leftmostAboveIndex is not None and edge.leftmostAboveIndex >= 3)
-            if hard_left:
-              edge.lineControl(0)
-              service.send("robobot/cmd/ti", "rc 0.0 0.0")
-              t.sleep(0.05)
-              driveTurn(90, "left")
-              last_hard_turn_time = datetime.now()
-              edge.lineControl(refPosition=0)  # resume following center (e=0)
-            elif hard_right:
-              edge.lineControl(0)
-              service.send("robobot/cmd/ti", "rc 0.0 0.0")
-              t.sleep(0.05)
-              driveTurn(90, "right")
-              last_hard_turn_time = datetime.now()
-              edge.lineControl(refPosition=0)  # resume following center (e=0)
-        # Crossing 1 or 2: do nothing (go straight), just keep following line
-      # Line control + recovery run in sedge (turn in place toward lastLineSide when lost)
-      if edge.lineValidCnt >= 4:
-        lost_line_since = None  # have line again
-      elif edge.lineValidCnt < 2:
-        if lost_line_since is None:
-          lost_line_since = datetime.now()
-        if (datetime.now() - lost_line_since).total_seconds() >= edge.recovery_timeout_s:
-          edge.lineControl(0)
-          service.send("robobot/cmd/ti","rc 0.0 0.0")
-          if not service.is_quiet():
-            print(" to state 2 (recovery timeout)")
-          pose.tripBreset()
-          state = 2
-      pass
-    elif state == 20:
-      # After 4th crossing: turn right 45°, then forward 1.3 m
-      service.send("robobot/cmd/T0", "servo 1 -800 100")
-      t.sleep(0.1)
-      driveDistance(0.1)
-      driveTurn(45, "right")
-      driveDistance(1.1)
-      driveTurn(90, "right")
-      driveDistance(0.15)
-
-      service.send("robobot/cmd/T0", "servo 1 100 100")
-      t.sleep(3.0)
-      service.send("robobot/cmd/T0", "servo 1 -800 100")
-
-      state = 2
-    else:
-      if not service.is_quiet():
-        print(f"# drive to line {dist_to_line:.3f}m, then along line {pose.tripB:.3f}m in {pose.tripBtimePassed():.3f} seconds")
-      service.send("robobot/cmd/ti","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
-      # service.send("robobot/cmd/T0","servo 1 500 200") # (move servo down slow)
-      break;
-    # print(f"# drive {state}, now {pose.tripB:.3f}m in {pose.tripBtimePassed():.3f} seconds, line valid cnt = {edge.lineValidCnt}")
-    t.sleep(0.01)
-  pass
-  service.send("robobot/cmd/T0","leds 16 0 0 0") # end
-  if not service.is_quiet():
-    print("% Driving to line ------------------------- end")
-
-####################################################################3
+# Primitive drive helpers
+############################################################
 
 def driveTurn(angle_deg, direction):
-  """Turn in place by angle_deg (degrees). direction: 'left' (positive) or 'right' (negative). Usable from driveToLine."""
+  """Rotate in place by angle_deg. direction: 'left' or 'right'.
+  Stops when odometry heading change (pose.tripBh) reaches the target."""
   state = 0
   pose.tripBreset()
-  turn_rate = 0.5 if direction == "left" else -0.5
+  turn_rate = 0.5 if direction == "left" else -0.5   # rad/s; positive = left
   angle_rad = np.radians(angle_deg)
   if not service.is_quiet():
-    print(f"% Driving {angle_deg:.0f}° turn {direction} -------------------------")
+    print(f"% driveTurn: {angle_deg:.0f}° {direction}")
   service.send("robobot/cmd/T0", "leds 16 0 100 0")
   while not service.stop:
     if state == 0:
       service.send("robobot/cmd/ti", f"rc 0.0 {turn_rate:.2f}")
       state = 1
     elif state == 1:
-      # Stop when we've turned at least angle_rad (use magnitude: odometry sign may differ by robot)
-      done = abs(pose.tripBh) >= angle_rad
-      if done:
+      # Use magnitude so the check works regardless of odometry sign convention
+      if abs(pose.tripBh) >= angle_rad:
         service.send("robobot/cmd/ti", "rc 0.0 0.0")
         state = 2
     elif state == 2:
+      # Wait for the robot to actually stop before returning
       if abs(pose.velocity()) < 0.001 and abs(pose.turnrate()) < 0.001:
         state = 99
     else:
       if not service.is_quiet():
-        print(f"# driveTurn {direction}: turned {pose.tripBh:.3f} rad in {pose.tripBtimePassed():.3f} s")
+        print(f"# driveTurn: turned {pose.tripBh:.3f} rad in {pose.tripBtimePassed():.3f} s")
       service.send("robobot/cmd/ti", "rc 0.0 0.0")
       break
     t.sleep(0.05)
   service.send("robobot/cmd/T0", "leds 16 0 0 0")
-  if not service.is_quiet():
-    print("% Driving turn ------------------------- end")
 
 def driveDistance(meters, velocity=0.2):
-  """Drive forward for meters (m). Same logic as driveOneMeter; usable from driveToLine."""
+  """Drive straight forward for a fixed distance (m) at velocity (m/s).
+  Stops when odometry distance (pose.tripB) reaches the target."""
   state = 0
   pose.tripBreset()
   if not service.is_quiet():
-    print(f"% Driving {meters:.2f} m forward -------------------------")
+    print(f"% driveDistance: {meters:.2f} m at {velocity:.2f} m/s")
   service.send("robobot/cmd/T0", "leds 16 0 100 0")
   while not service.stop:
     if state == 0:
@@ -347,6 +87,7 @@ def driveDistance(meters, velocity=0.2):
         service.send("robobot/cmd/ti", "rc 0.0 0.0")
         state = 2
     elif state == 2:
+      # Wait for the robot to fully stop
       if abs(pose.velocity()) < 0.001:
         state = 99
     else:
@@ -356,223 +97,242 @@ def driveDistance(meters, velocity=0.2):
       break
     t.sleep(0.05)
   service.send("robobot/cmd/T0", "leds 16 0 0 0")
-  if not service.is_quiet():
-    print("% Driving forward ------------------------- end")
 
-def driveArc(angle_deg, radius_m, direction, velocity=0.2):
-  """Drive a circular arc.
-  angle_deg : total heading change in degrees (e.g. 270 for a roundabout exit on the same side)
-  radius_m  : radius of the arc in metres (robot path radius, not kerb radius)
-  direction : 'left' or 'right'
-  velocity  : forward speed in m/s (default 0.2)
-  turn_rate is computed as velocity / radius_m; stop when odometry heading change >= angle_rad.
+############################################################
+# Main mission
+############################################################
+
+def driveToLine():
+  """Full line-following mission.
+
+  Phases:
+    state 0-1 : drive forward until the IR start-gate clears and line is found
+    state 10  : follow the line; handle crossings by count
+    state 20  : end sequence after 4th crossing (turn + drive away)
+    state 2   : wait for full stop then exit
   """
-  angle_rad = np.radians(angle_deg)
-  sign = 1.0 if direction == "left" else -1.0
-  turn_rate = sign * velocity / radius_m
   state = 0
   pose.tripBreset()
+  dist_to_line = 0
+
+  # Crossing-count debounce state
+  crossing_count = 0
+  was_at_crossing = False
+  last_time_at_crossing = None
+
+  # Recovery: remember when line was last valid
+  lost_line_since = None
+
+  # Hard-turn cooldown: avoid double-turning at the same crossing
+  last_hard_turn_time = None
+  hard_turn_cooldown_s = 2.0
+
   if not service.is_quiet():
-    print(f"% driveArc: {angle_deg:.0f}° {direction}, R={radius_m:.2f} m, v={velocity:.2f} m/s -> w={turn_rate:.3f} rad/s")
-  service.send("robobot/cmd/T0", "leds 16 0 100 0")
+    print("% driveToLine: starting")
+  service.send("robobot/cmd/T0", "leds 16 0 100 0")  # green: running
+
   while not service.stop:
+
+    # --- State 0: wait for IR start-gate, then begin moving ---
     if state == 0:
-      service.send("robobot/cmd/ti", f"rc {velocity:.3f} {turn_rate:.3f}")
-      state = 1
+      # --now flag skips the IR check and starts immediately
+      if getattr(service.args, "now", False) or ir.ir[0] < 0.2:
+        service.send("robobot/cmd/T0", "servo 1 -800 100")          # raise servo
+        service.send("robobot/cmd/ti", "rc 0.2 0.0")                # drive forward
+        service.send("robobot/cmd/T0/", "lognow 3")                 # start Teensy log
+        state = 1
+
+    # --- State 1: driving toward the line ---
     elif state == 1:
-      if abs(pose.tripBh) >= angle_rad:
-        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+      if pose.tripB > 1.0 or pose.tripBtimePassed() > 15:
+        # Timeout: line never found — stop
+        service.send("robobot/cmd/ti/", "rc 0.0 0.0")
         state = 2
+      if edge.lineValidCnt > 4:
+        # Line found — start PD line controller (target = centre, error = 0)
+        edge.lineControl(refPosition=0)
+        dist_to_line = pose.tripB
+        pose.tripBreset()
+        lost_line_since = None
+        if START_AT_CROSSING > 0:
+          # Debug: pretend we've already passed some crossings
+          crossing_count = START_AT_CROSSING - 1
+          if not service.is_quiet():
+            print(f"% skipping to crossing_count={crossing_count}")
+        if not service.is_quiet():
+          print(f"% line found after {dist_to_line:.2f} m -> state 10")
+        state = 10
+
+    # --- State 2: wait for the robot to stop, then exit ---
     elif state == 2:
-      if abs(pose.velocity()) < 0.001 and abs(pose.turnrate()) < 0.001:
+      if abs(pose.velocity()) < 0.001:
         state = 99
+
+    # --- State 10: line-following + crossing logic ---
+    elif state == 10:
+      edge.mission_crossing_count = crossing_count  # displayed in sedge status line
+
+      # --- Crossing detection with leave-delay debounce ---
+      at_crossing_now = edge.crossingLineCnt >= CROSSING_AT_CNT
+      now = datetime.now()
+      if at_crossing_now:
+        # Reset leave timer while we're still at the crossing
+        last_time_at_crossing = now
+        was_at_crossing = True
+      else:
+        # Only count the crossing after we've been clear for CROSSING_LEAVE_DELAY_S
+        if was_at_crossing and last_time_at_crossing is not None:
+          if (now - last_time_at_crossing).total_seconds() >= CROSSING_LEAVE_DELAY_S:
+            crossing_count += 1
+            was_at_crossing = False
+            last_time_at_crossing = None
+            if not service.is_quiet():
+              print(f"% left crossing -> crossing_count={crossing_count}")
+
+      # --- React to crossings (only while physically at one) ---
+      if at_crossing_now:
+        at_4th_crossing = crossing_count == CROSSING_STOP_AT - 1
+
+        if at_4th_crossing:
+          # Crossing 4: stop and run the end sequence
+          if not service.is_quiet():
+            print("% 4th crossing -> end sequence")
+          edge.lineControl(0)
+          service.send("robobot/cmd/ti", "rc 0.0 0.0")
+          state = 20
+
+        elif crossing_count >= CROSSINGS_GO_STRAIGHT:
+          # Crossing 3 (and 5+): hard 90° turn if cooldown has elapsed
+          now = datetime.now()
+          cooldown_ok = (last_hard_turn_time is None or
+                         (now - last_hard_turn_time).total_seconds() >= hard_turn_cooldown_s)
+          if cooldown_ok:
+            # Detect turn direction from which end of the sensor array is active
+            hard_left  = (edge.leftmostAboveIndex == 0 and
+                          edge.rightmostAboveIndex is not None and
+                          edge.rightmostAboveIndex <= 4)
+            hard_right = (edge.rightmostAboveIndex == 7 and
+                          edge.leftmostAboveIndex is not None and
+                          edge.leftmostAboveIndex >= 3)
+            if hard_left:
+              edge.lineControl(0)
+              service.send("robobot/cmd/ti", "rc 0.0 0.0")
+              t.sleep(0.05)
+              driveTurn(90, "left")
+              last_hard_turn_time = datetime.now()
+              edge.lineControl(refPosition=0)   # resume line following
+            elif hard_right:
+              edge.lineControl(0)
+              service.send("robobot/cmd/ti", "rc 0.0 0.0")
+              t.sleep(0.05)
+              driveTurn(90, "right")
+              last_hard_turn_time = datetime.now()
+              edge.lineControl(refPosition=0)   # resume line following
+        # Crossings 1 and 2: go straight, do nothing
+
+      # --- Line-loss recovery ---
+      if edge.lineValidCnt >= 4:
+        lost_line_since = None   # line is healthy
+      elif edge.lineValidCnt < 2:
+        if lost_line_since is None:
+          lost_line_since = datetime.now()
+        # If line has been lost too long, give up and stop
+        if (datetime.now() - lost_line_since).total_seconds() >= edge.recovery_timeout_s:
+          edge.lineControl(0)
+          service.send("robobot/cmd/ti", "rc 0.0 0.0")
+          if not service.is_quiet():
+            print("% line lost too long -> recovery stop")
+          pose.tripBreset()
+          state = 2
+
+    # --- State 20: end sequence after 4th crossing ---
+    elif state == 20:
+      service.send("robobot/cmd/T0", "servo 1 -800 100")
+      t.sleep(0.1)
+      driveDistance(0.1)          # clear the crossing
+      driveTurn(45, "right")      # aim toward exit
+      driveDistance(1.1)          # drive away
+      driveTurn(90, "right")
+      driveDistance(0.15)
+
+      # Lower servo briefly (e.g. to drop a flag/marker), then raise again
+      service.send("robobot/cmd/T0", "servo 1 100 100")
+      t.sleep(3.0)
+      service.send("robobot/cmd/T0", "servo 1 -800 100")
+
+      state = 2   # wait for full stop then exit
+
     else:
+      # state 99 or any unexpected value → finished
       if not service.is_quiet():
-        print(f"# driveArc: turned {np.degrees(pose.tripBh):.1f}° in {pose.tripBtimePassed():.2f} s")
+        print(f"% driveToLine: done (dist to line {dist_to_line:.2f} m, "
+              f"along line {pose.tripB:.2f} m in {pose.tripBtimePassed():.1f} s)")
       service.send("robobot/cmd/ti", "rc 0.0 0.0")
       break
-    t.sleep(0.05)
-  service.send("robobot/cmd/T0", "leds 16 0 0 0")
+
+    t.sleep(0.01)   # 100 Hz control loop
+
+  service.send("robobot/cmd/T0", "leds 16 0 0 0")  # LEDs off
   if not service.is_quiet():
-    print("% driveArc ------------------------- end")
+    print("% driveToLine: end")
 
-def driveTurnPi():
-  state = 0
-  pose.tripBreset()
-  print("% Driving a Pi turn -------------------------")
-  service.send("robobot/cmd/T0","leds 16 0 100 0") # green
-  while not (service.stop):
-    if state == 0: # wait for start signal
-      service.send("robobot/cmd/ti","rc 0.0 0.5") # (forward m/s, turn-rate rad/sec)
-      state = 1
-    elif state == 1:
-      if pose.tripBh > 3.14 or pose.tripBtimePassed() > 15:
-        service.send("robobot/cmd/ti","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
-        state = 2
-      pass
-    elif state == 2:
-      if abs(pose.velocity()) < 0.001 and abs(pose.turnrate()) < 0.001:
-        state = 99
-    else:
-      print(f"# drive turned {pose.tripBh:.3f} rad in {pose.tripBtimePassed():.3f} seconds")
-      service.send("robobot/cmd/ti","rc 0.0 0.0") # (forward m/s, turn-rate rad/sec)
-      break;
-    print(f"# turn {state}, now {pose.tripBh:.3f} rad in {pose.tripBtimePassed():.3f} seconds; left {edge.posLeft}, right {edge.posRight}")
-    t.sleep(0.05)
-  pass
-  service.send("robobot/cmd/T0","leds 16 0 0 0") # end
-  print("% Driving a Pi turn ------------------------- end")
-
-####################################################################3
+############################################################
+# Top-level loop (called once after MQTT connect)
+############################################################
 
 def loop():
   from ulog import flog
-  state = 0
-  images = 0
-  ledon = True
   oldstate = -1
-  service.send("robobot/cmd/T0", "leds 16 30 30 0") # LED 16: yellow - waiting
-  if service.args.meter:
-    state = 101 # run 1m
-  elif service.args.pi:
-    state = 102 # turn 180 deg
-  elif service.args.edge:
-    state = 103  # find edge and follow line
-  elif service.args.motpwm is not None:
-    state = 104 # one-shot per-motor PWM test
-  elif service.args.usestate > 0:
-    state = service.args.usestate
-  else:
-    # Default: stationary mode (state 200)
-    state = 200
-  if not service.is_quiet():
-    print(f"% Starting at state {state}")
-  # elif not service.args.now:
-  #   print("% Ready, press start button")
-  # main state machine
-  edge.lineControl(0)  # make sure line control is off (velocity 0)
-  while not (service.stop):
-    if state == 0: # wait for start signal
-      start = True # gpio.start() or service.args.now
-      if start:
-        if not service.is_quiet():
-          print("% Starting")
-        service.send("robobot/cmd/T0","leds 16 0 0 30") # blue: running
-        service.send("robobot/cmd/ti","rc 0.25 0.0") # (forward m/s, turn-rate rad/sec)
-        # service.send("robobot/cmd/T0","servo 1 100 300") # (servo down slow)
-        state = 12 # until no more line
-        pose.tripBreset() # use trip counter/timer B
-    elif state == 12: # following line
-      if pose.tripB > 0.5 or pose.tripBtimePassed() > 10:
-        # start turning
-        edge.lineControl(0)  # stop following line
-        pose.tripBreset()
-        service.send("robobot/cmd/ti","rc 0.1 0.5") # turn left
-        # service.send("robobot/cmd/T0","servo 1 -800 1000") # (servo up faster)
-        state = 14 # turn left
-    elif state == 14: # turning left
-      if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 10:
-        state = 20 # finished
-        service.send("robobot/cmd/ti","rc 0 0") # stop for images
-        # service.send("robobot/cmd/T0","servo 1 0 1000") # (servo forward faster)
-      # print(f"% --- state {state}, h = {pose.tripBh:.4f}, t={pose.tripBtimePassed():.3f}")
-    elif state == 20: # image analysis
-      imageAnalysis(images == 2)
-      images += 1
-      # blink LED
-      if ledon:
-        service.send("robobot/cmd/T0","leds 16 0 64 0")
-        gpio.set_value(20, 1)
-      else:
-        service.send("robobot/cmd/T0","leds 16 0 30 30")
-        gpio.set_value(20, 0)
-      ledon = not ledon
-      # finished?
-      if images >= 10 or (not cam.useCam) or stateTimePassed() > 20:
-        images = 0
-        state = 99
-      pass
-    elif state == 101:
-      driveOneMeter();
-      state = 100
-    elif state == 102:
-      driveTurnPi();
-      state = 100
-    elif state == 103:
+  state_time = datetime.now()
+
+  service.send("robobot/cmd/T0", "leds 16 30 30 0")  # yellow: ready
+  edge.lineControl(0)   # ensure motors are stopped before mission starts
+
+  # Run the line-follow mission, then exit
+  state = 103
+  while not service.stop:
+    if state == 103:
       driveToLine()
-      state = 100
-    elif state == 104:
-      left_pwm, right_pwm, duration_s = service.args.motpwm
-      driveMotorsPwmDuration(left_pwm, right_pwm, duration_s)
-      state = 100
-    elif state == 200: # stationary mode - just wait for stop signal
-      service.send("robobot/cmd/T0","leds 16 0 100 0") # green: stationary
-      service.send("robobot/cmd/ti","rc 0.0 0.0") # ensure stopped
-      if stateTimePassed() > 300.0:
-        print("% Stationary timeout reached (60s), stopping")
-        state = 99
-      t.sleep(1.0) # just loop and wait
-      pass
-    else: # abort
+      state = 99   # mission complete
+    else:
       if not service.is_quiet():
-        print(f"% Mission finished/aborted; state={state}")
+        print(f"% loop: finished (state={state})")
       break
-    # allow openCV to handle imshow (if in use)
-    # images are almost useless while turning, but
-    # used here to illustrate some image processing (painting)
-    # if cam.useCam:
-    #   imageAnalysis(True)
-    #   if not gpio.onPi:
-    #     # do not wait is no image is shown
-    #     key = cv.waitKey(100) # ms
-    #     if key > 0: # e.g. Esc (key=27) pressed with focus on image
-    #       break
-    #
-    # note state change and reset state timer
+
+    # Log state transitions
     if state != oldstate:
-      # flog.write(state)
       flog.writeRemark(f"% State change from {oldstate} to {state}")
       if not service.is_quiet():
         print(f"% State change from {oldstate} to {state}")
       oldstate = state
-      stateTime = datetime.now()
-    # do not loop too fast
+      state_time = datetime.now()
+
     t.sleep(0.1)
-    pass # end of while loop
-  # end of mission, turn LEDs off and stop
-  service.send("robobot/cmd/T0","leds 16 0 0 0")
+
+  # Cleanup: stop robot and turn off LEDs
+  service.send("robobot/cmd/T0", "leds 16 0 0 0")
   gpio.set_value(20, 0)
-  edge.lineControl(0)  # stop following line
-  service.send("robobot/cmd/ti","rc 0 0")
-  # service.send("robobot/cmd/T0","servo 1 0 0")
+  edge.lineControl(0)
+  service.send("robobot/cmd/ti", "rc 0 0")
   t.sleep(0.05)
-  pass
 
 ############################################################
-
+# Entry point
 ############################################################
 
 if __name__ == "__main__":
-    if service.process_running("mqtt-client"):
-      print("% mqtt-client is already running - terminating")
-      print("%   if it is partially crashed in the background, then try:")
-      print("%     pkill mqtt-client")
-      print("%   or, if that fails use the most brutal kill")
-      print("%     pkill -9 mqtt-client")
-    else:
-      # set title of process, so that it is not just called Python
-      setproctitle("mqtt-client")
-      if not service.is_quiet():
-        print("% Starting")
-      start_teensy_interface()
-      # where is the MQTT data server:
-      service.setup('localhost') # localhost
-      #service.setup('10.197.217.81') # Juniper
-      #service.setup('10.197.217.80') # Newton
-      # service.setup('bode.local') # Bode
-      if service.connected:
-        loop()
-      service.terminate()
-      stop_teensy_interface()
+  if service.process_running("mqtt-client"):
+    print("% mqtt-client is already running - terminating")
+    print("%   to kill a stuck instance: pkill mqtt-client   (or pkill -9 mqtt-client)")
+  else:
+    setproctitle("mqtt-client")
     if not service.is_quiet():
-      print("% Main Terminated")
+      print("% Starting")
+    start_teensy_interface()
+    service.setup('localhost')   # connect to local MQTT broker
+    if service.connected:
+      loop()
+    service.terminate()
+    stop_teensy_interface()
+  if not service.is_quiet():
+    print("% Main Terminated")
