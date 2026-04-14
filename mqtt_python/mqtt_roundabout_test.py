@@ -30,7 +30,7 @@ from uteensy import start_teensy_interface, stop_teensy_interface
 ############################################################
 
 # Geometry of the roundabout circle
-CIRCLE_DIAMETER_M = 1.0     # diameter of the circle the robot drives (metres)
+CIRCLE_DIAMETER_M = 0.8     # diameter of the circle the robot drives (metres)
                              # measure the physical platform diameter and set this
 
 # How far around the circle to travel
