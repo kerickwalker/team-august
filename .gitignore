@@ -30,3 +30,7 @@ log*.txt
 *.jpg
 
 mqtt_python/CLAUDE.md
+
+# Field visualization scripts (local only)
+plot_field.py
+draw_empty.py

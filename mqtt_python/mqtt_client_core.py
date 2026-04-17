@@ -1,4 +1,4 @@
-# mqtt_client_core.py — stripped, commented mission control (line-follow path in focus)
+# mqtt_client_core.py - stripped, commented mission control (line-follow path in focus)
 # See notes/code_map_line_following.md for data flow. Original: mqtt-client.py.
 # Run with: python3 mqtt_client_core.py (uses same uservice; ensure no duplicate process)
 
@@ -14,7 +14,7 @@ from sgpio import gpio
 from uservice import service
 
 # ═══════════════════════════════════════════════════════════════════════════
-# stateTime / stateTimePassed() — used for stationary timeout and state timing
+# stateTime / stateTimePassed() - used for stationary timeout and state timing
 # ═══════════════════════════════════════════════════════════════════════════
 stateTime = datetime.now()
 
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         print("% mqtt-client (or mqtt_client_core) already running - terminating")
     else:
         setproctitle("mqtt-client")
-        service.setup("localhost")
+        service.setup("10.197.219.117")
         if service.connected:
             loop()
         service.terminate()

@@ -136,10 +136,11 @@ class SKalman:
         self.kf = None
         self.last_update_time = None
         self.update_count = 0
-        self.enabled = True
+        self.enabled = False
         self.manual_u = None
         self.last_u = np.zeros((2, 1), dtype=float)
-        self.default_state = np.zeros((7, 1), dtype=float)
+        self.default_state = np.array([[4.775], [0.235], [0.0], [0.0], [0.0], [1.5708], [0.0]], dtype=float)
+        self._manual_reset = False
         self.vision_pose = np.zeros((5, 1), dtype=float)
         self.vision_pose_time = None
         self.vision_pose_count = 0
@@ -189,12 +190,13 @@ class SKalman:
 
     def setup(self):
         self._create_filter()
-        # Start from the configured default origin state.
         self.kf.x = self.default_state.copy()
         self.kf.P = np.eye(7, dtype=float)
         self.last_update_time = None
+        self._manual_reset = True
         self.update_count = 0
         self.last_u = np.zeros((2, 1), dtype=float)
+        self.enabled = True
 
     def _fixed_measurement_matrix(self) -> np.ndarray:
         # H matrix: 17x7 (measurements x states)
@@ -202,8 +204,8 @@ class SKalman:
         H = np.zeros((len(self.MEAS_NAMES), len(self.STATE_NAMES)), dtype=float)
         
         # ========== ENCODER/ODOMETRY (0-6) ==========
-        H[0, 0] = 1.0  # encoder x
-        H[1, 1] = 1.0  # encoder y
+        H[0, 0] = 0.0  # encoder x DISABLED - absolute pos from encoder is relative
+        H[1, 1] = 0.0  # encoder y DISABLED - absolute pos from encoder is relative
         H[2, 2] = 1.0  # encoder z
         H[3, 3] = 1.0  # encoder velocity
         H[4, 4] = 1.0  # gyro angular velocity
@@ -219,7 +221,7 @@ class SKalman:
         H[11, 3] = 1.0  # vel_acc_integrated measures linear velocity
         
         # ========== IMU DERIVED - GYRO & MAGNETOMETER (12-13) ==========
-        H[12, 5] = 1.0  # yaw_imu_integrated measures yaw (from gyro)
+        H[12, 5] = 0.0  # yaw_imu_integrated DISABLED - relative not absolute
         H[13, 5] = 1.0  # yaw_mag_derived measures yaw (from magnetometer)
         
         # ========== MULTI-SOURCE PITCH (14-16) ==========
@@ -280,7 +282,7 @@ class SKalman:
             z[4, 0] = 0.0
             variances[4] = missing_var
         
-        z[5, 0] = _unwrap_near(float(pose.pose[2]), yaw_ref)  # encoder yaw
+        z[5, 0] = _unwrap_near(float(pose.pose[2]) + 1.5708, yaw_ref)  # encoder yaw + start offset
         z[6, 0] = float(pose.turnrate())                   # encoder omega (turnrate)
 
         # ========== VISION (7-11) ==========
@@ -390,7 +392,7 @@ class SKalman:
             print(f"# Kalman: Failed to decode teleoperation: {e}")
             return False
     
-    def _get_teleoperation_u(self) -> np.ndarray | None:
+    def _get_teleoperation_u(self) -> object:
         """Get teleoperation control input if available and fresh.
         
         Returns None if teleoperation is not active or has timed out.
@@ -505,11 +507,7 @@ class SKalman:
             x0[5, 0] = float(self.vision_pose[3, 0])
             x0[6, 0] = float(self.vision_pose[4, 0])
         else:
-            x0[0, 0] = float(pose.pose[0])
-            x0[1, 0] = float(pose.pose[1])
-            x0[2, 0] = 0.0
-            x0[5, 0] = float(imu.yawg) if imu.yawgUpdCnt > 0 and pose.poseCnt == 0 else float(pose.pose[2])
-            x0[6, 0] = float(pose.pose[3])
+            pass  # x,y,z come from default_state, no encoder override
         x0[3, 0] = float(imu_derived.acc_velocity) if imu_derived.acc_velocity_upd_cnt > 0 else float(pose.velocity())
         x0[4, 0] = float(imu.gyro[2]) if imu.gyroUpdCnt > 0 else float(pose.turnrate())
         x0[5, 0] = _wrap_angle_rad(float(x0[5, 0]))
@@ -581,6 +579,7 @@ class SKalman:
         self.kf.x = x0
         self.kf.P = np.eye(7, dtype=float)
         self.last_update_time = None
+        self._manual_reset = True
         self.update_count = 1
         self.last_u = np.zeros((2, 1), dtype=float)
 
@@ -611,7 +610,8 @@ class SKalman:
         if now_t is None:
             return False
         if self.last_update_time is None:
-            self._bootstrap_from_measurement()
+            # Bootstrap disabled — always use the state set via reset()
+            self._manual_reset = False
             self.last_update_time = now_t
             self.update_count = 1
             self.publish_state()
