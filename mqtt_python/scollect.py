@@ -57,6 +57,32 @@ class SCollect:
                 print("% SCollect:: state 0 — arm open, starting search")
                 state = 1
 
+            elif state == 1:
+                # Get latest frame and run ball detection
+                ok, img, _ = cam.getImage()
+                if not ok:
+                    t.sleep(0.02)
+                    continue
+
+                ball.detect(img)
+
+                if not ball.detected:
+                    # No ball in view — rotate slowly to scan
+                    self._drive(0, 0.3)
+                else:
+                    err = ball.steeringError()
+                    if abs(err) <= self.align_threshold:
+                        # Ball centred enough — begin approach
+                        print(f"% SCollect:: state 1 — ball found and aligned "
+                              f"(err={err:+.2f}), advancing to approach")
+                        state = 2
+                    else:
+                        # Steer toward ball while moving forward slowly
+                        turn = self.turn_gain * err
+                        self._drive(self.drive_speed * 0.5, turn)
+
+                t.sleep(0.02)
+
         # Stopped early
         self._drive(0, 0)
         return False
