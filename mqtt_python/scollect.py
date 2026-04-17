@@ -30,6 +30,9 @@ class SCollect:
     align_threshold = 0.15   # max |steeringError| to consider ball centred
     close_radius    = 40     # ball.isClose() threshold in pixels
 
+    # --- Debug ---
+    verbose = False           # set True in test scripts for per-tick logging
+
     ##########################################################
 
     def _servo(self, position):
@@ -66,6 +69,12 @@ class SCollect:
 
                 ball.detect(img)
 
+                if self.verbose:
+                    print(f"% [s1] detected={ball.detected}  "
+                          f"r={ball.radius}px  "
+                          f"err={ball.steeringError():+.3f}  "
+                          f"close={ball.isClose(self.close_radius)}")
+
                 if not ball.detected:
                     # No ball in view — rotate slowly to scan
                     self._drive(0, 0.3)
@@ -91,6 +100,12 @@ class SCollect:
                     continue
 
                 ball.detect(img)
+
+                if self.verbose:
+                    print(f"% [s2] detected={ball.detected}  "
+                          f"r={ball.radius}px  "
+                          f"err={ball.steeringError():+.3f}  "
+                          f"close={ball.isClose(self.close_radius)}")
 
                 if not ball.detected:
                     # Briefly lost the ball — hold course and keep looking
