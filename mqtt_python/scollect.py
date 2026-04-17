@@ -107,6 +107,13 @@ class SCollect:
 
                 t.sleep(0.02)
 
+            elif state == 3:
+                # Lower arm to capture ball, then return success
+                self._servo(self.pos_closed)
+                print("% SCollect:: state 3 — arm closed, ball captured")
+                t.sleep(0.5)   # give servo time to reach position
+                return True
+
         # Stopped early
         self._drive(0, 0)
         return False
