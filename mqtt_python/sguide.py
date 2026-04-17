@@ -36,6 +36,9 @@ class SGuide:
     nudge_speed    = 0.08    # slow forward speed for final push into hole (m/s)
     nudge_duration = 0.8     # seconds to drive forward after isClose() triggers
 
+    # --- Debug ---
+    verbose = False           # set True in test scripts for per-tick logging
+
     ##########################################################
 
     def _servo(self, position):
@@ -72,6 +75,12 @@ class SGuide:
 
                 hole.detect(img)
 
+                if self.verbose:
+                    print(f"% [s1] detected={hole.detected}  "
+                          f"r={hole.radius}px  "
+                          f"err={hole.steeringError():+.3f}  "
+                          f"close={hole.isClose(self.close_radius)}")
+
                 if not hole.detected:
                     # No hole in view — rotate slowly to scan
                     self._drive(0, 0.3)
@@ -96,6 +105,12 @@ class SGuide:
                     continue
 
                 hole.detect(img)
+
+                if self.verbose:
+                    print(f"% [s2] detected={hole.detected}  "
+                          f"r={hole.radius}px  "
+                          f"err={hole.steeringError():+.3f}  "
+                          f"close={hole.isClose(self.close_radius)}")
 
                 if not hole.detected:
                     # Briefly lost hole — hold course
