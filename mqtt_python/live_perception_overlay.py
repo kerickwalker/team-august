@@ -15,6 +15,7 @@ import sys
 import time
 import math
 import json as _json
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -26,6 +27,48 @@ from spose import pose
 from skalman import kalman
 from uservice import service
 from slocalize import localizer
+
+
+# ---------------------------------------------------------------------------
+# CSV LOG
+# ---------------------------------------------------------------------------
+_log_file = open("vision_kalman_log.csv", "a", encoding="utf-8")
+
+if _log_file.tell() == 0:
+    _log_file.write(
+        "t_epoch,t_str,"
+        "prior_x,prior_y,prior_yaw,"
+        "vision_x,vision_y,vision_z,vision_yaw,vision_src,"
+        "line_valid,aruco_n\n"
+    )
+    _log_file.flush()
+
+
+def _log_vision_row(px, py, yaw, correction, result, aruco_detections):
+    t_epoch = time.time()
+    t_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+    line_valid = bool(result.get("line_valid", False))
+    aruco_n = len(aruco_detections)
+
+    if correction and correction.get("valid", False):
+        _log_file.write(
+            f"{t_epoch:.3f},{t_str},"
+            f"{px:.3f},{py:.3f},{yaw:.3f},"
+            f"{correction['x']:.3f},{correction['y']:.3f},{correction['z']:.3f},{correction['yaw']:.3f},"
+            f"{correction['source']},"
+            f"{line_valid},{aruco_n}\n"
+        )
+    else:
+        _log_file.write(
+            f"{t_epoch:.3f},{t_str},"
+            f"{px:.3f},{py:.3f},{yaw:.3f},"
+            f"nan,nan,nan,nan,"
+            f"none,"
+            f"{line_valid},{aruco_n}\n"
+        )
+
+    _log_file.flush()
 
 
 # ---------------------------------------------------------------------------
@@ -378,6 +421,8 @@ def perception_thread(params_path: str = '../calibration/camera_params.npz',
             px=px, py=py, yaw=yaw, pitch=pitch
         )
 
+        _log_vision_row(px, py, yaw, correction, result, aruco_detections)
+
         if correction['valid']:
             _send_vision_pose(
                 correction['x'], correction['y'], correction['z'],
@@ -420,6 +465,7 @@ def main():
     vision.setup(args.params, debug=True)
     if not vision.ready:
         print("% ERROR: vision setup failed")
+        _log_file.close()
         sys.exit(1)
 
     aruco_detector.setup(args.params, debug=False)
@@ -451,6 +497,7 @@ def main():
     cap = connect_stream(stream_url)
     if not cap.isOpened():
         print("% ERROR: Could not open camera stream.")
+        _log_file.close()
         sys.exit(1)
 
     print("% Stream opened. No drive commands sent.")
@@ -460,150 +507,159 @@ def main():
 
     cv2.namedWindow(args.window, cv2.WINDOW_NORMAL)
 
-    while True:
-        ret, frame = cap.read()
+    try:
+        while True:
+            ret, frame = cap.read()
 
-        if not ret:
-            reconnect_attempts += 1
-            print(f"% Stream lost ({reconnect_attempts}/5), reconnecting...")
-            cap.release()
-            time.sleep(min(1.0 * reconnect_attempts, 3.0))
-            cap = connect_stream(stream_url)
-            if reconnect_attempts >= 5 and not cap.isOpened():
-                print("% ERROR: Too many reconnect failures.")
-                break
-            continue
+            if not ret:
+                reconnect_attempts += 1
+                print(f"% Stream lost ({reconnect_attempts}/5), reconnecting...")
+                cap.release()
+                time.sleep(min(1.0 * reconnect_attempts, 3.0))
+                cap = connect_stream(stream_url)
+                if reconnect_attempts >= 5 and not cap.isOpened():
+                    print("% ERROR: Too many reconnect failures.")
+                    break
+                continue
 
-        reconnect_attempts = 0
+            reconnect_attempts = 0
 
-        result = vision.process(frame)
-        aruco_detections = aruco_detector.process(frame)
+            result = vision.process(frame)
+            aruco_detections = aruco_detector.process(frame)
 
-        if _kalman_mqtt["x"] is not None:
-            px = float(_kalman_mqtt["x"])
-            py = float(_kalman_mqtt["y"])
-            yaw = float(_kalman_mqtt["yaw"])
-            pitch = float(_kalman_mqtt["pitch"])
-        else:
-            px = float(_pose_seed_cache["x"])
-            py = float(_pose_seed_cache["y"])
-            yaw = float(_pose_seed_cache["yaw"])
-            pitch = float(_pose_seed_cache["pitch"])
+            if _kalman_mqtt["x"] is not None:
+                px = float(_kalman_mqtt["x"])
+                py = float(_kalman_mqtt["y"])
+                yaw = float(_kalman_mqtt["yaw"])
+                pitch = float(_kalman_mqtt["pitch"])
+            else:
+                px = float(_pose_seed_cache["x"])
+                py = float(_pose_seed_cache["y"])
+                yaw = float(_pose_seed_cache["yaw"])
+                pitch = float(_pose_seed_cache["pitch"])
 
-        if args.print_terminal:
-            print(f"% pose source: kalman={_kalman_mqtt['x'] is not None} "
-                  f"used=({px:.3f},{py:.3f},{yaw:.3f})")
+            if args.print_terminal:
+                print(f"% pose source: kalman={_kalman_mqtt['x'] is not None} "
+                      f"used=({px:.3f},{py:.3f},{yaw:.3f})")
 
-        meas = build_measurement(result, (px, py, yaw))
-        if meas.get('valid') and meas.get('world_line_points'):
-            result = dict(result)
-            result['world_line_points'] = meas['world_line_points']
+            meas = build_measurement(result, (px, py, yaw))
+            if meas.get('valid') and meas.get('world_line_points'):
+                result = dict(result)
+                result['world_line_points'] = meas['world_line_points']
 
-        vision_state = {
-            "valid": False,
-            "px": px,
-            "py": py,
-            "pz": 0.0,
-            "yaw": yaw,
-            "pitch": pitch,
-            "velocity": 0.0,
-            "w": 0.0,
-            "source": "",
-            "zone": "",
-            "nearest_tape": "",
-        }
+            vision_state = {
+                "valid": False,
+                "px": px,
+                "py": py,
+                "pz": 0.0,
+                "yaw": yaw,
+                "pitch": pitch,
+                "velocity": 0.0,
+                "w": 0.0,
+                "source": "",
+                "zone": "",
+                "nearest_tape": "",
+            }
 
-        correction = localizer.update(
-            line_result=result,
-            aruco_detections=aruco_detections,
-            px=px, py=py, yaw=yaw, pitch=pitch
-        )
-
-        if correction['valid']:
-            _send_vision_pose(
-                correction['x'], correction['y'], correction['z'],
-                correction['yaw'], correction['pitch'],
+            correction = localizer.update(
+                line_result=result,
+                aruco_detections=aruco_detections,
+                px=px, py=py, yaw=yaw, pitch=pitch
             )
 
-            _pose_seed_cache = {
-                "x": float(correction["x"]),
-                "y": float(correction["y"]),
-                "yaw": float(correction["yaw"]),
-                "pitch": float(correction["pitch"]),
-            }
+            _log_vision_row(px, py, yaw, correction, result, aruco_detections)
 
-            ctx = correction['context']
-            vision_state = {
-                "valid": True,
-                "px": correction['x'],
-                "py": correction['y'],
-                "pz": correction['z'],
-                "yaw": correction['yaw'],
-                "pitch": correction['pitch'],
-                "velocity": pose.velocity() if pose.poseCnt > 0 else 0.0,
-                "w": pose.turnrate() if pose.poseCnt > 0 else 0.0,
-                "source": correction['source'],
-                "zone": ctx.get('zone', ''),
-                "nearest_tape": ctx['nearest_tape']['name'] if ctx.get('nearest_tape') else '',
-            }
+            if correction['valid']:
+                _send_vision_pose(
+                    correction['x'], correction['y'], correction['z'],
+                    correction['yaw'], correction['pitch'],
+                )
+
+                _pose_seed_cache = {
+                    "x": float(correction["x"]),
+                    "y": float(correction["y"]),
+                    "yaw": float(correction["yaw"]),
+                    "pitch": float(correction["pitch"]),
+                }
+
+                ctx = correction['context']
+                vision_state = {
+                    "valid": True,
+                    "px": correction['x'],
+                    "py": correction['y'],
+                    "pz": correction['z'],
+                    "yaw": correction['yaw'],
+                    "pitch": correction['pitch'],
+                    "velocity": pose.velocity() if pose.poseCnt > 0 else 0.0,
+                    "w": pose.turnrate() if pose.poseCnt > 0 else 0.0,
+                    "source": correction['source'],
+                    "zone": ctx.get('zone', ''),
+                    "nearest_tape": ctx['nearest_tape']['name'] if ctx.get('nearest_tape') else '',
+                }
+
+                if args.print_terminal:
+                    dx = correction['x'] - px
+                    dy = correction['y'] - py
+                    dyaw = correction['yaw'] - yaw
+                    print(
+                        f"% CORR valid src={correction['source']} "
+                        f"in=({px:.3f},{py:.3f},{yaw:.3f}) "
+                        f"out=({correction['x']:.3f},{correction['y']:.3f},{correction['z']:.3f},{correction['yaw']:.3f})"
+                    )
+                    print(f"% DIFF dx={dx:+.4f} dy={dy:+.4f} dyaw={dyaw:+.4f}")
+
+            else:
+                vision_state["valid"] = True
+                ctx = correction.get('context') or localizer.get_context(px, py, yaw)
+                if ctx:
+                    vision_state["zone"] = ctx.get('zone', '')
+                    if ctx.get('nearest_tape'):
+                        vision_state["nearest_tape"] = ctx['nearest_tape'].get('name', '')
+
+                if args.print_terminal:
+                    tape_name = ''
+                    if ctx and ctx.get('nearest_tape'):
+                        tape_name = ctx['nearest_tape'].get('name', '')
+                    print(
+                        f"% NO_CORR px={px:.3f} py={py:.3f} yaw={yaw:.3f} "
+                        f"zone={ctx.get('zone','') if ctx else ''} tape={tape_name}"
+                    )
+
+            base = vision.debug_frame if vision.debug_frame is not None else frame
+            vis = draw_panel(base, result, aruco_detections, vision_state)
 
             if args.print_terminal:
-                print(
-                    f"% CORR valid src={correction['source']} "
-                    f"in=({px:.3f},{py:.3f},{yaw:.3f}) "
-                    f"out=({correction['x']:.3f},{correction['y']:.3f},{correction['z']:.3f},{correction['yaw']:.3f})"
-                )
+                now_t = time.time()
+                if now_t - last_print_t > 0.5:
+                    print(
+                        f"% vision_state: px={vision_state['px']:.3f} "
+                        f"py={vision_state['py']:.3f} zone={vision_state['zone']} "
+                        f"src={vision_state['source']}"
+                    )
+                    last_print_t = now_t
 
-        else:
-            vision_state["valid"] = True
-            ctx = correction.get('context') or localizer.get_context(px, py, yaw)
-            if ctx:
-                vision_state["zone"] = ctx.get('zone', '')
-                if ctx.get('nearest_tape'):
-                    vision_state["nearest_tape"] = ctx['nearest_tape'].get('name', '')
+            cv2.imshow(args.window, vis)
+            key = cv2.waitKey(1) & 0xFF
 
-            if args.print_terminal:
-                tape_name = ''
-                if ctx and ctx.get('nearest_tape'):
-                    tape_name = ctx['nearest_tape'].get('name', '')
-                print(
-                    f"% NO_CORR px={px:.3f} py={py:.3f} yaw={yaw:.3f} "
-                    f"zone={ctx.get('zone','') if ctx else ''} tape={tape_name}"
-                )
+            if key in (ord("q"), 27):
+                break
+            elif key == ord("l"):
+                vision.set_active_branch(0)
+            elif key == ord("r"):
+                vision.set_active_branch(1)
+            elif key == ord("v"):
+                vision.update_threshold(white_v_min=min(255, vision.white_v_min + 5))
+            elif key == ord("b"):
+                vision.update_threshold(white_v_min=max(0, vision.white_v_min - 5))
+            elif key == ord("n"):
+                vision.update_threshold(white_s_max=min(255, vision.white_s_max + 5))
+            elif key == ord("m"):
+                vision.update_threshold(white_s_max=max(0, vision.white_s_max - 5))
 
-        base = vision.debug_frame if vision.debug_frame is not None else frame
-        vis = draw_panel(base, result, aruco_detections, vision_state)
-
-        if args.print_terminal:
-            now_t = time.time()
-            if now_t - last_print_t > 0.5:
-                print(
-                    f"% vision_state: px={vision_state['px']:.3f} "
-                    f"py={vision_state['py']:.3f} zone={vision_state['zone']} "
-                    f"src={vision_state['source']}"
-                )
-                last_print_t = now_t
-
-        cv2.imshow(args.window, vis)
-        key = cv2.waitKey(1) & 0xFF
-
-        if key in (ord("q"), 27):
-            break
-        elif key == ord("l"):
-            vision.set_active_branch(0)
-        elif key == ord("r"):
-            vision.set_active_branch(1)
-        elif key == ord("v"):
-            vision.update_threshold(white_v_min=min(255, vision.white_v_min + 5))
-        elif key == ord("b"):
-            vision.update_threshold(white_v_min=max(0, vision.white_v_min - 5))
-        elif key == ord("n"):
-            vision.update_threshold(white_s_max=min(255, vision.white_s_max + 5))
-        elif key == ord("m"):
-            vision.update_threshold(white_s_max=max(0, vision.white_s_max - 5))
-
-    cap.release()
-    cv2.destroyAllWindows()
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+        _log_file.close()
 
 
 if __name__ == "__main__":

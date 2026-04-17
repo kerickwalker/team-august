@@ -1,10 +1,3 @@
-"""
-field_map_2026.py
-=================
-Field map derived from draw_empty.py coordinates.
-Coordinate system: Bottom-left corner = (0, 0, 0)
-X = right, Y = up, Z = up (metres)
-"""
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
@@ -19,11 +12,8 @@ from field_objects import (
     BezierSegment, ArcSegment, NavPath,
 )
 
-# ---------------------------------------------------------------------------
-# COMPUTED CONSTANTS (from draw_empty.py)
-# ---------------------------------------------------------------------------
 RR = 0.60
-RC = (3.5, 2 + RR)   # Roundabout center (3.5, 2.6)
+RC = (3.5, 2 + RR)   
 
 ramp_base = (0.27, 3.30)
 ramp_top  = (0.27, 3.30 + 1.58)   # (0.27, 4.88)
@@ -67,9 +57,9 @@ class CompetitionField2026:
     width_m:  float = 7.0
     height_m: float = 6.0
 
-    # --- Green boundary lines ---
+    GREEN_BARRIER_Z: float = field(default=0.09)
     green_y_line:  Tuple = (Point3D(0,0,0), Point3D(0,2.5,0))
-    shuttle_green_border: Tuple = (Point3D(0,0.10,0), Point3D(3.5,0.10,0))  # shuttle lane green border
+    shuttle_green_border: Tuple = (Point3D(0,0.10,0), Point3D(3.5,0.10,0))  
 
     # --- Start & Goal ---
     start_area: StartArea = None
@@ -79,7 +69,7 @@ class CompetitionField2026:
     # --- Roundabout ---
     roundabout: Roundabout = None
 
-    # --- Short ramp (adjacent to stairs) ---
+    # --- Short ramp ---
     short_ramp: Ramp    = None
     platform:   Platform = None
     stairs:     Stairs  = None
@@ -88,13 +78,12 @@ class CompetitionField2026:
     # --- Long ramp ---
     long_ramp: Ramp = None
 
-    # --- Other structures ---
     sorting_center: SortingCenter  = None
     shuttle:        LuggageShuttle = None
     ball_dispenser: BallDispenser  = None
     infinity_path:  InfinityPath   = None
 
-    # --- Lists ---
+    # --- List ---
     golf_balls:   List[GolfBall]      = field(default_factory=list)
     time_buttons: List[TimeExtButton] = field(default_factory=list)
     gates:        List[Gate]           = field(default_factory=list)
@@ -136,38 +125,6 @@ class CompetitionField2026:
     def nearest_tape_segment(self, px: float, py: float, yaw: float = None,
                               world_line_points: list = None,
                               max_yaw_diff_deg: float = 60.0):
-        """
-        Find the most suitable tape segment for the robot at position (px, py).
-
-        Old behaviour: nearest segment by distance only.
-        New behaviour: three criteria scored together:
-          1. Distance score      - projection distance to the robot
-          2. Heading match score - is the robot's yaw aligned with the segment?
-                                   segments outside max_yaw_diff_deg are discarded
-          3. Point alignment     - if world_line_points provided, average distance
-                                   of observed tape points to this segment
-
-        Parameters
-        ----------
-        px, py            : current robot estimate (world coordinates, metres)
-        yaw               : robot yaw (radians). None disables heading filter.
-        world_line_points : smeasurement.build_measurement()["world_line_points"]
-                            [(wx, wy), ...] list. None = not used.
-        max_yaw_diff_deg  : segments deviating more than this angle are discarded (degrees).
-                            Default 60° — keep wide for curved tape.
-
-        Returns dict (legacy fields preserved, compatible):
-            name              : tape name
-            segment_start     : Point3D
-            segment_end       : Point3D
-            closest_pt        : (cx, cy)
-            dist              : metres
-            heading_deg       : segment heading (degrees)
-            lateral_error     : metres, + = robot is left of segment
-            heading_error_deg : yaw - segment_heading (degrees)
-            score             : (new) combined score, lower = better
-        """
-        # ── Collect all segments ─────────────────────────────────────────────
         all_segments = []
         for tl in self.tape_lines:
             for i in range(len(tl.waypoints) - 1):
@@ -191,7 +148,6 @@ class CompetitionField2026:
             if seg_len < 1e-6:
                 continue
 
-            # ── 1. Distance (projection) ─────────────────────────────────────
             t = max(0.0, min(1.0, ((px - p0.x)*dx + (py - p0.y)*dy) / (seg_len**2)))
             cx = p0.x + t * dx
             cy = p0.y + t * dy
@@ -200,21 +156,17 @@ class CompetitionField2026:
             seg_heading_rad = math.atan2(dy, dx)
             seg_heading_deg = math.degrees(seg_heading_rad)
 
-            # Lateral error: + = robot is left of segment
             lateral = ((px - p0.x)*dy - (py - p0.y)*dx) / seg_len
 
-            # ── 2. Heading filter ────────────────────────────────────────────
             heading_err_deg = 0.0
             if yaw is not None:
                 raw = math.degrees(yaw) - seg_heading_deg
                 heading_err_deg = (raw + 180) % 360 - 180  # [-180, 180]
 
-                # We can travel in either direction: aligned at 0° or 180°
                 yaw_diff = abs(heading_err_deg)
                 if yaw_diff > 90:
                     yaw_diff = 180 - yaw_diff
 
-                # Discard segment if heading deviates too much from robot's facing
                 if yaw_diff > max_yaw_diff_deg:
                     continue
 
@@ -222,10 +174,8 @@ class CompetitionField2026:
             else:
                 yaw_score = 0.0
 
-            # ── 3. Point alignment score ─────────────────────────────────────
             point_score = 0.0
             if world_line_points and len(world_line_points) >= 2:
-                # Average distance of observed tape points to this segment
                 total_dist = 0.0
                 for wx, wy in world_line_points:
                     tp = max(0.0, min(1.0,
@@ -234,11 +184,8 @@ class CompetitionField2026:
                     cpy = p0.y + tp * dy
                     total_dist += math.hypot(wx - cpx, wy - cpy)
                 avg_dist = total_dist / len(world_line_points)
-                # 0.5m average distance = score 1.0 (bad)
                 point_score = min(1.0, avg_dist / 0.5)
 
-            # ── Combined score ───────────────────────────────────────────────
-            # Weights: distance dominant, heading and point alignment supportive
             w_dist   = 1.0
             w_yaw    = 0.4
             w_points = 0.6 if world_line_points else 0.0
@@ -259,7 +206,6 @@ class CompetitionField2026:
                     'lateral_error':     lateral,
                     'heading_error_deg': heading_err_deg,
                     'score':             score,
-                    # p0/p1 shorthand (used in slocalize)
                     'p0': (p0.x, p0.y),
                     'p1': (p1.x, p1.y),
                 }
@@ -267,7 +213,6 @@ class CompetitionField2026:
         return best
 
     def nearby_aruco(self, px: float, py: float, radius: float = 1.5):
-        """Return ArUco markers within radius metres of the given position."""
         result = []
         for m in self.all_aruco():
             d = math.hypot(m.position.x - px, m.position.y - py)
@@ -277,7 +222,6 @@ class CompetitionField2026:
         return [(d, m) for d, m in result]
 
     def nearest_gate(self, px: float, py: float):
-        """Return the nearest gate."""
         best_gate = None
         best_dist = float('inf')
         for g in self.all_gates():
@@ -288,7 +232,6 @@ class CompetitionField2026:
         return best_gate, best_dist
 
     def current_zone(self, px: float, py: float) -> str:
-        """Return the zone the robot is currently in."""
         pz = self.pz_at(px, py)
         if self.platform and self.platform.contains_2d(px, py):
             return "platform"
@@ -319,16 +262,6 @@ class CompetitionField2026:
 
     def context(self, px: float, py: float, yaw: float = None,
                 world_line_points: list = None) -> dict:
-        """
-        Return full context for the robot at (px, py, yaw).
-        This is the main API for Kalman correction.
-
-        Parameters
-        ----------
-        world_line_points : [(wx, wy), ...] — smeasurement output.
-            If provided, nearest_tape_segment uses multi-criteria selection
-            (distance + heading + point alignment). None = distance only.
-        """
         tape  = self.nearest_tape_segment(px, py, yaw,
                                           world_line_points=world_line_points)
         gate, gate_dist = self.nearest_gate(px, py)
@@ -347,7 +280,6 @@ class CompetitionField2026:
         }
 
     def summary(self):
-        """Print field summary to terminal."""
         print(f"\n=== {self.name} ===")
         print(f"Field: {self.width_m}m x {self.height_m}m")
         print(f"Start exit : {self.start_area.exit_point}")
@@ -361,9 +293,9 @@ class CompetitionField2026:
         print(f"\nPz test:")
         for x,y,lbl in [
             (6.5, 0.1, "goal"),
-            (long_ramp_x0+1.0, lr_mid_y, "long ramp mid"),
+            (long_ramp_x0+1.0, lr_mid_y, "long ramp middle"),
             (plat_x0+0.5, plat_y0+0.5, "platform"),
-            (stair_mid_x, plat_y0-0.8, "stair mid"),
+            (stair_mid_x, plat_y0-0.8, "stairs middle"),
         ]:
             print(f"  ({x:.2f},{y:.2f}) [{lbl}] -> Pz={self.pz_at(x,y):.3f}m")
 
@@ -371,20 +303,19 @@ class CompetitionField2026:
 # ---------------------------------------------------------------------------
 # OBJECTS
 # ---------------------------------------------------------------------------
-
 # Start
 START_AREA = StartArea(
     origin=Point3D(start_x0, 0.0),
     width=start_x1-start_x0, depth=start_h,
     open_side="top",
-    note="U shape, bottom closed, top open",
+    note="U shape, closed at the bottom, open at the top",
 )
 
 # Goal
 GOAL_POINT = Point3D(goal_cx, goal_s/2, 0.0)
 GOAL_ARUCO = ArucoMarker(
-    id=99, position=Point3D(goal_cx, goal_s+0.05, 0.02),
-    size_m=0.10, note="ArUco above goal",
+    id=25, position=Point3D(goal_cx, goal_s+0.05, 0.02),
+    size_m=0.10, note="ArUco on top of Goal",
 )
 
 # Roundabout
@@ -395,9 +326,9 @@ ROUNDABOUT = Roundabout(
     n_drones=2,
 )
 ROUNDABOUT.build_gates(has_satellite=True)
-ROUNDABOUT.gates[0].has_satellite = False  # 0° right - no satellite
-ROUNDABOUT.gates[1].has_satellite = True   # 120° top-left - satellite
-ROUNDABOUT.gates[2].has_satellite = True   # 240° bottom-left - satellite
+ROUNDABOUT.gates[0].has_satellite = False  # 0° right — no satellite
+ROUNDABOUT.gates[1].has_satellite = True   # 120° upper left — has satellite
+ROUNDABOUT.gates[2].has_satellite = True   # 240° lower left — has satellite
 
 # Short ramp (adjacent to stairs)
 SHORT_RAMP = Ramp(
@@ -405,7 +336,7 @@ SHORT_RAMP = Ramp(
     base=Point3D(ramp_base[0], ramp_base[1], 0.0),
     top=Point3D(ramp_top[0],  ramp_top[1],  ramp_rise),
     width=ramp_w, rise=ramp_rise,
-    note="Short ramp adjacent to stairs, along y, 1.58m",
+    note="Short ramp adjacent to stairs, along y axis, 1.58m",
 )
 
 # Platform
@@ -434,7 +365,7 @@ LONG_RAMP = Ramp(
     base=Point3D(long_ramp_x1, lr_mid_y, 0.0),
     top=Point3D(long_ramp_x0,  lr_mid_y, plat_z),
     width=1.00, rise=plat_z,
-    note="Long ramp, along x, 3.64m, from right side of platform",
+    note="Long ramp, along x axis, 3.64m, from the right side of platform",
 )
 LONG_RAMP.gates = [
     Gate("long_ramp_gate", Point3D(long_ramp_x0+0.70, lr_mid_y, plat_z-(0.70/3.64)*plat_z),
@@ -482,11 +413,11 @@ INFINITY.build_gates()
 INFINITY.gates[0].has_satellite = True
 INFINITY.gates[0].center = Point3D(inf_cx - inf_rx*2, inf_cy)
 INFINITY.gates[0].orientation_deg = 0
-INFINITY.gates[0].line_angle_deg = 0    # along x
+INFINITY.gates[0].line_angle_deg = 0    # along x axis
 INFINITY.gates[1].has_satellite = False
 INFINITY.gates[1].center = Point3D(inf_cx, inf_cy)
 INFINITY.gates[1].orientation_deg = 0
-INFINITY.gates[1].line_angle_deg = 90   # along y
+INFINITY.gates[1].line_angle_deg = 90   # along y axis
 
 # Golf balls
 GOLF_BALLS = [
@@ -496,7 +427,7 @@ GOLF_BALLS = [
              target_hole=PLATFORM.hole, points=2, note="Platform ball"),
 ]
 
-# +90s buttons
+# +90sec buttons
 TIME_BUTTONS = [
     TimeExtButton("time_ext_10", Point3D(0.0, 1.0), extra_sec=90, note="Left button"),
     TimeExtButton("time_ext_11", Point3D(7.0, 3.75), extra_sec=90, note="Right button"),
@@ -507,10 +438,10 @@ EXTRA_GATES = [
     Gate("gate_ramp_area_left",  Point3D(4.5, 4.2), orientation_deg=0, line_angle_deg=90, has_satellite=True,  points=1),
     Gate("gate_ramp_area_right", Point3D(5.4, 4.2), orientation_deg=0, line_angle_deg=90, has_satellite=True,  points=1),
     Gate("gate_start_loop",      Point3D(5.5, 2.0), orientation_deg=0, line_angle_deg=90, has_satellite=True,  points=1, note="Start-Goal loop gate"),
-    Gate("gate_short_ramp_top",  Point3D(ramp_base[0], ramp_top[1], ramp_rise), orientation_deg=90, line_angle_deg=0, has_satellite=True, points=1, note="Short ramp top entry"),
+    Gate("gate_short_ramp_top",  Point3D(ramp_base[0], ramp_top[1], ramp_rise), orientation_deg=90, line_angle_deg=0, has_satellite=True, points=1, note="Short ramp top start"),
 ]
 
-# Tape lines
+# Tape segments (tape lines)
 TAPE_LINES = [
     TapeLine("roundabout_left_exit",
              [Point3D(RC[0]-RR, RC[1]), Point3D(RC[0]-RR-2.6, RC[1])],
@@ -540,10 +471,10 @@ TAPE_LINES = [
 ]
 
 # ---------------------------------------------------------------------------
-# NAV PATHS - curved route definitions
+# NAV PATHS — curved line definitions
 # ---------------------------------------------------------------------------
 
-# After long ramp: straight --> U-turn --> top of roundabout
+# After long ramp: straight → U turn → to the top of roundabout
 _rx1        = long_ramp_x1
 _ry_mid     = lr_mid_y
 _str1_end_x = _rx1 + 0.39
@@ -571,10 +502,10 @@ PATH_LONG_RAMP_TO_ROUNDABOUT = NavPath(
         TapeLine("roundabout_down",
                  [Point3D(RC[0], RC[1]-RR), Point3D(RC[0], 0.50)]),
     ],
-    note="Descending route from long ramp exit to roundabout",
+    note="Line descending from the end of long ramp to the roundabout",
 )
 
-# Start-Goal loop: inverted U from above goal back to start
+# Start-Goal loop: inverted U from above goal to start
 _goal_top_y  = goal_s
 _goal_top_x  = goal_cx
 _start_mid_x = (start_x0 + start_x1) / 2
@@ -595,14 +526,14 @@ PATH_START_GOAL_LOOP = NavPath(
                  [Point3D(_goal_top_x, _goal_top_y), _p1]),
         BezierSegment(p0=_p1, p3=_p2,
                       p1=_ctrl, p2=_ctrl, n_samples=60,
-                      note="Inverted U arc"),
+                      note="Inverted U bulge"),
         TapeLine("start_straight",
                  [_p2, Point3D(_start_mid_x, _start_mid_y)]),
     ],
-    note="Inverted U loop from above goal to start, arched gate at (5.5, 2.0)",
+    note="Inverted U loop from above goal to start, bulging gate (5.5, 2.0)",
 )
 
-# Curved line from top of start leftward --> (3.92, 2.17)
+# Line curving left from top of start → (3.92, 2.17)
 _s_top   = Point3D(_start_mid_x, _start_mid_y + _straight_len)
 _s_target = Point3D(3.92, 2.17)
 
@@ -616,13 +547,13 @@ PATH_START_LEFT_BRANCH = NavPath(
             p1=Point3D(_s_top.x,    _s_target.y),
             p2=Point3D(_s_target.x, _s_target.y),
             n_samples=50,
-            note="Curve from top of start to left edge of roundabout",
+            note="Curve from top of start to the left edge of roundabout",
         ),
     ],
-    note="Branch curving left from start straight line",
+    note="Line branching off to the left from the start straight line",
 )
 
-# Stair tape line: ball dispenser --> stair base --> stair top (3D)
+# Stairs tape line: ball dispenser → stairs bottom → stairs top (3D)
 _stair_mid_x  = stair_mid_x
 _stair_bot_y  = plat_y0 - 4 * 0.40   # n_steps=4, step_d=0.40
 _stair_top_y  = plat_y0
@@ -639,11 +570,11 @@ PATH_BALL_TO_STAIRS = NavPath(
                  [Point3D(_stair_mid_x, _stair_bot_y, 0.0),
                   Point3D(_stair_mid_x, _stair_top_y, _stair_top_z)]),
     ],
-    note="Route from ball bowl along stairs to exit",
+    note="Line going from the ball bowl up along the stairs",
 )
 
 # ---------------------------------------------------------------------------
-# ADD nav_paths TO FIELD OBJECT
+# ADD nav_paths TO THE FIELD OBJECT
 # ---------------------------------------------------------------------------
 FIELD = CompetitionField2026(
     start_area     = START_AREA,
@@ -663,7 +594,7 @@ FIELD = CompetitionField2026(
     time_buttons   = TIME_BUTTONS,
     gates          = EXTRA_GATES,
     tape_lines     = TAPE_LINES,
-    aruco_markers  = [GOAL_ARUCO],
+    aruco_markers  = [],  # goal_aruco is already a separate field, not added here
     nav_paths      = [
         PATH_LONG_RAMP_TO_ROUNDABOUT,
         PATH_START_GOAL_LOOP,

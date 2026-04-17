@@ -507,7 +507,7 @@ class SKalman:
             x0[5, 0] = float(self.vision_pose[3, 0])
             x0[6, 0] = float(self.vision_pose[4, 0])
         else:
-            pass  # x,y,z default_state den geliyor, encoder override yok
+            pass  # x,y,z come from default_state, no encoder override
         x0[3, 0] = float(imu_derived.acc_velocity) if imu_derived.acc_velocity_upd_cnt > 0 else float(pose.velocity())
         x0[4, 0] = float(imu.gyro[2]) if imu.gyroUpdCnt > 0 else float(pose.turnrate())
         x0[5, 0] = _wrap_angle_rad(float(x0[5, 0]))
@@ -610,7 +610,7 @@ class SKalman:
         if now_t is None:
             return False
         if self.last_update_time is None:
-            # Bootstrap devre dışı — her zaman reset() ile set edilen state kullanılır
+            # Bootstrap disabled — always use the state set via reset()
             self._manual_reset = False
             self.last_update_time = now_t
             self.update_count = 1
