@@ -83,6 +83,30 @@ class SCollect:
 
                 t.sleep(0.02)
 
+            elif state == 2:
+                # Drive forward with continuous steering correction until close
+                ok, img, _ = cam.getImage()
+                if not ok:
+                    t.sleep(0.02)
+                    continue
+
+                ball.detect(img)
+
+                if not ball.detected:
+                    # Briefly lost the ball — hold course and keep looking
+                    self._drive(self.drive_speed, 0)
+                elif ball.isClose(self.close_radius):
+                    # Ball is close enough to capture
+                    self._drive(0, 0)
+                    print(f"% SCollect:: state 2 — ball close (r={ball.radius}px), capturing")
+                    state = 3
+                else:
+                    # Keep steering toward ball as we approach
+                    turn = self.turn_gain * ball.steeringError()
+                    self._drive(self.drive_speed, turn)
+
+                t.sleep(0.02)
+
         # Stopped early
         self._drive(0, 0)
         return False
