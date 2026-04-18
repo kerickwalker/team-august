@@ -81,7 +81,7 @@ CROSSING1 = SimpleNamespace(
 # ── Roundabout entry — triggered when the line physically ends ────────────────
 ROUNDABOUT_ENTRY = SimpleNamespace(
     drive_dist_m = 0.29,    # m — drive forward after line ends before turning
-    drive_speed  = 0.35,    # m/s
+    drive_speed  = 0.3,    # m/s
     turn_deg     = 90.0,    # degrees to turn to face the roundabout circle
     turn_dir     = "right",  # "left" or "right"
 )
