@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-# Full mission script for Robobot (DTU).
+# Full mission script for Robobot (DTU) — simple variant.
 #
-# Run with:   python3 mqtt-full-mission.py -e        (normal)
-#             python3 mqtt-full-mission.py -e -s      (silent, no debug prints)
-#             python3 mqtt-full-mission.py -e --now   (skip IR start-gate, go immediately)
+# Run with:   python3 mqtt-full-mission-simple.py -e        (normal)
+#             python3 mqtt-full-mission-simple.py -e -s      (silent, no debug prints)
+#             python3 mqtt-full-mission-simple.py -e --now   (skip IR start-gate, go immediately)
 #
 # ── Mission overview ─────────────────────────────────────────────────────────
 #
@@ -15,20 +15,21 @@
 #               Crossing 2 → go straight
 #               Crossing 3 → go straight
 #               Crossing 4 → hard 90° turn (direction auto-detected from sensor)
-#               Crossing 5 → stop → [CATCH BALL SEQUENCE]
+#               Crossing 5 → stop → [DRIVE TO GOAL SEQUENCE]
 #
 #  [ROUNDABOUT]  When the line physically ends (between crossings 1 and 2):
 #               drive 20 cm → turn LEFT 45° → arc 450° → turn LEFT 90°
 #               → find line → resume [FOLLOW] with crossing_count = 1
 #
-#  [CATCH BALL]  Turn right 90° → drive 10 cm → lower servo 1 & 2 →
-#               drive 3 cm → raise servo 1 & 2 → reverse 10 cm → done.
+#  [DRIVE TO GOAL]  Forward 1 m → turn right 90° → forward 1 m → turn left 90°
+#               → forward 2 m → turn left 20° → drive straight until line found
+#               → follow line until line ends → stop.
 #
 # ── How to tune ──────────────────────────────────────────────────────────────
 #
 #  All tunable values live in the CONFIGURATION section below, grouped by
-#  mission phase (LINE, CROSSINGS, CROSSING1, ROUNDABOUT_*, LINE_END, CATCH_BALL).
-#  The sequences (ROUNDABOUT_SEQUENCE, END_SEQUENCE) define each blocking
+#  mission phase (LINE, CROSSINGS, CROSSING1, ROUNDABOUT_*, LINE_END, DRIVE_TO_GOAL).
+#  The sequences (ROUNDABOUT_SEQUENCE, DRIVE_TO_GOAL_SEQUENCE) define each blocking
 #  phase as an ordered list of steps — add, remove, or reorder steps freely.
 #
 # ─────────────────────────────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ CROSSING1 = SimpleNamespace(
 # ── Roundabout entry — triggered when the line physically ends ────────────────
 ROUNDABOUT_ENTRY = SimpleNamespace(
     drive_dist_m = 0.29,    # m — drive forward after line ends before turning
-    drive_speed  = 0.35,    # m/s
+    drive_speed  = 0.3,    # m/s
     turn_deg     = 90.0,    # degrees to turn to face the roundabout circle
     turn_dir     = "right",  # "left" or "right"
 )
@@ -90,7 +91,7 @@ ROUNDABOUT_ENTRY = SimpleNamespace(
 # Turn rate is derived automatically: w = speed / (diameter / 2)
 ROUNDABOUT_ARC = SimpleNamespace(
     diameter_m    = 0.73,     # m — physical diameter of the circle
-    total_degrees = 450.0,   # ° — heading change target (360 = one full lap, 450 = 1.25 laps)
+    total_degrees = 440.0,   # ° — heading change target (360 = one full lap, 450 = 1.25 laps)
     speed         = 0.20,    # m/s — forward speed on the arc
     direction     = "left",  # "left" (CCW) or "right" (CW)
 )
@@ -110,18 +111,17 @@ LINE_END = SimpleNamespace(
     lost_confirm = 5,    # consecutive 10 ms samples needed to confirm the line has ended
 )
 
-# ── Catch-ball sequence — runs after the final crossing ───────────────────────
-CATCH_BALL = SimpleNamespace(
-    turn_right_deg = 90.0,   # ° — turn right to face the ball
-    fwd1_dist_m    = 0.15,   # m — drive forward after turning
-    fwd2_dist_m    = 0.03,   # m — drive forward after servos go down
-    back_dist_m    = 0.10,   # m — reverse after raising servos
-    drive_speed    = 0.20,   # m/s
-    servo1_up      = -475,   # servo 1 PWM: raised
-    servo1_down    =  480,   # servo 1 PWM: lowered
-    servo2_up      =  475,   # servo 2 PWM: raised
-    servo2_down    = -480,   # servo 2 PWM: lowered
-    servo_move_s   =  1.0,   # s — wait after each servo command for motion to complete
+# ── Drive-to-goal sequence — runs after the final crossing ────────────────────
+DRIVE_TO_GOAL = SimpleNamespace(
+    follow_dist_m = 1.00,   # m — continue line-following after crossing 5 before turning
+    turn1_deg     = 90.0,   # ° — turn right
+    fwd2_dist_m   = 0.90,   # m — forward after first turn
+    turn2_deg     = 90.0,   # ° — turn left
+    fwd3_dist_m   = 2.00,   # m — forward after second turn
+    turn3_deg     = 20.0,   # ° — turn left before line seek
+    drive_speed   = 0.20,   # m/s
+    seek_speed    = 0.20,   # m/s while searching for the line
+    seek_timeout  = 30.0,   # s — give up if line not found within this time
 )
 
 
@@ -133,12 +133,13 @@ CATCH_BALL = SimpleNamespace(
 # run_sequence() below executes them in order.
 #
 # Supported actions:
-#   "drive"     — drive straight: dist (m), speed (m/s)
-#   "turn"      — rotate in place: deg (°), dir ("left"/"right"), rate (rad/s, optional)
-#   "arc"       — drive the roundabout arc (uses ROUNDABOUT_ARC settings)
-#   "seek_line" — drive forward until line found: speed (m/s), timeout (s)
-#   "servo"     — move servo: num (1 or 2, default 1), pos (PWM value),
-#                 wait (s — sleep for servo to reach position), hold (s, optional — extra hold)
+#   "drive"       — drive straight: dist (m), speed (m/s)
+#   "turn"        — rotate in place: deg (°), dir ("left"/"right"), rate (rad/s, optional)
+#   "arc"         — drive the roundabout arc (uses ROUNDABOUT_ARC settings)
+#   "seek_line"   — drive forward until line found: speed (m/s), timeout (s)
+#   "follow_line" — follow the line for dist (m) at speed (m/s), then stop
+#   "servo"       — move servo: num (1 or 2, default 1), pos (PWM value),
+#                   wait (s — sleep for servo to reach position), hold (s, optional — extra hold)
 ################################################################
 
 # Steps executed when the line physically ends → roundabout phase
@@ -150,16 +151,16 @@ ROUNDABOUT_SEQUENCE = [
     ("seek_line", {"speed": ROUNDABOUT_EXIT.seek_speed,      "timeout": ROUNDABOUT_EXIT.seek_timeout}),
 ]
 
-# Steps executed after the final crossing → catch-ball phase
-CATCH_BALL_SEQUENCE = [
-    ("turn",  {"deg":  CATCH_BALL.turn_right_deg, "dir":   "right"}),
-    ("drive", {"dist": CATCH_BALL.fwd1_dist_m,    "speed": CATCH_BALL.drive_speed}),
-    ("servo", {"num": 1, "pos": CATCH_BALL.servo1_down, "wait": CATCH_BALL.servo_move_s}),
-    ("servo", {"num": 2, "pos": CATCH_BALL.servo2_down, "wait": CATCH_BALL.servo_move_s}),
-    ("drive", {"dist": CATCH_BALL.fwd2_dist_m,    "speed": CATCH_BALL.drive_speed}),
-    ("servo", {"num": 1, "pos": CATCH_BALL.servo1_up,   "wait": CATCH_BALL.servo_move_s}),
-    ("servo", {"num": 2, "pos": CATCH_BALL.servo2_up,   "wait": CATCH_BALL.servo_move_s}),
-    ("drive", {"dist": -CATCH_BALL.back_dist_m,   "speed": CATCH_BALL.drive_speed}),
+# Steps executed after the final crossing → drive-to-goal phase
+# (seek_line at end drives straight until the line is found; state 21 then follows it)
+DRIVE_TO_GOAL_SEQUENCE = [
+    ("follow_line", {"dist": DRIVE_TO_GOAL.follow_dist_m, "speed": LINE.speed}),
+    ("turn",        {"deg":  DRIVE_TO_GOAL.turn1_deg,     "dir":   "right"}),
+    ("drive",     {"dist":  DRIVE_TO_GOAL.fwd2_dist_m,  "speed":   DRIVE_TO_GOAL.drive_speed}),
+    ("turn",      {"deg":   DRIVE_TO_GOAL.turn2_deg,    "dir":     "left"}),
+    ("drive",     {"dist":  DRIVE_TO_GOAL.fwd3_dist_m,  "speed":   DRIVE_TO_GOAL.drive_speed}),
+    ("turn",      {"deg":   DRIVE_TO_GOAL.turn3_deg,    "dir":     "left"}),
+    ("seek_line", {"speed": DRIVE_TO_GOAL.seek_speed,   "timeout": DRIVE_TO_GOAL.seek_timeout}),
 ]
 
 
@@ -281,6 +282,24 @@ def driveRoundabout():
         print(f"% driveRoundabout: done ({np.degrees(abs(pose.tripBh)):.1f}° in {pose.tripBtimePassed():.1f} s)")
 
 
+def driveLineFollow(dist, speed):
+    """Follow the line for dist metres using the PD controller, then stop."""
+    pose.tripBreset()
+    edge.lineControl(velocity=speed, refPosition=0)
+    if not service.is_quiet():
+        print(f"% driveLineFollow: {dist:.2f} m at {speed:.2f} m/s")
+    while not service.stop:
+        if pose.tripB >= dist:
+            break
+        t.sleep(0.01)
+    edge.lineControl(0)
+    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+    while not service.stop and abs(pose.velocity()) > 0.001:
+        t.sleep(0.02)
+    if not service.is_quiet():
+        print(f"# driveLineFollow: drove {pose.tripB:.3f} m")
+
+
 def seekLine(speed, timeout_s):
     """Drive forward at speed until the line sensor is confident (lineValidCnt > 4) or timeout."""
     pose.tripBreset()
@@ -321,6 +340,8 @@ def run_sequence(steps):
             driveRoundabout()
         elif action == "seek_line":
             seekLine(params["speed"], params["timeout"])
+        elif action == "follow_line":
+            driveLineFollow(params["dist"], params.get("speed", LINE.speed))
         elif action == "servo":
             num = params.get("num", 1)
             service.send("robobot/cmd/T0", f"servo {num} {params['pos']} 100")
@@ -346,7 +367,8 @@ def driveMission():
       2  — wait for full stop, then exit
       10 — line following + crossing reactions + line-end detection
       11 — roundabout sequence (blocking), then resume line following
-      20 — end sequence (blocking), then wait for stop
+      20 — drive-to-goal sequence (blocking), then start final line follow
+      21 — follow final line until it ends, then stop
       99 — mission complete (exits loop)
     """
     state = 0
@@ -368,6 +390,9 @@ def driveMission():
 
     # ── Line-loss recovery (active only after roundabout) ────────────────────
     lost_line_since = None
+
+    # ── Final line-end detection (state 21) ──────────────────────────────────
+    goal_line_end_count = 0
 
     if not service.is_quiet():
         print("% driveMission: starting")
@@ -526,11 +551,29 @@ def driveMission():
                 print("% roundabout done → resuming line follow (crossing_count=1)")
             state = 10
 
-        # ── State 20: catch-ball sequence ─────────────────────────────────────
-        # Runs CATCH_BALL_SEQUENCE step-by-step, then waits for full stop.
+        # ── State 20: drive-to-goal sequence ──────────────────────────────────
+        # Runs DRIVE_TO_GOAL_SEQUENCE (positioning + seek_line), then activates
+        # the PD line controller and transitions to state 21 for final line follow.
         elif state == 20:
-            run_sequence(CATCH_BALL_SEQUENCE)
-            state = 2
+            run_sequence(DRIVE_TO_GOAL_SEQUENCE)
+            goal_line_end_count = 0
+            edge.lineControl(velocity=LINE.speed, refPosition=0)
+            if not service.is_quiet():
+                print("% drive-to-goal done → following final line to end")
+            state = 21
+
+        # ── State 21: follow final line until it ends, then stop ──────────────
+        elif state == 21:
+            if edge.lineValidCnt < LINE_END.lost_cnt:
+                goal_line_end_count += 1
+            else:
+                goal_line_end_count = 0
+            if goal_line_end_count >= LINE_END.lost_confirm:
+                edge.lineControl(0)
+                service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                if not service.is_quiet():
+                    print("% final line ended → stopping")
+                state = 2
 
         else:
             # state 99 (or unexpected): mission complete

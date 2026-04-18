@@ -38,13 +38,18 @@ class SEdge:
     crossingMinSensors = 4     # crossing when this many or more sensors above lineValidThreshold (lineState = "crossing")
     low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
     # PID gains (turn rate rad/s; integral in error·s, derivative in error/s)
-    lineKp = 0.8 # 0.8
+    lineKp = 0.4  # was 0.8 — reduced to soften proportional jerk
     lineKi = 0.0
-    lineKd = 0.05 # 0.05
+    lineKd = 0.1  # was 0.05 — slightly more damping
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
     # Output saturation (turn rate rad/s)
-    lineYMax = 4.0
-    lineYMin = -4.0
+    # Keep ≤ speed / (half_track_width) so inner wheel never reverses.
+    # At 0.25 m/s, ~0.13 m track: max safe ≈ 1.9 rad/s → use 1.5 for margin.
+    lineYMax = 1.5
+    lineYMin = -1.5
+    # Low-pass smoothing on the turn-rate output (0 = no filter, 1 = frozen)
+    # Absorbs sensor noise between 30 ms livn updates without adding much lag.
+    lineOutputAlpha = 0.4   # new = alpha*raw + (1-alpha)*prev; lower = smoother
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 0.5   # rad/s when turning to find line during recovery
     recoveryVelocity = 0.2   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
@@ -129,7 +134,7 @@ class SEdge:
     lineE_prev = None  # previous error for derivative; None on first sample or after line lost
     lineE1 = 0.0
     lineY1 = 0.0
-    lineY = 0.0  # control output (rad/s), clamped to lineYMin..lineYMax
+    lineY = 0.0  # control output (rad/s), clamped and smoothed
     # memory for recovery (A4: remember last side)
     lastLineSide = 0   # -1 = line was left, +1 = line was right, 0 = unknown; recovery turns this way
     # management
@@ -478,15 +483,17 @@ class SEdge:
         elif self.lineIntegral < -self.lineIntegralLimit:
           self.lineIntegral = -self.lineIntegralLimit
 
-      # PID output (u = P + I + D), then clamp turn rate to ±4 rad/s
+      # PID output (u = P + I + D), clamp, then low-pass smooth
       pTerm = self.lineKp * e
       iTerm = self.lineKi * self.lineIntegral
       self.u = pTerm + iTerm + self.lineKd * dTerm
-      self.lineY = self.u
-      if self.lineY > self.lineYMax:
-        self.lineY = self.lineYMax
-      elif self.lineY < self.lineYMin:
-        self.lineY = self.lineYMin
+      raw_y = self.u
+      if raw_y > self.lineYMax:
+        raw_y = self.lineYMax
+      elif raw_y < self.lineYMin:
+        raw_y = self.lineYMin
+      # low-pass filter: blend new clamped output with previous output
+      self.lineY = self.lineOutputAlpha * raw_y + (1.0 - self.lineOutputAlpha) * self.lineY1
       self.lineE1 = self.u
       self.lineY1 = self.lineY
       # remember for recovery: which side the line was on when last valid
