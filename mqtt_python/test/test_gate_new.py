@@ -29,6 +29,7 @@
 import os
 import sys
 import time
+import threading
 import cv2 as cv
 from datetime import datetime
 from paho.mqtt import client as mqtt_client
@@ -39,6 +40,14 @@ from sgate_1 import gate1, gate1_ctrl
 
 def clamp(x, lo, hi):
     return max(lo, min(hi, x))
+
+
+def alive_loop(mqtt, alive_id, stop_event):
+    """Send 'alive <id>' heartbeat every 0.5 s so the C++ teensy_interface
+    keeps the master registered and does not emergency-stop the robot."""
+    while not stop_event.is_set():
+        mqtt.publish("robobot/cmd/ti", f"alive {alive_id}")
+        stop_event.wait(0.5)
 
 
 def make_mqtt_client(client_id):
@@ -67,6 +76,11 @@ def main():
     mqtt = make_mqtt_client("gate1-new-drive-test")
     mqtt.connect(mqtt_host, 1883, 60)
     mqtt.loop_start()
+
+    alive_id   = f"gate1-new-{int(time.time())}"
+    stop_alive = threading.Event()
+    alive_thread = threading.Thread(target=alive_loop, args=(mqtt, alive_id, stop_alive), daemon=True)
+    alive_thread.start()
 
     gate1.setup()
     gate1_ctrl.reset()
@@ -188,6 +202,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        stop_alive.set()
         mqtt.publish("robobot/cmd/ti", "rc 0 0")
         time.sleep(0.1)
         mqtt.loop_stop()
