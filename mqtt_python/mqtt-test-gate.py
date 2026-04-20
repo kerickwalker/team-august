@@ -96,18 +96,16 @@ def driveGateApproach():
     reached     = False
 
     service.send("robobot/cmd/T0", "leds 16 0 0 30")   # blue: gate approach running
-    if not service.is_quiet():
-        print("% driveGateApproach: starting")
-        print(f"%   align_threshold={GATE.align_threshold:.2f}  align_w={GATE.align_w:.2f} rad/s")
-        print(f"%   stop_width={GATE.stop_width_px:.0f}px  timeout={GATE.timeout_s:.0f}s")
+    if service.is_quiet():
+        print(f"% Gate approach  align_thr={GATE.align_threshold:.2f}  align_w={GATE.align_w:.2f}  stop_w={GATE.stop_width_px:.0f}px  timeout={GATE.timeout_s:.0f}s")
 
     while not service.stop:
         now = t.time()
 
         # ── Timeout guard ─────────────────────────────────────
         if now - t_start > GATE.timeout_s:
-            if not service.is_quiet():
-                print("% driveGateApproach: timeout")
+            if service.is_quiet():
+                print("% Gate approach: timeout")
             break
 
         # ── Get camera frame ──────────────────────────────────
@@ -157,27 +155,40 @@ def driveGateApproach():
 
         service.send("robobot/cmd/ti", f"rc {v_cmd:.3f} {w_cmd:.3f}")
 
-        # ── Terminal status at ~2 Hz ──────────────────────────
-        if not service.is_quiet() and now - t_last_print >= 0.5:
+        # ── Terminal status at ~2 Hz (only with -s) ──────────
+        if service.is_quiet() and now - t_last_print >= 0.5:
             t_last_print = now
             if pose_info["valid"]:
-                print(f"% [{mode:<7}] cx={gate1.bar_cx} w={gate1.bar_width_px}px "
-                      f"e_x={pose_info['lateral_error']:+.3f} "
-                      f"-> rc {v_cmd:+.3f} {w_cmd:+.3f}")
+                e_x  = pose_info["lateral_error"]
+                e_w  = pose_info["depth_error"]
+                side = "right" if e_x > 0 else "left"
+                if mode == "ALIGN":
+                    behavior = f"turning in place {side} to centre gate"
+                elif mode == "APPROACH":
+                    steer = f", steering {side}" if abs(w_cmd) > 0.02 else ", straight"
+                    behavior = f"moving forward{steer}"
+                else:
+                    behavior = "stopped (deadman)"
+                print(f"% [{mode:<7}] "
+                      f"cx={gate1.bar_cx:4d}px  w={gate1.bar_width_px:3d}px  "
+                      f"e_x={e_x:+.3f}  e_w={e_w:+.3f}  "
+                      f"rc v={v_cmd:+.3f} w={w_cmd:+.3f}  "
+                      f"=> {behavior}")
             else:
-                print(f"% [{mode:<7}] gate not found ({loss_frames} lost) "
-                      f"-> rc {v_cmd:+.3f} {w_cmd:+.3f}")
+                side = gate1.bar_side_hint
+                behavior = f"rotating {side} to reacquire" if side != "unknown" else "rotating to search"
+                print(f"% [{'SEARCH':<7}] gate not found ({loss_frames} lost frames)  "
+                      f"rc v={v_cmd:+.3f} w={w_cmd:+.3f}  "
+                      f"=> {behavior}")
 
     # ── Stop robot ────────────────────────────────────────────
     service.send("robobot/cmd/ti", "rc 0 0")
     service.send("robobot/cmd/T0", "leds 16 0 0 0")
 
     elapsed = t.time() - t_start
-    if not service.is_quiet():
-        status = "reached gate" if reached else "stopped (timeout or lost)"
-        print(f"% driveGateApproach: {status}  "
-              f"frames={frame_count}  detections={gate1.detCnt}  "
-              f"time={elapsed:.1f}s")
+    if service.is_quiet():
+        status = "REACHED GATE" if reached else "stopped (timeout or gate lost)"
+        print(f"% Gate approach done: {status}  frames={frame_count}  detections={gate1.detCnt}  time={elapsed:.1f}s")
 
 
 ################################################################
@@ -189,8 +200,7 @@ def loop():
 
     # ── Optional start wait ───────────────────────────────────
     if not getattr(service.args, "now", False):
-        if not service.is_quiet():
-            print("% Waiting for start signal (--now to skip)...")
+        print("% Waiting for start signal (--now to skip)...")
         while not service.stop:
             if gpio.test_stop_button():
                 break
@@ -207,8 +217,8 @@ def loop():
     service.send("robobot/cmd/ti", "rc 0 0")
     t.sleep(0.05)
 
-    if not service.is_quiet():
-        print("% loop: done")
+    if service.is_quiet():
+        print("% Done")
 
 
 ################################################################
@@ -222,13 +232,11 @@ if __name__ == "__main__":
     else:
         setproctitle("mqtt-client")
         gate1.setup()
-        if not service.is_quiet():
-            print("% Starting gate approach test")
+        print("% Starting gate approach test")
         start_teensy_interface()
         service.setup('localhost')
         if service.connected:
             loop()
         service.terminate()
         stop_teensy_interface()
-    if not service.is_quiet():
-        print("% Main terminated")
+    print("% Main terminated")
