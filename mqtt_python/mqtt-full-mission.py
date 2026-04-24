@@ -21,8 +21,10 @@
 #               drive 20 cm → turn LEFT 45° → arc 450° → turn LEFT 90°
 #               → find line → resume [FOLLOW] with crossing_count = 1
 #
-#  [CATCH BALL]  Turn right 90° → drive 10 cm → lower servo 1 & 2 →
-#               drive 3 cm → raise servo 1 & 2 → reverse 10 cm → done.
+#  [CATCH BALL]  Drive forward 10 cm → reverse 10 cm (stub — does nothing yet).
+#
+#  [SORTING AREA] Turn right 90° → follow line 30 cm → turn left 90° →
+#               drive 1.30 m → turn left 90° → drive 70 cm.
 #
 # ── How to tune ──────────────────────────────────────────────────────────────
 #
@@ -117,18 +119,23 @@ LINE_END = SimpleNamespace(
     lost_confirm = 5,    # consecutive 10 ms samples needed to confirm the line has ended
 )
 
-# ── Catch-ball sequence — runs after the final crossing ───────────────────────
+# ── Catch-ball sequence — stub: drive forward then back ───────────────────────
 CATCH_BALL = SimpleNamespace(
-    turn_right_deg = 90.0,   # ° — turn right to face the ball
-    fwd1_dist_m    = 0.15,   # m — drive forward after turning
-    fwd2_dist_m    = 0.03,   # m — drive forward after servos go down
-    back_dist_m    = 0.10,   # m — reverse after raising servos
-    drive_speed    = 0.20,   # m/s
-    servo1_up      = -475,   # servo 1 PWM: raised
-    servo1_down    =  480,   # servo 1 PWM: lowered
-    servo2_up      =  475,   # servo 2 PWM: raised
-    servo2_down    = -480,   # servo 2 PWM: lowered
-    servo_move_s   =  1.0,   # s — wait after each servo command for motion to complete
+    fwd_dist_m  = 0.10,   # m — drive forward (and back) as a stub
+    drive_speed = 0.20,   # m/s
+)
+
+# ── Drive-to-sorting-area sequence — runs after catch-ball ────────────────────
+SORTING_AREA = SimpleNamespace(
+    turn1_deg    = 90.0,   # ° — turn right
+    follow_dist  = 0.30,   # m — follow line
+    follow_speed = 0.20,   # m/s
+    turn2_deg    = 90.0,   # ° — turn left after line follow
+    drive1_dist  = 1.30,   # m — drive straight
+    drive1_speed = 0.20,   # m/s
+    turn3_deg    = 90.0,   # ° — turn left again
+    drive2_dist  = 0.70,   # m — final straight
+    drive2_speed = 0.20,   # m/s
 )
 
 
@@ -157,16 +164,20 @@ ROUNDABOUT_SEQUENCE = [
     ("seek_line", {"speed": ROUNDABOUT_EXIT.seek_speed,      "timeout": ROUNDABOUT_EXIT.seek_timeout}),
 ]
 
-# Steps executed after the final crossing → catch-ball phase
+# Steps executed after the final crossing → catch-ball stub
 CATCH_BALL_SEQUENCE = [
-    ("turn",  {"deg":  CATCH_BALL.turn_right_deg, "dir":   "right"}),
-    ("drive", {"dist": CATCH_BALL.fwd1_dist_m,    "speed": CATCH_BALL.drive_speed}),
-    ("servo", {"num": 1, "pos": CATCH_BALL.servo1_down, "wait": CATCH_BALL.servo_move_s}),
-    ("servo", {"num": 2, "pos": CATCH_BALL.servo2_down, "wait": CATCH_BALL.servo_move_s}),
-    ("drive", {"dist": CATCH_BALL.fwd2_dist_m,    "speed": CATCH_BALL.drive_speed}),
-    ("servo", {"num": 1, "pos": CATCH_BALL.servo1_up,   "wait": CATCH_BALL.servo_move_s}),
-    ("servo", {"num": 2, "pos": CATCH_BALL.servo2_up,   "wait": CATCH_BALL.servo_move_s}),
-    ("drive", {"dist": -CATCH_BALL.back_dist_m,   "speed": CATCH_BALL.drive_speed}),
+    ("drive", {"dist":  CATCH_BALL.fwd_dist_m, "speed": CATCH_BALL.drive_speed}),
+    ("drive", {"dist": -CATCH_BALL.fwd_dist_m, "speed": CATCH_BALL.drive_speed}),
+]
+
+# Steps executed after catch-ball → drive to sorting area
+DRIVE_TO_SORTING_AREA_SEQUENCE = [
+    ("turn",        {"deg": SORTING_AREA.turn1_deg,    "dir":   "right"}),
+    ("follow_line", {"dist": SORTING_AREA.follow_dist, "speed": SORTING_AREA.follow_speed}),
+    ("turn",        {"deg": SORTING_AREA.turn2_deg,    "dir":   "left"}),
+    ("drive",       {"dist": SORTING_AREA.drive1_dist, "speed": SORTING_AREA.drive1_speed}),
+    ("turn",        {"deg": SORTING_AREA.turn3_deg,    "dir":   "left"}),
+    ("drive",       {"dist": SORTING_AREA.drive2_dist, "speed": SORTING_AREA.drive2_speed}),
 ]
 
 
@@ -306,6 +317,19 @@ def seekLine(speed, timeout_s):
         print(f"% seekLine: {result} after {pose.tripBtimePassed():.1f} s")
 
 
+def driveLineFollow(dist, speed):
+    """Follow the line for dist metres at speed m/s using the PD controller."""
+    pose.tripBreset()
+    edge.lineControl(velocity=speed, refPosition=0, params="normal")
+    while not service.stop:
+        if pose.tripB >= dist:
+            break
+        t.sleep(0.01)
+    edge.lineControl(0)
+    if not service.is_quiet():
+        print(f"# driveLineFollow: {pose.tripB:.3f} m in {pose.tripBtimePassed():.2f} s")
+
+
 def run_sequence(steps):
     """Execute a list of (action, params) steps in order.
     Stops early if service.stop is set (emergency stop).
@@ -328,6 +352,8 @@ def run_sequence(steps):
             driveRoundabout()
         elif action == "seek_line":
             seekLine(params["speed"], params["timeout"])
+        elif action == "follow_line":
+            driveLineFollow(params["dist"], params.get("speed", 0.2))
         elif action == "servo":
             num = params.get("num", 1)
             service.send("robobot/cmd/T0", f"servo {num} {params['pos']} 100")
@@ -353,7 +379,7 @@ def driveMission():
       2  — wait for full stop, then exit
       10 — line following + crossing reactions + line-end detection
       11 — roundabout sequence (blocking), then resume line following
-      20 — end sequence (blocking), then wait for stop
+      20 — catch-ball stub (fwd+back 10 cm), then drive-to-sorting-area sequence
       99 — mission complete (exits loop)
     """
     state = 0
@@ -533,11 +559,11 @@ def driveMission():
                 print("% roundabout done → resuming line follow (crossing_count=1)")
             state = 10
 
-        # ── State 20: catch-ball sequence ─────────────────────────────────────
-        # Runs CATCH_BALL_SEQUENCE step-by-step, then waits for full stop.
+        # ── State 20: catch-ball stub → drive-to-sorting-area ────────────────
         elif state == 20:
             run_sequence(CATCH_BALL_SEQUENCE)
-            state = 2
+            run_sequence(DRIVE_TO_SORTING_AREA_SEQUENCE)
+            state = 99
 
         else:
             # state 99 (or unexpected): mission complete
