@@ -73,12 +73,14 @@ class SGround:
     ready     = False
 
 
-    def setup(self, params_path: str = 'calibration/camera_params.npz',
+    def setup(self, params_path: str = None,
               camera_height: float = None,
               camera_tilt:   float = None,
               camera_roll:   float = None,
               x_offset:      float = None,
               y_offset:      float = None):
+        if params_path is None:
+            params_path = os.path.join(os.path.dirname(__file__), 'calibration', 'camera_params.npz')
         if not os.path.isfile(params_path):
             print(f"% SGround: ERROR — calibration file not found: {params_path}")
             return

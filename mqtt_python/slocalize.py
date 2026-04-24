@@ -75,7 +75,8 @@ class SLocalize:
                line_result: dict,
                aruco_detections: list,
                px: float, py: float, yaw: float,
-               pitch: float = 0.0) -> dict:
+               pitch: float = 0.0,
+               max_yaw_diff_deg: float = 90.0) -> dict:
         """
         Combine camera measurements with the field map to produce a correction.
 
@@ -93,23 +94,31 @@ class SLocalize:
             return {'valid': False}
 
         now = time.time()
+
+        # ── Coordinate convention transform ───────────────────────────────
+        # Kalman:    x = forward (0-6 m),  y = lateral (0-7 m),  yaw=0 → facing +x
+        # Field map: x = lateral (0-7 m),  y = forward (0-6 m),  yaw=0 → facing +x_fmap
+        # Transform: fmap_x = kalman_y,  fmap_y = kalman_x,  fmap_yaw = kalman_yaw + π/2
+        fmap_px  = py
+        fmap_py  = px
+        fmap_yaw = _wrap_rad(yaw + math.pi / 2.0)
+
         if now - self._last_correction_time < self._correction_interval:
-            ctx = self._field.context(px, py, yaw)
+            ctx = self._field.context(fmap_px, fmap_py, fmap_yaw)
             return {'valid': False, 'context': ctx}
 
-        # ArUco correction is disabled for the first debug pass.
-        # Let tape + map matching stabilise first.
-        aruco_detections = []
-
-        # Observed tape points (world frame) — for map matching
+        # Observed tape points (world frame, Kalman convention) → swap to field-map
         _world_pts = line_result.get('world_line_points', None)
+        fmap_world_pts = [(wy, wx) for wx, wy in _world_pts] if _world_pts else None
 
-        # Field map context
-        ctx = self._field.context(px, py, yaw, world_line_points=_world_pts)
+        # Field map context (all field-map coordinates)
+        ctx = self._field.context(fmap_px, fmap_py, fmap_yaw,
+                                  world_line_points=fmap_world_pts,
+                                  max_yaw_diff_deg=max_yaw_diff_deg)
 
-        corrected_x = px
-        corrected_y = py
-        corrected_yaw = yaw
+        corrected_x   = fmap_px    # working in field-map convention until end
+        corrected_y   = fmap_py
+        corrected_yaw = fmap_yaw
         corrected_z = ctx['pz']
         source = None
         valid = False
@@ -121,7 +130,7 @@ class SLocalize:
             tape_dist = tape['dist']
 
             # Only apply correction when close to tape
-            if tape_dist < 0.50:
+            if tape_dist < 1.5:
 
                 # ── Lateral (x/y) correction ──────────────────────────────
                 cam_lateral = float(line_result.get('line_offset', 0.0))
@@ -151,21 +160,21 @@ class SLocalize:
                 seg_heading_rad = math.radians(seg_heading_deg)
 
                 # Which direction is closer to the robot's current yaw?
-                diff_fwd = abs(_wrap_rad(yaw - seg_heading_rad))
-                diff_rev = abs(_wrap_rad(yaw - (seg_heading_rad + math.pi)))
+                diff_fwd = abs(_wrap_rad(fmap_yaw - seg_heading_rad))
+                diff_rev = abs(_wrap_rad(fmap_yaw - (seg_heading_rad + math.pi)))
                 if diff_rev < diff_fwd:
                     effective_seg_heading_rad = _wrap_rad(seg_heading_rad + math.pi)
                 else:
                     effective_seg_heading_rad = seg_heading_rad
 
                 # Expected tape angle in robot frame
-                expected_rel_heading_rad = _wrap_rad(effective_seg_heading_rad - yaw)
+                expected_rel_heading_rad = _wrap_rad(effective_seg_heading_rad - fmap_yaw)
 
                 # Difference between camera measurement and expectation
                 yaw_err = _wrap_rad(cam_heading_rad - expected_rel_heading_rad)
 
                 if abs(math.degrees(yaw_err)) < self._max_yaw_jump_deg:
-                    corrected_yaw = _wrap_rad(yaw + self._tape_weight * yaw_err)
+                    corrected_yaw = _wrap_rad(fmap_yaw + self._tape_weight * yaw_err)
 
                 source = 'tape'
                 valid = True
@@ -190,16 +199,29 @@ class SLocalize:
             if rng < 0.05 or rng > 3.0:
                 continue
 
-            abs_bearing = yaw + bearing
+            abs_bearing = fmap_yaw + bearing
+            # All in field-map convention (x=lateral, y=forward)
             aruco_x = known_marker.position.x - rng * math.cos(abs_bearing)
             aruco_y = known_marker.position.y - rng * math.sin(abs_bearing)
 
-            jump = math.hypot(aruco_x - px, aruco_y - py)
+            jump = math.hypot(aruco_x - fmap_px, aruco_y - fmap_py)
             if jump > self._max_lateral_jump * 2:
                 continue
 
             corrected_x = aruco_x
             corrected_y = aruco_y
+
+            # Yaw correction: expected bearing from corrected position to known marker
+            expected_abs_bearing = math.atan2(
+                known_marker.position.y - aruco_y,   # Δy field-map (forward)
+                known_marker.position.x - aruco_x,   # Δx field-map (lateral)
+            )
+            # measured absolute bearing = fmap_yaw + det bearing
+            meas_abs_bearing = _wrap_rad(fmap_yaw + bearing)
+            yaw_err_aruco = _wrap_rad(expected_abs_bearing - meas_abs_bearing)
+            if abs(math.degrees(yaw_err_aruco)) < self._max_yaw_jump_deg:
+                corrected_yaw = _wrap_rad(fmap_yaw + self._aruco_weight * yaw_err_aruco)
+
             source = 'aruco' if source is None else 'tape+aruco'
             valid = True
             break
@@ -207,7 +229,16 @@ class SLocalize:
         if not valid:
             return {'valid': False, 'context': ctx}
 
+        # pz_at takes field-map coordinates
         corrected_z = self._field.pz_at(corrected_x, corrected_y)
+
+        # ── Convert corrected values back to Kalman convention ────────────
+        # Kalman x = forward = field-map y
+        # Kalman y = lateral = field-map x
+        # Kalman yaw = field-map yaw - π/2
+        out_x   = corrected_y
+        out_y   = corrected_x
+        out_yaw = _wrap_rad(corrected_yaw - math.pi / 2.0)
 
         self._last_correction_time = now
         self.correction_count += 1
@@ -215,17 +246,17 @@ class SLocalize:
         print(
             f"% SLocalize: src={source} "
             f"px={px:.3f} py={py:.3f} yaw={yaw:.3f} -> "
-            f"cx={corrected_x:.3f} cy={corrected_y:.3f} cyaw={corrected_yaw:.3f} "
+            f"cx={out_x:.3f} cy={out_y:.3f} cyaw={out_yaw:.3f} "
             f"zone={ctx.get('zone','')} "
             f"tape={(ctx['nearest_tape']['name'] if ctx.get('nearest_tape') else 'none')}"
         )
 
         correction = {
             'valid': True,
-            'x': corrected_x,
-            'y': corrected_y,
+            'x': out_x,
+            'y': out_y,
             'z': corrected_z,
-            'yaw': corrected_yaw,
+            'yaw': out_yaw,
             'pitch': pitch,
             'source': source,
             'context': ctx,
@@ -241,7 +272,11 @@ class SLocalize:
         """Query context only, without computing a correction."""
         if self._field is None:
             return {}
-        return self._field.context(px, py, yaw, world_line_points=world_line_points)
+        fmap_px  = py
+        fmap_py  = px
+        fmap_yaw = _wrap_rad(yaw + math.pi / 2.0) if yaw is not None else None
+        fmap_wpts = [(wy, wx) for wx, wy in world_line_points] if world_line_points else None
+        return self._field.context(fmap_px, fmap_py, fmap_yaw, world_line_points=fmap_wpts)
 
     def set_start_pose(self, px: float = None, py: float = None,
                        yaw: float = None) -> dict:
@@ -253,13 +288,15 @@ class SLocalize:
         """
         if self._field is None:
             return None
+        # Field map: start_area.center.x = lateral (=Kalman y),
+        #            start_area.origin.y + depth/2 = forward (=Kalman x)
         if px is None:
-            px = self._field.start_area.center.x
+            px = self._field.start_area.origin.y + self._field.start_area.depth / 2.0
         if py is None:
-            py = self._field.start_area.origin.y + self._field.start_area.depth / 2.0
+            py = self._field.start_area.center.x
         if yaw is None:
-            yaw = math.pi / 2.0   # +Y direction
-        pz = self._field.pz_at(px, py)
+            yaw = 0.0   # facing forward (+x in Kalman convention)
+        pz = self._field.pz_at(py, px)   # pz_at takes field-map (lateral, forward)
         return {'x': px, 'y': py, 'z': pz, 'yaw': yaw}
 
 

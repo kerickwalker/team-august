@@ -445,10 +445,11 @@ class SKalman:
         "T0/mag",  "T0/vision_pose",
     }
 
-    # Default starting pose
-    _DEFAULT_X    = 4.775
-    _DEFAULT_Y    = 0.235
-    _DEFAULT_YAW  = math.pi / 2.0
+    # Default starting pose  (X = forward, Y = lateral)
+    # X = 0.235 m from start wall (forward), Y = 4.775 m from left wall (lateral)
+    _DEFAULT_X    = 0.235
+    _DEFAULT_Y    = 4.775
+    _DEFAULT_YAW  = 0.0
 
     def __init__(self):
         self.ahrs = _AHRS_EKF()
@@ -513,6 +514,8 @@ class SKalman:
         self._last_acc_cnt   = -1
         self._last_pose_cnt  = -1
         self._enc_yaw_offset = None
+        self._enc_x_offset   = None
+        self._enc_y_offset   = None
         self._last_vel_cnt   = -1
         self._last_mag_cnt   = -1
         self._last_enc_xy    = None
@@ -873,7 +876,12 @@ class SKalman:
             raw_yaw = _wrap(float(enc_pose.pose[2]) + math.pi / 2.0)
             if self._enc_yaw_offset is None:
                 self._enc_yaw_offset = raw_yaw
+                self._enc_x_offset   = x_enc
+                self._enc_y_offset   = y_enc
             yaw_enc = _wrap(raw_yaw - self._enc_yaw_offset)
+            # Offset encoder x/y so dead-reckoning starts at the real world origin
+            x_enc = self._DEFAULT_X + (x_enc - self._enc_x_offset)
+            y_enc = self._DEFAULT_Y + (y_enc - self._enc_y_offset)
             self.pose.update_encoder_pose(x_enc, y_enc, yaw_enc)
 
             # Derive forward velocity and yaw-rate from consecutive pose deltas.

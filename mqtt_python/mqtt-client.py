@@ -26,6 +26,7 @@
 #import sys
 #import threading
 import time as t
+import threading
 #import select
 import numpy as np
 import cv2 as cv
@@ -40,6 +41,7 @@ from sedge import edge
 from sgpio import gpio
 from scam import cam
 from uservice import service
+from live_perception_overlay import perception_thread, start_mjpeg_server
 
 ############################################################
 
@@ -518,6 +520,14 @@ if __name__ == "__main__":
       #service.setup('10.197.217.80') # Newton
       # service.setup('bode.local') # Bode
       if service.connected:
+        start_mjpeg_server(port=7124)
+        t_perception = threading.Thread(
+            target=perception_thread,
+            kwargs={"show_window": False},
+            daemon=True,
+            name="perception",
+        )
+        t_perception.start()
         loop()
       service.terminate()
     if not service.is_quiet():

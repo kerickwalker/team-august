@@ -261,9 +261,11 @@ class CompetitionField2026:
         return "floor"
 
     def context(self, px: float, py: float, yaw: float = None,
-                world_line_points: list = None) -> dict:
+                world_line_points: list = None,
+                max_yaw_diff_deg: float = 60.0) -> dict:
         tape  = self.nearest_tape_segment(px, py, yaw,
-                                          world_line_points=world_line_points)
+                                          world_line_points=world_line_points,
+                                          max_yaw_diff_deg=max_yaw_diff_deg)
         gate, gate_dist = self.nearest_gate(px, py)
         aruco = self.nearby_aruco(px, py, radius=1.5)
         zone  = self.current_zone(px, py)

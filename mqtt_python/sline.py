@@ -99,9 +99,11 @@ class SLine:
     white_v_min = WHITE_V_MIN
     white_s_max = WHITE_S_MAX
 
-    def setup(self, params_path: str = '../calibration/camera_params.npz',
+    def setup(self, params_path: str = None,
               debug: bool = False):
         self.debug = debug
+        if params_path is None:
+            params_path = os.path.join(os.path.dirname(__file__), 'calibration', 'camera_params.npz')
         if not ground.ready:
             ground.setup(params_path)
         if not ground.ready:

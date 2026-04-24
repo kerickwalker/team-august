@@ -43,10 +43,11 @@ class SArucoDetector:
     _dist_coeffs   = None
     _detector      = None
 
-    def setup(self, params_path: str = '../calibration/camera_params.npz',
+    def setup(self, params_path: str = None,
               debug: bool = False):
         self.debug = debug
-
+        if params_path is None:
+            params_path = os.path.join(os.path.dirname(__file__), 'calibration', 'camera_params.npz')
         if not os.path.isfile(params_path):
             print(f"% SArucoDetector: calibration file not found: {params_path}")
             return

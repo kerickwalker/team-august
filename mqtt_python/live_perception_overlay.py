@@ -11,10 +11,14 @@ Mini map is displayed in the bottom-right corner.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 import math
 import json as _json
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 from datetime import datetime
 
 import cv2
@@ -27,6 +31,61 @@ from spose import pose
 from skalman import kalman
 from uservice import service
 from slocalize import localizer
+
+
+# ---------------------------------------------------------------------------
+# MJPEG STREAM SERVER
+# ---------------------------------------------------------------------------
+_stream_lock  = threading.Lock()
+_stream_frame: bytes = b''
+
+
+def _push_stream_frame(bgr_frame: np.ndarray) -> None:
+    global _stream_frame
+    ok, buf = cv2.imencode('.jpg', bgr_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+    if ok:
+        with _stream_lock:
+            _stream_frame = buf.tobytes()
+
+
+class _MJPEGHandler(BaseHTTPRequestHandler):
+    def log_message(self, *_):  # suppress access logs
+        pass
+
+    def do_GET(self):
+        if self.path not in ('/', '/stream.mjpg'):
+            self.send_error(404)
+            return
+        self.send_response(200)
+        self.send_header('Content-Type',
+                         'multipart/x-mixed-replace; boundary=frame')
+        self.end_headers()
+        try:
+            while True:
+                with _stream_lock:
+                    data = _stream_frame
+                if data:
+                    self.wfile.write(
+                        b'\r\n--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' +
+                        data
+                    )
+                    self.wfile.flush()
+                time.sleep(0.033)  # ~30 fps cap
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
+
+
+class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
+def start_mjpeg_server(port: int = 7124) -> None:
+    """Start the MJPEG overlay stream server in a daemon thread."""
+    srv = _ThreadingHTTPServer(('', port), _MJPEGHandler)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    print(f'% live_perception_overlay: MJPEG stream on http://0.0.0.0:{port}/stream.mjpg')
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +139,7 @@ _kalman_mqtt: dict = {"x": None, "y": None, "yaw": None, "pitch": None}
 _start_pose_cache = {"x": 4.775, "y": 0.235, "yaw": 1.5708, "pitch": 0.0}
 
 # Last reliable pose used when Kalman is unavailable or not yet settled
-_pose_seed_cache = {"x": 4.775, "y": 0.235, "yaw": 1.5708, "pitch": 0.0}
+_pose_seed_cache = {"x": 4.775, "y": 0.235, "yaw": 0.0, "pitch": 0.0}
 
 
 def _on_kalman_state_msg(client, userdata, msg):
@@ -339,10 +398,13 @@ def draw_panel(frame: np.ndarray, result: dict, aruco_detections: list,
 # ---------------------------------------------------------------------------
 # PERCEPTION THREAD (headless)
 # ---------------------------------------------------------------------------
-def perception_thread(params_path: str = '../calibration/camera_params.npz',
+def perception_thread(params_path: str = None,
                       stream_url: str = None,
                       show_window: bool = False):
     global _start_pose_cache, _pose_seed_cache
+
+    if params_path is None:
+        params_path = os.path.join(os.path.dirname(__file__), 'calibration', 'camera_params.npz')
 
     if stream_url is None:
         stream_url = f"http://{service.host}:7123/stream.mjpg"
@@ -423,6 +485,14 @@ def perception_thread(params_path: str = '../calibration/camera_params.npz',
 
         _log_vision_row(px, py, yaw, correction, result, aruco_detections)
 
+        vision_state = {
+            "valid": False,
+            "px": px, "py": py, "pz": 0.0,
+            "yaw": yaw, "pitch": pitch,
+            "velocity": 0.0, "w": 0.0,
+            "source": "", "zone": "", "nearest_tape": "",
+        }
+
         if correction['valid']:
             _send_vision_pose(
                 correction['x'], correction['y'], correction['z'],
@@ -434,6 +504,26 @@ def perception_thread(params_path: str = '../calibration/camera_params.npz',
                 "yaw": float(correction["yaw"]),
                 "pitch": float(correction["pitch"]),
             }
+            ctx = correction.get('context', {})
+            vision_state = {
+                "valid": True,
+                "px": correction['x'], "py": correction['y'], "pz": correction['z'],
+                "yaw": correction['yaw'], "pitch": correction['pitch'],
+                "velocity": 0.0, "w": 0.0,
+                "source": correction.get('source', ''),
+                "zone": ctx.get('zone', '') if ctx else '',
+                "nearest_tape": ctx['nearest_tape']['name'] if ctx and ctx.get('nearest_tape') else '',
+            }
+        else:
+            ctx = correction.get('context') or localizer.get_context(px, py, yaw)
+            if ctx:
+                vision_state["zone"] = ctx.get('zone', '')
+                if ctx.get('nearest_tape'):
+                    vision_state["nearest_tape"] = ctx['nearest_tape'].get('name', '')
+
+        base = vision.debug_frame if vision.debug_frame is not None else frame
+        vis = draw_panel(base, result, aruco_detections, vision_state)
+        _push_stream_frame(vis)
 
     cap.release()
     print("% live_perception_overlay: perception thread stopped")
