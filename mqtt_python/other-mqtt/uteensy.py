@@ -3,11 +3,20 @@ import os
 import signal
 import subprocess
 import time as t
+from pathlib import Path
 
-TEENSY_INTERFACE_BIN = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "../teensy_interface/build/teensy_interface"
-)
+def _find_teensy_interface_bin():
+  """Find the teensy_interface binary by walking up from this file."""
+  here = Path(__file__).resolve()
+  for parent in here.parents:
+    candidate = parent / "teensy_interface" / "build" / "teensy_interface"
+    if candidate.is_file():
+      return candidate
+  # Fallback to the old relative location pattern for a clearer error message.
+  return here.parent / "../teensy_interface/build/teensy_interface"
+
+
+TEENSY_INTERFACE_BIN = _find_teensy_interface_bin()
 
 _ti_proc = None
 
@@ -19,7 +28,7 @@ def start_teensy_interface():
     t.sleep(1.5)  # wait for process exit and USB device release
   except Exception:
     pass
-  bin_path = os.path.realpath(TEENSY_INTERFACE_BIN)
+  bin_path = os.path.realpath(str(TEENSY_INTERFACE_BIN))
   if not os.path.isfile(bin_path):
     print(f"% start_teensy_interface: binary not found at {bin_path}")
     return False
