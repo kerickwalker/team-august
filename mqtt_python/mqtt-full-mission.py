@@ -34,10 +34,16 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 import time as t
+import sys
+from pathlib import Path
 import numpy as np
 from datetime import datetime
 from types import SimpleNamespace
 from setproctitle import setproctitle
+
+OTHER_MQTT_DIR = Path(__file__).resolve().parent / "other-mqtt"
+if str(OTHER_MQTT_DIR) not in sys.path:
+    sys.path.insert(0, str(OTHER_MQTT_DIR))
 
 # Robot modules
 from spose import pose        # encoder odometry: tripB = distance, tripBh = heading change
