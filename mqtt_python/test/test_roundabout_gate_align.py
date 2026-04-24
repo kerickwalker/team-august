@@ -2,7 +2,9 @@
 
 # Roundabout gate-alignment test for Robobot.
 #
-# Phase 1: line-follow until line ends (same as mqtt_roundabout_test.py).
+# Phase 1: line-follow with full crossing detection (mirrors mqtt-full-mission-simple.py):
+#            crossing 1 → turn LEFT 35°, slow to approach_speed with "slow" PID params
+#            line physically ends → stop, enter phase 2
 # Phase 2: rotate in place using gate1 vision to reach a target pose relative
 #          to the orange gate post.  When the gate is centred AND at the correct
 #          apparent distance for ALIGN_CONFIRM consecutive frames, motors stop
@@ -12,6 +14,9 @@
 #   python3 test/test_roundabout_gate_align.py <robot-ip>
 #   python3 test/test_roundabout_gate_align.py <robot-ip> --now
 #   python3 test/test_roundabout_gate_align.py <robot-ip> --now -s
+#
+# Live camera stream (SSH-friendly — no display required):
+#   Open http://<robot-ip>:5000/ in any browser on the same network.
 #
 # Env var overrides (all optional):
 #   GATE1_TARGET_X      target bar x normalised [-1..1]   (default 0.302)
@@ -26,10 +31,13 @@
 import os
 import sys
 import time as t
+import threading
 import numpy as np
 import cv2 as cv
 from datetime import datetime
+from types import SimpleNamespace
 from setproctitle import setproctitle
+from flask import Flask, Response
 
 # Robot IP is extracted here (before uservice touches sys.argv).
 # Any non-flag positional argument is taken as the robot IP and removed so
@@ -46,13 +54,39 @@ from uteensy import start_teensy_interface, stop_teensy_interface
 from sgate_1 import gate1, gate1_ctrl
 
 ############################################################
-# TUNING — adjust these before running
+# CONFIGURATION — mirrors mqtt-full-mission-simple.py
 ############################################################
 
-LINE_LOST_CONFIRM   = 5      # consecutive 10 ms samples with no line
-LINE_LOST_CNT       = 2      # lineValidCnt below this counts as "no line"
-LINE_FOLLOW_TIMEOUT = 20.0   # seconds; abort if line never ends
+# ── General line following ────────────────────────────────
+LINE = SimpleNamespace(
+    speed          = 0.25,  # m/s — normal line-following speed
+    approach_speed = 0.15,  # m/s — reduced speed after crossing 1 until line ends
+    lost_timeout   = 20.0,  # s   — abort if line never ends
+)
 
+# ── Crossing detection and counting ──────────────────────
+CROSSINGS = SimpleNamespace(
+    sensor_threshold     = 2,    # crossingLineCnt threshold to register a crossing
+    leave_delay_s        = 0.5,  # s — robot must be clear before count increments
+    go_straight_until    = 3,    # crossings above this would be hard turns (unused here)
+    hard_turn_cooldown_s = 2.0,  # s — minimum time between hard turns
+)
+
+# ── Crossing 1 — turn left while moving forward ──────────
+CROSSING1 = SimpleNamespace(
+    turn_deg      = 35.0,   # degrees to turn
+    turn_dir      = "left", # "left" or "right"
+    turn_rate     = 0.5,    # rad/s
+    forward_speed = 0.15,   # m/s forward while turning (0 = stop before turning)
+)
+
+# ── Line-end detection ────────────────────────────────────
+LINE_END = SimpleNamespace(
+    lost_cnt     = 2,  # lineValidCnt below this counts as "no line"
+    lost_confirm = 5,  # consecutive 10 ms samples to confirm line ended
+)
+
+# ── Gate alignment ────────────────────────────────────────
 SEARCH_W      = -0.3   # rad/s  negative = rotate right (toward roundabout)
 ALIGN_TOL_X   = 0.08   # normalised lateral error tolerance  (±1 scale)
 ALIGN_TOL_W   = 0.15   # normalised depth error tolerance    (±1 scale)
@@ -60,44 +94,215 @@ ALIGN_CONFIRM = 10     # frames both errors must stay in tolerance
 ALIGN_MAX_W   = 0.5    # rad/s  max turn rate during alignment
 
 ############################################################
-# Phase 1: Follow line until it ends
+# MJPEG browser stream (replaces cv.imshow — works over SSH)
 ############################################################
 
-def driveLineUntilEnd():
+_stream_frame = None
+_stream_lock  = threading.Lock()
+_flask_app    = Flask(__name__)
+
+
+def _push_frame(frame):
+    global _stream_frame
+    with _stream_lock:
+        _stream_frame = frame.copy()
+
+
+def _mjpeg_generate():
+    while True:
+        with _stream_lock:
+            f = _stream_frame
+        if f is not None:
+            ok, buf = cv.imencode('.jpg', f, [cv.IMWRITE_JPEG_QUALITY, 70])
+            if ok:
+                yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
+                       + buf.tobytes() + b'\r\n')
+        t.sleep(0.033)  # ~30 fps cap
+
+
+@_flask_app.route('/')
+def _index():
+    return ('<html><body style="background:#000;margin:0">'
+            '<img src="/stream" style="max-width:100%"></body></html>')
+
+
+@_flask_app.route('/stream')
+def _stream_view():
+    return Response(_mjpeg_generate(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+def start_stream_server(port=5000):
+    import logging
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
+    threading.Thread(
+        target=lambda: _flask_app.run(host='0.0.0.0', port=port, threaded=True),
+        daemon=True,
+    ).start()
+    print(f"% Stream server: open http://<robot-ip>:{port}/ in your browser")
+
+
+############################################################
+# Drive helpers (mirrors mqtt-full-mission-simple.py)
+############################################################
+
+def driveTurn(deg, direction, turn_rate=0.5):
     pose.tripBreset()
-    lost_count = 0
-
+    signed_rate = turn_rate if direction == "left" else -turn_rate
+    target_rad  = np.radians(deg)
+    state = 0
     if not service.is_quiet():
-        print("% driveLineUntilEnd: waiting for start signal...")
+        print(f"% driveTurn: {deg:.0f}° {direction} at {turn_rate:.2f} rad/s")
+    service.send("robobot/cmd/T0", "leds 16 0 100 0")
+    while not service.stop:
+        if state == 0:
+            service.send("robobot/cmd/ti", f"rc 0.0 {signed_rate:.2f}")
+            state = 1
+        elif state == 1:
+            if abs(pose.tripBh) >= target_rad:
+                service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                state = 2
+        elif state == 2:
+            if abs(pose.velocity()) < 0.001 and abs(pose.turnrate()) < 0.001:
+                break
+        t.sleep(0.05)
+    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+    service.send("robobot/cmd/T0", "leds 16 0 0 0")
+    if not service.is_quiet():
+        print(f"# driveTurn: turned {np.degrees(pose.tripBh):.1f}° "
+              f"in {pose.tripBtimePassed():.2f} s")
 
+
+def driveTurnForward(deg, direction, linvel, turn_rate=0.5, stop_after=True):
+    pose.tripBreset()
+    signed_rate = turn_rate if direction == "left" else -turn_rate
+    target_rad  = np.radians(deg)
+    if not service.is_quiet():
+        print(f"% driveTurnForward: {deg:.0f}° {direction}, "
+              f"v={linvel:.2f} m/s, w={turn_rate:.2f} rad/s")
+    service.send("robobot/cmd/T0", "leds 16 0 100 0")
+    service.send("robobot/cmd/ti", f"rc {linvel:.2f} {signed_rate:.2f}")
+    while not service.stop:
+        if abs(pose.tripBh) >= target_rad:
+            break
+        t.sleep(0.02)
+    if stop_after:
+        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+        while not service.stop and (abs(pose.velocity()) > 0.001
+                                    or abs(pose.turnrate()) > 0.001):
+            t.sleep(0.02)
+    service.send("robobot/cmd/T0", "leds 16 0 0 0")
+    if not service.is_quiet():
+        print(f"# driveTurnForward: turned {np.degrees(pose.tripBh):.1f}°")
+
+
+############################################################
+# Phase 1: Follow line with full crossing detection
+############################################################
+
+def driveLineWithCrossings():
+    """Follow the line until it physically ends.
+
+    Mirrors mqtt-full-mission-simple.py states 0 → 1 → 10:
+      - Wait for IR gate (or --now), drive forward to find the line.
+      - Follow the line at LINE.speed with params="normal".
+      - At crossing 1: turn LEFT, resume at LINE.approach_speed with params="slow".
+      - When LINE_END.lost_confirm consecutive no-line samples are seen: stop and return.
+    """
+    if not service.is_quiet():
+        print("% driveLineWithCrossings: waiting for start signal...")
+
+    # ── Phase A: wait for IR gate / --now, then drive forward ────────────
     while not service.stop:
         if getattr(service.args, "now", False) or ir.ir[0] < 0.2:
             break
         t.sleep(0.05)
 
-    service.send("robobot/cmd/T0", "leds 16 0 100 0")   # green: line following
+    service.send("robobot/cmd/T0", "leds 16 0 100 0")
+    service.send("robobot/cmd/ti", "rc 0.2 0.0")
+    pose.tripBreset()
 
     if not service.is_quiet():
-        print("% driveLineUntilEnd: following line...")
+        print("% driveLineWithCrossings: driving forward to find line...")
 
-    edge.lineControl(refPosition=0)
+    # ── Phase B: find the line ────────────────────────────────────────────
+    while not service.stop:
+        if pose.tripB > 1.0 or pose.tripBtimePassed() > 15:
+            service.send("robobot/cmd/ti", "rc 0.0 0.0")
+            if not service.is_quiet():
+                print("% driveLineWithCrossings: line not found — aborting")
+            return
+        if edge.lineValidCnt > 4:
+            edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
+            pose.tripBreset()
+            if not service.is_quiet():
+                print(f"% driveLineWithCrossings: line found after {pose.tripB:.2f} m"
+                      " → following")
+            break
+        t.sleep(0.01)
+
+    # ── Phase C: line-following loop with crossing detection ─────────────
+    crossing_count        = 0
+    first_cross_done      = False
+    was_at_crossing       = False
+    last_time_at_crossing = None
+    line_end_lost_count   = 0
 
     t0 = t.time()
     while not service.stop:
-        if t.time() - t0 > LINE_FOLLOW_TIMEOUT:
+        if t.time() - t0 > LINE.lost_timeout:
             if not service.is_quiet():
-                print("% driveLineUntilEnd: timeout — line never ended")
+                print("% driveLineWithCrossings: timeout — line never ended")
             break
 
-        if edge.lineValidCnt < LINE_LOST_CNT:
-            lost_count += 1
-        else:
-            lost_count = 0
+        # Crossing detection (leave-delay debounce)
+        at_crossing = edge.crossingLineCnt >= CROSSINGS.sensor_threshold
+        now = datetime.now()
+        if at_crossing:
+            last_time_at_crossing = now
+            was_at_crossing = True
+        elif was_at_crossing and last_time_at_crossing is not None:
+            clear_s = (now - last_time_at_crossing).total_seconds()
+            if clear_s >= CROSSINGS.leave_delay_s:
+                crossing_count += 1
+                was_at_crossing = False
+                last_time_at_crossing = None
+                if not service.is_quiet():
+                    print(f"% crossing {crossing_count}")
 
-        if lost_count >= LINE_LOST_CONFIRM:
+        # Crossing reactions
+        if at_crossing:
+            crossing_number = crossing_count + 1
+
+            if crossing_number == 1 and not first_cross_done:
+                if not service.is_quiet():
+                    print(f"% crossing 1 → turn {CROSSING1.turn_dir} "
+                          f"{CROSSING1.turn_deg:.0f}° "
+                          f"(fwd={CROSSING1.forward_speed:.2f} m/s)")
+                edge.lineControl(0)
+                if CROSSING1.forward_speed > 0:
+                    driveTurnForward(CROSSING1.turn_deg, CROSSING1.turn_dir,
+                                     CROSSING1.forward_speed, CROSSING1.turn_rate,
+                                     stop_after=False)
+                else:
+                    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                    t.sleep(0.05)
+                    driveTurn(CROSSING1.turn_deg, CROSSING1.turn_dir, CROSSING1.turn_rate)
+                first_cross_done = True
+                edge.lineControl(velocity=LINE.approach_speed,
+                                 refPosition=0, params="slow")
+            # Crossings 2, 3: go straight (no action needed)
+
+        # Line-end detection
+        if edge.lineValidCnt < LINE_END.lost_cnt:
+            line_end_lost_count += 1
+        else:
+            line_end_lost_count = 0
+
+        if line_end_lost_count >= LINE_END.lost_confirm:
             if not service.is_quiet():
-                print(f"% driveLineUntilEnd: line ended after {pose.tripB:.2f} m "
-                      f"in {pose.tripBtimePassed():.1f} s")
+                print(f"% driveLineWithCrossings: line ended after "
+                      f"{pose.tripB:.2f} m in {pose.tripBtimePassed():.1f} s")
             break
 
         t.sleep(0.01)   # 100 Hz loop
@@ -105,6 +310,7 @@ def driveLineUntilEnd():
     edge.lineControl(0)
     service.send("robobot/cmd/ti", "rc 0.0 0.0")
     service.send("robobot/cmd/T0", "leds 16 0 0 0")
+
 
 ############################################################
 # Display helpers
@@ -119,10 +325,8 @@ _STATE_COLOR = {
 
 def _annotate(frame, state, pose_dict, v_cmd, w_cmd, confirm_count, confirm_max):
     """Draw debug overlay on frame in-place."""
-    # Gate detection bounding box + label from sgate_1
     gate1.paint(frame)
 
-    # Green vertical guide line at target lateral position
     h, w = frame.shape[:2]
     tx_px = int((1.0 + gate1_ctrl.target_x_norm) * w / 2.0)
     cv.line(frame, (tx_px, 0), (tx_px, h), (0, 200, 0), 1)
@@ -152,6 +356,7 @@ def _annotate(frame, state, pose_dict, v_cmd, w_cmd, confirm_count, confirm_max)
     cv.putText(frame, f"confirm: {confirm_count}/{confirm_max}",
                (10, y), cv.FONT_HERSHEY_PLAIN, 1.3, color, thickness=2)
 
+
 ############################################################
 # Phase 2: Gate alignment (replaces fixed 90° turn)
 ############################################################
@@ -179,7 +384,7 @@ def driveGateAlign(robot_ip):
               f"target_w={gate1_ctrl.target_width_px:.1f}  stop_w={gate1_ctrl.stop_width_px:.1f}")
         print(f"% driveGateAlign: tol_x={tol_x:.3f}  tol_w={tol_w:.3f}  "
               f"confirm={confirm_max}  search_w={search_w:+.3f}  align_max_w={align_max_w:.3f}")
-        print("% Ctrl+C or 'q' in display window to abort")
+        print("% Ctrl+C to abort")
 
     cap = cv.VideoCapture(stream_url)
     if not cap.isOpened():
@@ -232,7 +437,6 @@ def driveGateAlign(robot_ip):
                 state = "ALIGN"
 
                 # Pure in-place rotation: P controller on lateral error.
-                # v=0 because this replaces a turn, not an approach.
                 w_cmd = float(np.clip(gate1_ctrl.kx * e_x, -align_max_w, align_max_w))
                 v_cmd = 0.0
 
@@ -247,12 +451,10 @@ def driveGateAlign(robot_ip):
 
             service.send("robobot/cmd/ti", f"rc {v_cmd:.3f} {w_cmd:.3f}")
 
-            # --- Live display ---
+            # --- Push annotated frame to browser stream ---
             _annotate(frame, state, pose_dict, v_cmd, w_cmd, confirm_count, confirm_max)
-            cv.imshow("Gate Align", frame)
+            _push_frame(frame)
             last_frame = frame
-            if cv.waitKey(1) & 0xFF == ord('q'):
-                break
 
             # --- Terminal status at ~2 Hz ---
             if not service.is_quiet() and now - t_print >= 0.5:
@@ -295,7 +497,6 @@ def driveGateAlign(robot_ip):
     finally:
         service.send("robobot/cmd/ti", "rc 0 0")
         cap.release()
-        cv.destroyAllWindows()
         gate1.terminate()
 
     if last_frame is not None:
@@ -309,6 +510,7 @@ def driveGateAlign(robot_ip):
     if not service.is_quiet():
         print(f"% driveGateAlign: complete — {frame_count} frames, "
               f"{gate1.detCnt} detections")
+
 
 ############################################################
 # Top-level loop
@@ -325,9 +527,9 @@ def loop():
 
     if not service.is_quiet():
         print(f"% Roundabout gate-align test  robot_ip={_robot_ip}")
-        print("% Phase 1: line follow until end")
+        print("% Phase 1: line follow with crossing detection until line ends")
 
-    driveLineUntilEnd()
+    driveLineWithCrossings()
     if service.stop:
         return
 
@@ -342,6 +544,7 @@ def loop():
     service.send("robobot/cmd/ti", "rc 0 0")
     if not service.is_quiet():
         print("% Test complete")
+
 
 ############################################################
 # Entry point
@@ -363,6 +566,7 @@ if __name__ == "__main__":
         start_teensy_interface()
         service.setup('localhost')
         if service.connected:
+            start_stream_server(port=5000)
             loop()
         service.terminate()
         stop_teensy_interface()
