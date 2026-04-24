@@ -56,7 +56,7 @@ All tunable values are grouped into `SimpleNamespace` objects, one per mission p
 You only need to edit this section — the mission logic below never needs to change.
 
 ```
-LINE              — line-following speed and line-loss timeout
+LINE              — line-following speed (normal + approach), and line-loss timeout
 CROSSINGS         — sensor threshold, debounce timing, go-straight window, stop crossing
 CROSSING1         — turn angle, direction, and rate for the crossing-1 manoeuvre
 ROUNDABOUT_ENTRY  — drive distance and turn before entering the arc
@@ -65,6 +65,10 @@ ROUNDABOUT_EXIT   — turn angle and direction after arc, seek speed and timeout
 LINE_END          — debounce parameters for detecting the physical end of the line
 END               — all distances, angles, speeds, and servo positions for the end sequence
 ```
+
+`LINE` carries two speed fields:
+- `speed = 0.25` — normal line-following speed (used after roundabout and on all return-leg crossings)
+- `approach_speed = 0.15` — reduced speed used from after crossing 1 until the roundabout is complete
 
 Example — to change the crossing-1 turn from 45° to 30°:
 ```python
@@ -135,8 +139,10 @@ from sensor jitter.
 Evaluated only while `at_crossing == True`:
 
 - **Crossing 1** (`crossing_number == 1`, `first_cross_done == False`):
-  stop line controller → `driveTurn(45°, left)` → resume line controller.
+  stop line controller → `driveTurn(45°, left)` → resume line controller at
+  `LINE.approach_speed` (0.15 m/s) with `params="slow"` PID gains.
   The flag `first_cross_done` prevents re-entry.
+  Speed and PID gains remain in slow mode until the roundabout finishes.
 
 - **Crossings 2, 3** (`crossing_count` 1 and 2, below `CROSSINGS.go_straight_until = 3`):
   no action — PD controller keeps the robot on the line.
@@ -223,6 +229,27 @@ CROSSING1 = SimpleNamespace(
 )
 ```
 
+### Tuning PID gains per speed mode
+
+`sedge.py` holds two named PID sets in `SEdge.PARAM_SETS`:
+
+```python
+PARAM_SETS = {
+    "normal": dict(lineKp=0.4, lineKi=0.0, lineKd=0.1,
+                   lineIntegralLimit=2.0, lineOutputAlpha=0.4),
+    "slow":   dict(lineKp=0.4, lineKi=0.0, lineKd=0.1,
+                   lineIntegralLimit=2.0, lineOutputAlpha=0.4),
+}
+```
+
+- `"normal"` is applied at mission start and after the roundabout (`LINE.speed = 0.25 m/s`).
+- `"slow"` is applied after crossing 1 (`LINE.approach_speed = 0.15 m/s`) and stays active
+  through the roundabout approach.
+
+Both sets start with identical values. Tune `"slow"` independently — for example, higher `lineKp`
+compensates for the reduced speed, and lower `lineOutputAlpha` gives a sharper response.
+Changing `"slow"` has no effect on the return-leg or post-roundabout behaviour.
+
 ### Adjusting crossing thresholds
 
 To make crossings 2, 3, and 4 all go straight (turn only at crossing 5):
@@ -262,5 +289,5 @@ python3 mqtt-full-mission.py -e --now -s
 |---|---|
 | `mqtt-linefollow.py` | Implements crossings 1-4 as a standalone script (no roundabout). `mqtt-full-mission.py` extends this with the roundabout phase and adjusts the crossing count accordingly. |
 | `mqtt_roundabout_test.py` | Standalone roundabout test. The arc logic in `mqtt-full-mission.py` (`driveRoundabout`) uses the same physics. |
-| `sedge.py` | Provides `edge.lineControl(velocity, refPosition)`, `edge.lineValidCnt`, `edge.crossingLineCnt`, and the sensor index fields used for hard-turn direction detection. |
+| `sedge.py` | Provides `edge.lineControl(velocity, refPosition, params="normal")`, `edge.lineValidCnt`, `edge.crossingLineCnt`, and the sensor index fields used for hard-turn direction detection. `PARAM_SETS` in `SEdge` holds named PID gain sets (`"normal"`, `"slow"`); `lineControl()` applies the selected set and resets the integral on every call. |
 | `spose.py` | Provides `pose.tripB`, `pose.tripBh`, `pose.tripBreset()` used by all drive primitives. |

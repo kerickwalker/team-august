@@ -50,6 +50,14 @@ class SEdge:
     # Low-pass smoothing on the turn-rate output (0 = no filter, 1 = frozen)
     # Absorbs sensor noise between 30 ms livn updates without adding much lag.
     lineOutputAlpha = 0.4   # new = alpha*raw + (1-alpha)*prev; lower = smoother
+    # Named PID parameter sets — select via lineControl(params="slow"|"normal")
+    # "slow" starts as a copy of "normal"; tune independently on the robot.
+    PARAM_SETS = {
+        "normal": dict(lineKp=0.4, lineKi=0.0, lineKd=0.1,
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.4),
+        "slow":   dict(lineKp=0.4, lineKi=0.0, lineKd=0.1,
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.4),
+    }
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 0.5   # rad/s when turning to find line during recovery
     recoveryVelocity = 0.2   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
@@ -438,7 +446,7 @@ class SEdge:
 
     ##########################################################
 
-    def lineControl(self, velocity = None, refPosition = 0):
+    def lineControl(self, velocity=None, refPosition=0, params="normal"):
       # Use tunable default speed when velocity not given (so mission can call lineControl() and speed is set here)
       if velocity is None:
         velocity = self.defaultLineVelocity
@@ -446,7 +454,10 @@ class SEdge:
       self.refPosition = refPosition
       # velocity 0 (or negative) is turning off line control
       self.lineCtrl = velocity > 0.001
-      pass
+      if params in self.PARAM_SETS:
+        for k, v in self.PARAM_SETS[params].items():
+          setattr(self, k, v)
+        self.lineIntegral = 0.0  # reset integral to avoid windup carry-over on mode switch
 
     ##########################################################
 

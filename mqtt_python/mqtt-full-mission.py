@@ -56,8 +56,9 @@ from uteensy import start_teensy_interface, stop_teensy_interface
 
 # ── General line following ────────────────────────────────────────────────────
 LINE = SimpleNamespace(
-    speed        = 0.25,   # m/s — normal line-following speed
-    lost_timeout = 5.0,    # s   — stop if line lost for longer than this (recovery)
+    speed           = 0.25,  # m/s — normal line-following speed
+    approach_speed  = 0.15,  # m/s — reduced speed after crossing 1 until roundabout done
+    lost_timeout    = 5.0,   # s   — stop if line lost for longer than this (recovery)
 )
 
 # ── Crossing detection and counting ──────────────────────────────────────────
@@ -393,7 +394,7 @@ def driveMission():
                 state = 2
             # Line found: activate PD controller and start following
             if edge.lineValidCnt > 4:
-                edge.lineControl(velocity=LINE.speed, refPosition=0)
+                edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
                 dist_to_line = pose.tripB
                 pose.tripBreset()
                 if not service.is_quiet():
@@ -446,7 +447,7 @@ def driveMission():
                         t.sleep(0.05)
                         driveTurn(CROSSING1.turn_deg, CROSSING1.turn_dir, CROSSING1.turn_rate)
                     first_cross_done = True
-                    edge.lineControl(velocity=LINE.speed, refPosition=0)
+                    edge.lineControl(velocity=LINE.approach_speed, refPosition=0, params="slow")
 
                 elif crossing_count == CROSSINGS.stop_at - 1:
                     # ── Final crossing: stop and run end sequence ─────────────
@@ -481,7 +482,7 @@ def driveMission():
                             t.sleep(0.05)
                             driveTurn(90.0, direction)
                             last_hard_turn_time = datetime.now()
-                            edge.lineControl(velocity=LINE.speed, refPosition=0)
+                            edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
                 # Crossings 2 and 3 (crossing_count 1, 2 < go_straight_until=3): go straight
 
             # ── Line-end detection (only before roundabout has run) ───────────
@@ -521,7 +522,7 @@ def driveMission():
             crossing_count  = 1      # crossing 1 was already handled before the roundabout
             roundabout_done = True   # prevent line-end detection from triggering again
             lost_line_since = None
-            edge.lineControl(velocity=LINE.speed, refPosition=0)
+            edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
             if not service.is_quiet():
                 print("% roundabout done → resuming line follow (crossing_count=1)")
             state = 10
