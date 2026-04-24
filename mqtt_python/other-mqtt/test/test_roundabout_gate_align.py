@@ -42,7 +42,7 @@ from flask import Flask, Response
 # Robot IP is extracted here (before uservice touches sys.argv).
 # Any non-flag positional argument is taken as the robot IP and removed so
 # uservice argparse does not see an unexpected positional argument.
-_robot_ip = None
+_robot_ip = 'http://10.197.219.117'
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
