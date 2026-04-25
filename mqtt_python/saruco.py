@@ -10,10 +10,7 @@ For each detected marker returns:
     - bearing (radians, + = left, - = right)
     - pixel centre (u, v)
 
-Marker sizes (measure again on-site to confirm):
-    Sorting center (ID 10-17) : 10 cm  = 0.10 m
-    Luggage cubes  (ID 20,53) :  3.5 cm = 0.035 m
-    Shuttle        (ID 5)     :  3.5 cm = 0.035 m
+Marker sizes are now loaded dynamically from aruco_marker_config.json.
 
 """
 
@@ -21,16 +18,53 @@ import cv2
 import numpy as np
 import sys
 import os
+import json
+from typing import List, Tuple, Dict, Any
 
-MARKER_SIZE_M = {
-    10: 0.10, 11: 0.10, 12: 0.10, 13: 0.10,
-    14: 0.10, 15: 0.10, 16: 0.10, 17: 0.10,
-    20: 0.035, 53: 0.035,
-     5: 0.035,
-}
-DEFAULT_MARKER_SIZE_M = 0.10
 
+# --- Configuration Paths ---
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'aruco_marker_config.json')
+
+
+# --- Global State ---
+MARKER_SIZE_M: Dict[int, float] = {}
+DEFAULT_MARKER_SIZE_M: float = 0.10
 ARUCO_DICT = cv2.aruco.DICT_4X4_50
+
+
+def load_marker_config(config_path: str) -> Tuple[Dict[int, float], str]:
+    """
+    Loads ArUco configuration (dictionary and sizes) from a JSON file.
+    Returns the size map and the dictionary constant.
+    """
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        aruco_dict = config.get("aruco_dictionary", ARUCO_DICT)
+        size_map: Dict[int, float] = {}
+        marker_sizes = config.get("marker_sizes", {})
+        
+        for str_id, size in marker_sizes.items():
+            try:
+                marker_id = int(str_id)
+                size_map[marker_id] = size
+            except ValueError:
+                print(f"Warning: Could not convert marker ID string '{str_id}' to integer. Skipping.")
+        
+        return size_map, aruco_dict
+    except FileNotFoundError:
+        print(f"% SArucoDetector: Configuration file not found at {config_path}. Using default sizes.")
+        return {10: 0.10, 11: 0.10, 12: 0.10, 13: 0.10, 14: 0.10, 15: 0.10, 16: 0.10, 17: 0.10, 20: 0.035, 53: 0.035, 5: 0.035}, ARUCO_DICT
+    except json.JSONDecodeError:
+        print(f"% SArucoDetector: Error decoding JSON from {config_path}. Using default sizes.")
+        return {10: 0.10, 11: 0.10, 12: 0.10, 13: 0.10, 14: 0.10, 15: 0.10, 16: 0.10, 17: 0.10, 20: 0.035, 53: 0.035, 5: 0.035}, ARUCO_DICT
+
+
+def initialize_aruco_config():
+    """Loads and initializes global ArUco configurations."""
+    global MARKER_SIZE_M, ARUCO_DICT
+    MARKER_SIZE_M, ARUCO_DICT = load_marker_config(CONFIG_PATH)
 
 
 class SArucoDetector:
@@ -46,6 +80,10 @@ class SArucoDetector:
     def setup(self, params_path: str = None,
               debug: bool = False):
         self.debug = debug
+        
+        # Initialize configurations before camera setup
+        initialize_aruco_config() 
+
         if params_path is None:
             params_path = os.path.join(os.path.dirname(__file__), 'calibration', 'camera_params.npz')
         if not os.path.isfile(params_path):
@@ -56,9 +94,9 @@ class SArucoDetector:
         self._camera_matrix = data['camera_matrix']
         self._dist_coeffs   = data['dist_coeffs']
 
-        aruco_dict     = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
+        aruco_dict_obj = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
         aruco_params   = cv2.aruco.DetectorParameters()
-        self._detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+        self._detector = cv2.aruco.ArucoDetector(aruco_dict_obj, aruco_params)
 
         self.ready = True
         print(f"% SArucoDetector: ready  known_ids={sorted(MARKER_SIZE_M.keys())}  "
@@ -91,6 +129,7 @@ class SArucoDetector:
         tvecs_all = []
 
         for i, marker_id in enumerate(ids.flatten()):
+            # Use the dynamically loaded size map
             marker_size = MARKER_SIZE_M.get(int(marker_id), DEFAULT_MARKER_SIZE_M)
 
             half = marker_size / 2.0
@@ -149,6 +188,7 @@ class SArucoDetector:
 
         for i, marker_id in enumerate(ids.flatten()):
             if rvecs is not None and tvecs is not None:
+                # Use the dynamically loaded size map here
                 marker_size = MARKER_SIZE_M.get(int(marker_id), DEFAULT_MARKER_SIZE_M)
                 cv2.drawFrameAxes(vis, self._camera_matrix, self._dist_coeffs,
                                   rvecs[i], tvecs[i], marker_size * 0.5)

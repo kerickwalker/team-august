@@ -67,6 +67,18 @@ MAX_FEATURES = 25
 WHITE_V_MIN = 160
 WHITE_S_MAX = 60
 
+# Known physical width of the white field tape (m).
+# Used to estimate the 3D distance (and hence height) of tape features on slopes.
+TAPE_PHYSICAL_WIDTH_M = 0.019   # 19 mm competition tape
+
+# How many pixels either side of a corner to scan for tape width
+_TAPE_WIDTH_SCAN_HALF = 15
+
+# Height sanity limits for tape features (robot frame, metres).
+# Features outside this range are either noise or projection failures.
+_Z_MIN = -0.30   # 30 cm below floor (e.g. deep ramp)
+_Z_MAX =  0.40   # 40 cm above floor
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -92,6 +104,69 @@ def _harris_nms(response: np.ndarray, quality: float) -> list:
            for i in range(len(xs))]
     pts.sort(key=lambda p: -p[2])
     return pts
+
+
+def _tape_width_px(white_mask: np.ndarray, u: float, v: float) -> int:
+    """
+    Measure the horizontal pixel width of the white tape blob at (u, v).
+
+    Scans a horizontal window of width 2*_TAPE_WIDTH_SCAN_HALF centred on u
+    at row v, and floods left/right from the centre to find the blob edge.
+
+    Returns the width in pixels (0 if the centre pixel is not white).
+    """
+    row   = int(round(v))
+    col   = int(round(u))
+    h, w  = white_mask.shape
+    if not (0 <= row < h):
+        return 0
+
+    x0 = max(0, col - _TAPE_WIDTH_SCAN_HALF)
+    x1 = min(w, col + _TAPE_WIDTH_SCAN_HALF + 1)
+    strip = white_mask[row, x0:x1]
+
+    local_c = col - x0
+    if local_c < 0 or local_c >= len(strip) or strip[local_c] == 0:
+        return 0
+
+    left = local_c
+    while left > 0 and strip[left - 1] > 0:
+        left -= 1
+    right = local_c
+    while right < len(strip) - 1 and strip[right + 1] > 0:
+        right += 1
+
+    return right - left + 1
+
+
+def _z_from_tape_width(u: float, v: float, w_px: int):
+    """
+    Estimate the height Z (robot frame, metres) of a tape point from its
+    apparent pixel width.
+
+    Physics: for a feature of known physical width W at distance D from the
+    camera, the angular width is theta = W / D.  In the image plane
+    theta ≈ w_px / fx, so D ≈ W * fx / w_px.
+
+    Following the camera ray to distance D and reading the Z component gives
+    the height of the tape above (or below) the flat-floor plane.
+
+    Returns None if the measurement is not reliable or out of range.
+    """
+    if w_px < 3:
+        return None
+
+    fx = ground.camera_matrix[0, 0]
+    D  = TAPE_PHYSICAL_WIDTH_M * fx / float(w_px)
+
+    ok, _X, _Y, Z = ground.ray_at_distance(u, v, D)
+    if not ok:
+        return None
+
+    if not (_Z_MIN <= Z <= _Z_MAX):
+        return None
+
+    return Z
 
 
 # ── Feature extractor class ───────────────────────────────────────────────────
@@ -180,7 +255,22 @@ class SFeatureExtractor:
                                       HARRIS_APERTURE, HARRIS_K)
             for x_px, y_roi, score in _harris_nms(harris, HARRIS_QUALITY):
                 y_px = y_roi + roi_top
-                ok, X, Y = ground.pixel_to_ground(float(x_px), float(y_px))
+
+                # ── Slope-aware projection via tape-width depth estimate ──────
+                # Measure the tape blob width in pixels at this corner.
+                # Convert to actual 3D distance → height Z → re-project to
+                # the Z-plane for the correct horizontal (X, Y) even on slopes.
+                w_px = _tape_width_px(white_mask, float(x_px), float(y_px))
+                Z    = _z_from_tape_width(float(x_px), float(y_px), w_px)
+
+                if Z is not None and abs(Z) > 0.005:
+                    # Feature is measurably off the flat floor — use corrected plane
+                    ok, X, Y = ground.pixel_to_ground_at_z(
+                        float(x_px), float(y_px), Z)
+                else:
+                    Z = 0.0
+                    ok, X, Y = ground.pixel_to_ground(float(x_px), float(y_px))
+
                 if not ok:
                     continue
                 if not (MIN_X_M <= X <= MAX_X_M and abs(Y) <= MAX_ABS_Y_M):
@@ -188,7 +278,7 @@ class SFeatureExtractor:
                 r = math.sqrt(X * X + Y * Y)
                 b = math.atan2(Y, X)
                 features.append({
-                    'X': X, 'Y': Y,
+                    'X': X, 'Y': Y, 'Z': Z,
                     'range': r, 'bearing': b,
                     'type': 'tape_corner',
                     'score': score,
@@ -214,7 +304,7 @@ class SFeatureExtractor:
             r = math.sqrt(X * X + Y * Y)
             b = math.atan2(Y, X)
             features.append({
-                'X': X, 'Y': Y,
+                'X': X, 'Y': Y, 'Z': 0.0,
                 'range': r, 'bearing': b,
                 'type': 'fast',
                 'score': float(kp.response),

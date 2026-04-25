@@ -164,6 +164,27 @@ class SGround:
 
    # -----------------------------------------------------------------------------
 
+    def set_robot_pitch(self, pitch_rad: float):
+        """
+        Update the effective camera tilt for the current robot pitch.
+
+        On a slope the robot (and camera) pitch forward/back, changing
+        the camera's angle to the ground.  Call this each frame with the
+        Kalman pitch estimate to get corrected ground projections.
+
+        Parameters
+        ----------
+        pitch_rad : robot body pitch in radians (positive = nose up)
+                    from the Kalman EKF state.
+        """
+        # Positive pitch (nose up) means the camera tilts more toward the ground,
+        # increasing the effective tilt angle.
+        effective_tilt = self.camera_tilt + np.degrees(pitch_rad)
+        old_tilt = self.camera_tilt
+        self.camera_tilt = effective_tilt
+        self._build_geometry()
+        self.camera_tilt = old_tilt   # restore nominal so next call is relative to mounting
+
     def pixel_to_ground(self, u: float, v: float):
         """
         Project a single raw (distorted) pixel to the ground plane Z=0.
@@ -201,6 +222,63 @@ class SGround:
         self.last_dist = float(np.hypot(X, Y))
 
         return True, X, Y
+
+    def pixel_to_ground_at_z(self, u: float, v: float, z: float):
+        """
+        Project a pixel to the horizontal plane at height Z (robot frame, Z up).
+
+        Same ray as pixel_to_ground() but intersects with Z = z instead of Z = 0.
+        Use this to correctly place tape features that are elevated on a slope.
+
+        Returns (ok, X, Y) in robot frame.
+        """
+        if not self.ready:
+            return False, 0.0, 0.0
+
+        pt = np.array([[[float(u), float(v)]]], dtype=np.float32)
+        pt_norm = cv2.undistortPoints(pt, self.camera_matrix, self.dist_coeffs)
+        xn = float(pt_norm[0, 0, 0])
+        yn = float(pt_norm[0, 0, 1])
+
+        d_cam = np.array([xn, yn, 1.0])
+        d_rob = self._R_c2r @ d_cam
+
+        if abs(d_rob[2]) < 1e-6:
+            return False, 0.0, 0.0
+
+        # Intersect ray with plane Z = z:  t_cam[2] + λ * d_rob[2] = z
+        lam = (z - self._t_cam[2]) / d_rob[2]
+        if lam <= 0:
+            return False, 0.0, 0.0
+
+        X = self._t_cam[0] + lam * d_rob[0]
+        Y = self._t_cam[1] + lam * d_rob[1]
+        return True, X, Y
+
+    def ray_at_distance(self, u: float, v: float, D: float):
+        """
+        Given a pixel (u, v) and a known 3D distance D from the camera centre,
+        return the 3D point in robot frame (X, Y, Z).
+
+        Useful for computing the height of a feature whose actual distance D
+        has been estimated from e.g. apparent tape width.
+
+        Returns (ok, X, Y, Z).
+        """
+        if not self.ready:
+            return False, 0.0, 0.0, 0.0
+
+        pt = np.array([[[float(u), float(v)]]], dtype=np.float32)
+        pt_norm = cv2.undistortPoints(pt, self.camera_matrix, self.dist_coeffs)
+        xn = float(pt_norm[0, 0, 0])
+        yn = float(pt_norm[0, 0, 1])
+
+        d_cam = np.array([xn, yn, 1.0])
+        d_rob = self._R_c2r @ d_cam
+        d_hat = d_rob / np.linalg.norm(d_rob)
+
+        P = self._t_cam + D * d_hat
+        return True, float(P[0]), float(P[1]), float(P[2])
 
 
     def pixels_to_ground(self, points):

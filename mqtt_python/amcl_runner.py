@@ -76,13 +76,13 @@ try:
     from field_map_2026 import FIELD
     _FIELD_LOADED = True
 except Exception as e:
-    print(f"% amcl_runner: WARNING – field map could not be loaded: {e}")
+    print(f"% amcl_runner: WARNING - field map could not be loaded: {e}")
     FIELD = None
     _FIELD_LOADED = False
 
 
 # =============================================================================
-# Source abstractions
+# (Source abstractions are shared via ssources.py)
 # =============================================================================
 
 class FrameInfo:

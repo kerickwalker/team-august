@@ -180,7 +180,7 @@ class SLocalize:
                 valid = True
 
         # ── 2. ARUCO CORRECTION ──────────────────────────────────────────────
-        # Disabled during first debug phase.
+        # ArUco markers provide precise absolute positioning
         for det in aruco_detections:
             aruco_id = det.get('id', -1)
 
@@ -205,8 +205,8 @@ class SLocalize:
             aruco_y = known_marker.position.y - rng * math.sin(abs_bearing)
 
             jump = math.hypot(aruco_x - fmap_px, aruco_y - fmap_py)
-            if jump > self._max_lateral_jump * 2:
-                continue
+            # ArUco provides absolute positioning from known marker locations - no jump limit
+            print(f"% ArUco correction: marker_id={aruco_id} range={rng:.2f}m bearing={math.degrees(bearing):+.1f}° jump={jump:.2f}m")
 
             corrected_x = aruco_x
             corrected_y = aruco_y
@@ -224,6 +224,11 @@ class SLocalize:
 
             source = 'aruco' if source is None else 'tape+aruco'
             valid = True
+            print(
+                f"% ArUco correction: id={aruco_id} range={rng:.2f}m bearing={math.degrees(bearing):+.1f}° "
+                f"marker_at=({known_marker.position.x:.2f}, {known_marker.position.y:.2f}) "
+                f"robot_at=({aruco_x:.2f}, {aruco_y:.2f}) jump={jump:.2f}m"
+            )
             break
 
         if not valid:
