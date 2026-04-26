@@ -45,17 +45,17 @@ class SEdge:
     # Output saturation (turn rate rad/s)
     # Keep ≤ speed / (half_track_width) so inner wheel never reverses.
     # At 0.25 m/s, ~0.13 m track: max safe ≈ 1.9 rad/s → use 1.5 for margin.
-    lineYMax = 1.5
-    lineYMin = -1.5
+    lineYMax = 1.7
+    lineYMin = -1.7
     # Low-pass smoothing on the turn-rate output (0 = no filter, 1 = frozen)
     # Absorbs sensor noise between 30 ms livn updates without adding much lag.
     lineOutputAlpha = 0.4   # new = alpha*raw + (1-alpha)*prev; lower = smoother
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.4, lineKi=0.0, lineKd=0.1,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.4),
-        "slow":   dict(lineKp=0.4, lineKi=0.0, lineKd=0.1,
+        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.15,
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.3),
+        "slow":   dict(lineKp=0.25, lineKi=0.0, lineKd=0.2,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.4),
     }
     # Recovery when line lost (A1/A4: turn toward last line side)

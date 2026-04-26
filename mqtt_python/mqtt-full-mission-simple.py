@@ -63,7 +63,7 @@ from uteensy import start_teensy_interface, stop_teensy_interface
 
 # ── General line following ────────────────────────────────────────────────────
 LINE = SimpleNamespace(
-    speed           = 0.25,  # m/s — normal line-following speed
+    speed           = 0.3,  # m/s — normal line-following speed
     approach_speed  = 0.15,  # m/s — reduced speed after crossing 1 until roundabout done
     lost_timeout    = 5.0,   # s   — stop if line lost for longer than this (recovery)
 )
