@@ -151,135 +151,97 @@ class SGateOne:
 
 
 class SGateOneEntryController:
-    """Small close-range controller for roundabout entry using one orange bar.
+    """Minimal P-controller to align with and approach one orange upright.
 
-    Outputs a relative pose proxy and a suggested (v, w) command:
-      - lateral_error: normalized horizontal error wrt desired bar position
-      - depth_error: proxy based on bar width wrt desired target width
-      - v_cmd: forward speed command (m/s)
-      - w_cmd: turn-rate command (rad/s)
+    Designed for safe testing: very slow speeds, no filtering, no derivative.
+
+    Conventions (Robobot rc command):
+        v > 0 = forward
+        w > 0 = left turn (CCW), w < 0 = right turn (CW)
+
+    If the bar is right of image center (bar_cx > W/2), the robot must turn
+    right -> w must be negative -> w_cmd = -kx * e_x.
+
+    Outputs from command():
+        v_cmd (m/s), w_cmd (rad/s), pose dict with:
+          valid          (bool)
+          lateral_error  (normalized [-1, 1], + = bar right of target)
+          depth_error    ((target_w - bar_w) / target_w, + = too far)
     """
 
-    # =========================
-    # TUNING (entry alignment)
-    # =========================
-    # Desired bar position in image coordinates.
-    # Keep this at 0.0 to center the bar, or offset (e.g. -0.25) to keep
-    # the bar left-of-center if that gives safer wheel clearance.
-    # Calibrated default from field sample where entry pose was judged good.
-    target_x_norm = 0.302
+    # Desired bar position in normalized image x ([-1, +1]).
+    # 0.0 = image center.
+    target_x_norm = 0.0
 
-    # Desired bar width in px at "good entry pose".
-    # Tune from real frames where entry works well.
-    # Calibrated default from field sample where entry pose was judged good.
-    target_width_px = 128.0
+    # Desired bar width in px at the "good entry" distance.
+    target_width_px = 130.0
 
-    # If bar is larger than this, treat as too close and stop.
-    stop_width_px = 80.0
+    # Stop forward motion when bar is at least this wide (close enough).
+    stop_width_px = 110.0
 
-    # Command limits and gains.
-    min_v = 0.05
-    max_v = 0.18
-    max_w = 0.7
-    kx = 1.2       # steering from lateral error
-    kd = 0.20      # damping on lateral error derivative
-    kh = 0.20      # speed scaling from depth error
-    search_w = 0.25
+    # Slow / safe command limits (override per-test if needed).
+    min_v = 0.02
+    max_v = 0.05
+    max_w = 0.30
 
-    # Smoothing and confidence settings.
-    ema_alpha = 0.25
-    min_seen_width_px = 12.0
+    # Proportional gain on normalized lateral error.
+    kx = 0.6
 
-    _x_filt = 0.0
-    _w_filt = 0.0
-    _e_x_prev = 0.0
-    _has_history = False
+    # Search behavior when the bar is not detected.
+    search_w = 0.15
+
+    _LOST_POSE = {
+        "valid": False,
+        "lateral_error": 0.0,
+        "depth_error": 0.0,
+    }
 
     def reset(self):
-        self._x_filt = 0.0
-        self._w_filt = 0.0
-        self._e_x_prev = 0.0
-        self._has_history = False
+        # Stateless controller; nothing to reset, kept for API compatibility.
+        pass
 
-    def _clamp(self, x, lo, hi):
+    @staticmethod
+    def _clamp(x, lo, hi):
         return max(lo, min(hi, x))
 
-    def _norm_bar_x(self, gate1: SGateOne):
+    def _lateral_error(self, gate1: SGateOne) -> float:
         if gate1._img_w <= 0:
             return 0.0
-        return (gate1.bar_cx - gate1._img_w / 2.0) / (gate1._img_w / 2.0)
+        x_norm = (gate1.bar_cx - gate1._img_w / 2.0) / (gate1._img_w / 2.0)
+        return x_norm - self.target_x_norm
 
-    def relative_pose(self, gate1: SGateOne):
-        """Return relative pose proxy and confidence from current detection."""
+    def command(self, gate1: SGateOne, dt: float = 0.1):
+        """Return (v_cmd, w_cmd, pose) for the current detection."""
         if not gate1.detected or gate1.bar_width_px <= 0:
-            return {
-                "valid": False,
-                "lateral_error": 0.0,
-                "depth_error": 0.0,
-                "distance_scale": 0.0,
-                "confidence": 0.0,
-            }
-
-        x_norm = self._norm_bar_x(gate1)
-        w_px = float(gate1.bar_width_px)
-        if not self._has_history:
-            self._x_filt = x_norm
-            self._w_filt = w_px
-            self._has_history = True
-        else:
-            a = self.ema_alpha
-            self._x_filt = (1.0 - a) * self._x_filt + a * x_norm
-            self._w_filt = (1.0 - a) * self._w_filt + a * w_px
-
-        lateral_error = self._x_filt - self.target_x_norm
-        depth_error = (self.target_width_px - self._w_filt) / max(self.target_width_px, 1.0)
-        distance_scale = self.target_width_px / max(self._w_filt, 1.0)
-
-        conf_w = self._clamp((self._w_filt - self.min_seen_width_px) / max(self.target_width_px, 1.0), 0.0, 1.0)
-        conf_x = self._clamp(1.0 - abs(lateral_error), 0.0, 1.0)
-        confidence = 0.5 * conf_w + 0.5 * conf_x
-
-        return {
-            "valid": True,
-            "lateral_error": float(lateral_error),
-            "depth_error": float(depth_error),
-            "distance_scale": float(distance_scale),
-            "confidence": float(confidence),
-        }
-
-    def command(self, gate1: SGateOne, dt=0.1):
-        """Compute (v_cmd, w_cmd, pose_dict) from detector output."""
-        pose = self.relative_pose(gate1)
-        if not pose["valid"]:
-            # If target is lost, rotate slowly to reacquire.
+            # Slow rotational search; bias by last known side if known.
             w = self.search_w
-            if gate1.bar_side_hint == "left":
-                w = abs(self.search_w)
-            elif gate1.bar_side_hint == "right":
+            if gate1.bar_side_hint == "right":
                 w = -abs(self.search_w)
-            return 0.0, w, pose
+            elif gate1.bar_side_hint == "left":
+                w = abs(self.search_w)
+            return 0.0, float(w), dict(self._LOST_POSE)
 
-        e_x = pose["lateral_error"]
-        de_x = 0.0
-        if dt > 1e-3:
-            de_x = (e_x - self._e_x_prev) / dt
-        self._e_x_prev = e_x
+        e_x = self._lateral_error(gate1)
+        bw = float(gate1.bar_width_px)
+        e_w = (self.target_width_px - bw) / max(self.target_width_px, 1.0)
 
-        # Steering: keep bar at target_x_norm with light derivative damping.
-        w_cmd = self.kx * e_x + self.kd * de_x
-        w_cmd = self._clamp(w_cmd, -self.max_w, self.max_w)
+        # Steering: turn opposite of error sign (bar right -> turn right).
+        w_cmd = self._clamp(-self.kx * e_x, -self.max_w, self.max_w)
 
-        # Speed: go slower as bar gets larger (closer).
-        w = gate1.bar_width_px
-        if w >= self.stop_width_px:
+        # Forward speed: stop when close enough; otherwise crawl forward.
+        if bw >= self.stop_width_px:
             v_cmd = 0.0
         else:
-            v_base = self.min_v + self.kh * pose["depth_error"]
-            v_cmd = self._clamp(v_base, self.min_v, self.max_v)
+            v_cmd = self._clamp(self.min_v + (self.max_v - self.min_v) * max(e_w, 0.0),
+                                self.min_v, self.max_v)
+            # Reduce speed when poorly aligned to avoid lateral drift.
+            v_cmd *= self._clamp(1.0 - 0.5 * abs(e_x), 0.3, 1.0)
 
-            # Slow down more when laterally misaligned.
-            v_cmd *= self._clamp(1.0 - 0.6 * abs(e_x), 0.25, 1.0)
-
+        pose = {
+            "valid": True,
+            "lateral_error": float(e_x),
+            "depth_error": float(e_w),
+        }
         return float(v_cmd), float(w_cmd), pose
 
 

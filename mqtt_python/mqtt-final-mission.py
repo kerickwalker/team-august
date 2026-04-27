@@ -1,42 +1,40 @@
 #!/usr/bin/env python3
 
-# Full mission script for Robobot (DTU) — simple variant.
+# Final mission script for Robobot (DTU).
 #
-# Run with:   python3 mqtt-full-mission-simple.py                (default: immediate + quiet)
-#             python3 mqtt-full-mission-simple.py --verbose      (show mission debug prints)
-#             python3 mqtt-full-mission-simple.py --video-out    (record run to cv_runs/mission_*.mp4)
+# This is a copy of mqtt-full-mission-simple.py with these additions:
+#   1. Servo activation in state 0 is removed (no high-pitch hold torque on start).
+#   2. A SUBMISSIONS registry + --submission <name> flag for jumping straight
+#      to a given mission segment without editing the file.
+#   3. --kp / --kd / --ki flags that override the "normal" line-follow PID
+#      gains at runtime, so PID tuning does not require editing sedge.py.
+#
+# Run examples:
+#   python3 mqtt-final-mission.py
+#   python3 mqtt-final-mission.py --verbose
+#   python3 mqtt-final-mission.py --submission line_follow --kp 0.4 --kd 0.10
+#   python3 mqtt-final-mission.py --submission roundabout
 #
 # ── Mission overview ─────────────────────────────────────────────────────────
-#
-#  [INIT]     Drive forward until IR gate clears and line sensor finds the line.
-#
+#  [INIT]     Drive forward until line sensor finds the line.
 #  [FOLLOW]   Follow the line. React at each crossing:
-#               Crossing 1 → turn LEFT 45° (while moving forward), resume following
+#               Crossing 1 → turn LEFT (while moving forward), resume following
 #               Crossing 2 → go straight
 #               Crossing 3 → go straight
-#               Crossing 4 → hard 90° turn (direction auto-detected from sensor)
+#               Crossing 4 → hard 90° turn (direction auto-detected)
 #               Crossing 5 → stop → [DRIVE TO GOAL SEQUENCE]
-#
 #  [ROUNDABOUT]  When the line physically ends (between crossings 1 and 2):
-#               drive 20 cm → turn LEFT 45° → arc 450° → turn LEFT 90°
-#               → find line → resume [FOLLOW] with crossing_count = 1
-#
-#  [DRIVE TO GOAL]  Forward 1 m → turn right 90° → forward 1 m → turn left 90°
-#               → forward 2 m → turn left 20° → drive straight until line found
-#               → follow line until line ends → stop.
-#
-# ── How to tune ──────────────────────────────────────────────────────────────
-#
-#  All tunable values live in the CONFIGURATION section below, grouped by
-#  mission phase (LINE, CROSSINGS, CROSSING1, ROUNDABOUT_*, LINE_END, DRIVE_TO_GOAL).
-#  The sequences (ROUNDABOUT_SEQUENCE, DRIVE_TO_GOAL_SEQUENCE) define each blocking
-#  phase as an ordered list of steps — add, remove, or reorder steps freely.
-#
+#               drive a bit → turn → arc → turn → find line → resume FOLLOW.
+#  [DRIVE TO GOAL]  forward → right 90° → forward → left 90°
+#               → forward → left 20° → seek line → follow line until line ends.
 # ─────────────────────────────────────────────────────────────────────────────
 
 import time as t
 import sys
 import threading
+import termios
+import tty
+import select
 from pathlib import Path
 import numpy as np
 from datetime import datetime
@@ -57,26 +55,17 @@ from uteensy import start_teensy_interface, stop_teensy_interface
 
 ################################################################
 # VIDEO RECORDING (optional, --video-out flag)
-#
-# When --video-out is passed, a background thread pulls frames from
-# the local camera stream and writes them to an annotated MP4 in
-# cv_runs/ (no live preview). Used to capture mission runs for offline
-# review when the computer-vision pipeline is being trusted.
-#
-# Stream source — edit DEFAULT_RECORD_STREAM_URL if the camera moves.
 ################################################################
 
 DEFAULT_RECORD_STREAM_URL = "http://localhost:7123/stream.mjpg"
 DEFAULT_RECORD_OUT_DIR    = Path(__file__).resolve().parent.parent / "cv_runs"
 DEFAULT_RECORD_FPS        = 20.0
 
-# Lightweight, thread-safe mission telemetry the recorder overlays on each frame.
 _telemetry = {"state": "init", "crossing": 0}
 _telemetry_lock = threading.Lock()
 
 
 def set_telemetry(**kwargs):
-    """Update the values shown in the recorder overlay (called from the mission)."""
     with _telemetry_lock:
         _telemetry.update(kwargs)
 
@@ -87,16 +76,11 @@ def _read_telemetry():
 
 
 class MissionRecorder:
-    """Background MJPEG-stream → MP4 recorder with mission-state overlay.
-
-    Runs in its own thread so the mission control loop is not slowed down.
-    Frames are tagged with wall-clock time, mission state and crossing count
-    so a recording can be matched up to terminal logs after the fact.
-    """
+    """Background MJPEG-stream → MP4 recorder with mission-state overlay."""
 
     def __init__(self, video_out, stream_url=DEFAULT_RECORD_STREAM_URL,
                  out_dir=DEFAULT_RECORD_OUT_DIR, fps=DEFAULT_RECORD_FPS):
-        self.video_out = video_out          # filename, or "auto" for timestamped name
+        self.video_out = video_out
         self.stream_url = stream_url
         self.out_dir = Path(out_dir)
         self.fps = fps
@@ -107,7 +91,7 @@ class MissionRecorder:
 
     def start(self):
         try:
-            import cv2 as cv  # noqa: F401 — fail fast if OpenCV is missing
+            import cv2 as cv  # noqa: F401
         except ImportError:
             print("% recorder: cv2 not installed — video recording disabled")
             return self
@@ -183,99 +167,72 @@ class MissionRecorder:
 
 ################################################################
 # CONFIGURATION
-# All tunable values are here — grouped by mission phase.
-# Edit only this section; mission logic below stays unchanged.
 ################################################################
 
-# ── General line following ────────────────────────────────────────────────────
 LINE = SimpleNamespace(
-    speed           = 0.3,  # m/s — normal line-following speed
-    approach_speed  = 0.15,  # m/s — reduced speed after crossing 1 until roundabout done
-    lost_timeout    = 5.0,   # s   — stop if line lost for longer than this (recovery)
+    speed           = 0.3,
+    approach_speed  = 0.15,
+    lost_timeout    = 5.0,
 )
 
-# ── Crossing detection and counting ──────────────────────────────────────────
 CROSSINGS = SimpleNamespace(
-    sensor_threshold     = 2,     # crossingLineCnt must reach this to register a crossing
-    leave_delay_s        = 0.5,   # s — robot must be clear of crossing this long before count increments
-    go_straight_until    = 3,     # crossings 1..N go straight; above this = hard turn
-                                  #   (crossing 1 is handled separately; 2, 3 go straight; 4 turns)
-    stop_at              = 5,     # stop and run end sequence at this crossing number (1-based)
-    hard_turn_cooldown_s = 2.0,   # s — minimum time between hard turns (prevents double-turn)
+    sensor_threshold     = 2,
+    leave_delay_s        = 0.5,
+    go_straight_until    = 3,
+    stop_at              = 5,
+    hard_turn_cooldown_s = 2.0,
 )
 
-# ── Crossing 1 — turn left while moving forward, then resume line following ──
 CROSSING1 = SimpleNamespace(
-    turn_deg      = 35.0,   # degrees to turn
-    turn_dir      = "left", # "left" or "right"
-    turn_rate     = 0.5,    # rad/s
-    forward_speed = 0.15,   # m/s forward while turning (0 = full stop before turning)
+    turn_deg      = 35.0,
+    turn_dir      = "left",
+    turn_rate     = 0.5,
+    forward_speed = 0.15,
 )
 
-# ── Roundabout entry — triggered when the line physically ends ────────────────
 ROUNDABOUT_ENTRY = SimpleNamespace(
-    drive_dist_m = 0.29,    # m — drive forward after line ends before turning
-    drive_speed  = 0.3,    # m/s
-    turn_deg     = 90.0,    # degrees to turn to face the roundabout circle
-    turn_dir     = "right",  # "left" or "right"
+    drive_dist_m = 0.29,
+    drive_speed  = 0.3,
+    turn_deg     = 90.0,
+    turn_dir     = "right",
 )
 
-# ── Roundabout arc — geometry and speed ───────────────────────────────────────
-# Turn rate is derived automatically: w = speed / (diameter / 2)
 ROUNDABOUT_ARC = SimpleNamespace(
-    diameter_m    = 0.73,     # m — physical diameter of the circle
-    total_degrees = 440.0,   # ° — heading change target (360 = one full lap, 450 = 1.25 laps)
-    speed         = 0.20,    # m/s — forward speed on the arc
-    direction     = "left",  # "left" (CCW) or "right" (CW)
+    diameter_m    = 0.73,
+    total_degrees = 440.0,
+    speed         = 0.20,
+    direction     = "left",
 )
 
-# ── Roundabout exit — find the return line after the arc ─────────────────────
 ROUNDABOUT_EXIT = SimpleNamespace(
-    turn_deg     = 0.0,    # degrees to turn after the arc
-    turn_dir     = "right",  # "left" or "right"
-    seek_speed   = 0.20,    # m/s while searching for the line
-    seek_timeout = 15.0,    # s — give up if line not found within this time
+    turn_deg     = 0.0,
+    turn_dir     = "right",
+    seek_speed   = 0.20,
+    seek_timeout = 15.0,
 )
 
-# ── Line-end detection — runs inside line-following state ─────────────────────
-# Uses a debounce counter to avoid false triggers from sensor noise.
 LINE_END = SimpleNamespace(
-    lost_cnt     = 2,    # lineValidCnt below this counts as "no line" for one sample
-    lost_confirm = 5,    # consecutive 10 ms samples needed to confirm the line has ended
+    lost_cnt     = 2,
+    lost_confirm = 5,
 )
 
-# ── Drive-to-goal sequence — runs after the final crossing ────────────────────
 DRIVE_TO_GOAL = SimpleNamespace(
-    follow_dist_m = 1.00,   # m — continue line-following after crossing 5 before turning
-    turn1_deg     = 90.0,   # ° — turn right
-    fwd2_dist_m   = 0.90,   # m — forward after first turn
-    turn2_deg     = 90.0,   # ° — turn left
-    fwd3_dist_m   = 2.00,   # m — forward after second turn
-    turn3_deg     = 20.0,   # ° — turn left before line seek
-    drive_speed   = 0.20,   # m/s
-    seek_speed    = 0.20,   # m/s while searching for the line
-    seek_timeout  = 30.0,   # s — give up if line not found within this time
+    follow_dist_m = 1.00,
+    turn1_deg     = 90.0,
+    fwd2_dist_m   = 0.90,
+    turn2_deg     = 90.0,
+    fwd3_dist_m   = 2.00,
+    turn3_deg     = 20.0,
+    drive_speed   = 0.20,
+    seek_speed    = 0.20,
+    seek_timeout  = 30.0,
 )
 
 
 ################################################################
 # MISSION SEQUENCES
-#
-# These lists define what happens during each blocking phase.
-# Each entry is ("action_name", {params}).
-# run_sequence() below executes them in order.
-#
-# Supported actions:
-#   "drive"       — drive straight: dist (m), speed (m/s)
-#   "turn"        — rotate in place: deg (°), dir ("left"/"right"), rate (rad/s, optional)
-#   "arc"         — drive the roundabout arc (uses ROUNDABOUT_ARC settings)
-#   "seek_line"   — drive forward until line found: speed (m/s), timeout (s)
-#   "follow_line" — follow the line for dist (m) at speed (m/s), then stop
-#   "servo"       — move servo: num (1 or 2, default 1), pos (PWM value),
-#                   wait (s — sleep for servo to reach position), hold (s, optional — extra hold)
 ################################################################
 
-# Steps executed when the line physically ends → roundabout phase
 ROUNDABOUT_SEQUENCE = [
     ("drive",     {"dist":  ROUNDABOUT_ENTRY.drive_dist_m,  "speed":   ROUNDABOUT_ENTRY.drive_speed}),
     ("turn",      {"deg":   ROUNDABOUT_ENTRY.turn_deg,       "dir":     ROUNDABOUT_ENTRY.turn_dir}),
@@ -284,8 +241,6 @@ ROUNDABOUT_SEQUENCE = [
     ("seek_line", {"speed": ROUNDABOUT_EXIT.seek_speed,      "timeout": ROUNDABOUT_EXIT.seek_timeout}),
 ]
 
-# Steps executed after the final crossing → drive-to-goal phase
-# (seek_line at end drives straight until the line is found; state 21 then follows it)
 DRIVE_TO_GOAL_SEQUENCE = [
     ("follow_line", {"dist": DRIVE_TO_GOAL.follow_dist_m, "speed": LINE.speed}),
     ("turn",        {"deg":  DRIVE_TO_GOAL.turn1_deg,     "dir":   "right"}),
@@ -298,14 +253,54 @@ DRIVE_TO_GOAL_SEQUENCE = [
 
 
 ################################################################
+# SUBMISSIONS
+#
+# Named entry points so the mission can be loaded in mid-way without
+# editing the file. Pass --submission <name> to pick one.
+#
+# Each entry is a dict with any of:
+#   start_state       — mission state to begin in (default 0)
+#   crossing_count    — preset crossing counter (0-based; default 0)
+#   first_cross_done  — preset crossing-1 handled flag (default False)
+#   roundabout_done   — preset roundabout-done flag (default False)
+#   line_control      — ("params_set", speed) to engage line PD before the loop;
+#                       speed=None falls back to LINE.speed (or LINE.approach_speed
+#                       when params_set == "slow").
+#
+# Add or rename entries freely.
+################################################################
+
+SUBMISSIONS = {
+    "full":            dict(start_state=0),
+    # Pure line-following: no crossing reactions, no roundabout, no end detection.
+    # Runs forever until the stop button (or Ctrl-C) is pressed. Use this for PID tuning.
+    "line_follow":     dict(start_state=30,
+                            line_control=("normal", None)),
+    "after_crossing_1": dict(start_state=10,
+                             first_cross_done=True,
+                             line_control=("slow", None)),
+    "roundabout":      dict(start_state=11,
+                            first_cross_done=True),
+    "after_roundabout": dict(start_state=10,
+                             crossing_count=1,
+                             roundabout_done=True,
+                             first_cross_done=True,
+                             line_control=("normal", None)),
+    "drive_to_goal":   dict(start_state=20,
+                            crossing_count=4,
+                            roundabout_done=True,
+                            first_cross_done=True),
+    "final_follow":    dict(start_state=21,
+                            roundabout_done=True,
+                            line_control=("normal", None)),
+}
+
+
+################################################################
 # PRIMITIVE DRIVE HELPERS
-# Low-level building blocks used by run_sequence() and the mission.
 ################################################################
 
 def driveTurn(deg, direction, turn_rate=0.5):
-    """Rotate in place by deg degrees.
-    direction: 'left' (positive turn rate) or 'right' (negative).
-    Waits until odometry heading change (pose.tripBh) reaches the target."""
     pose.tripBreset()
     signed_rate = turn_rate if direction == "left" else -turn_rate
     target_rad  = np.radians(deg)
@@ -332,10 +327,6 @@ def driveTurn(deg, direction, turn_rate=0.5):
 
 
 def driveTurnForward(deg, direction, linvel, turn_rate=0.5, stop_after=True):
-    """Move forward at linvel m/s while turning deg degrees.
-    Combined rc command — smoother than stopping before turning.
-    stop_after=False: skip stop command so caller can hand off to line controller
-    while robot is still moving."""
     pose.tripBreset()
     signed_rate = turn_rate if direction == "left" else -turn_rate
     target_rad  = np.radians(deg)
@@ -357,8 +348,6 @@ def driveTurnForward(deg, direction, linvel, turn_rate=0.5, stop_after=True):
 
 
 def driveDistance(dist, speed=0.2):
-    """Drive straight for dist metres at speed m/s.
-    Negative dist drives backward. Waits until odometry distance reaches the target."""
     actual_speed = speed if dist >= 0 else -speed
     target_dist  = abs(dist)
     pose.tripBreset()
@@ -385,9 +374,6 @@ def driveDistance(dist, speed=0.2):
 
 
 def driveRoundabout():
-    """Drive a circular arc using ROUNDABOUT_ARC settings.
-    Turn rate is derived from diameter and speed: w = speed / (diameter / 2).
-    Progress is tracked by odometry heading change (pose.tripBh)."""
     radius_m   = ROUNDABOUT_ARC.diameter_m / 2.0
     sign       = 1.0 if ROUNDABOUT_ARC.direction == "left" else -1.0
     turn_rate  = sign * ROUNDABOUT_ARC.speed / radius_m
@@ -397,7 +383,7 @@ def driveRoundabout():
         print(f"% driveRoundabout: ⌀{ROUNDABOUT_ARC.diameter_m:.2f} m, "
               f"v={ROUNDABOUT_ARC.speed:.2f} m/s, w={turn_rate:.3f} rad/s, "
               f"target={ROUNDABOUT_ARC.total_degrees:.0f}°")
-    service.send("robobot/cmd/T0", "leds 16 0 0 30")  # blue: arc running
+    service.send("robobot/cmd/T0", "leds 16 0 0 30")
     service.send("robobot/cmd/ti", f"rc {ROUNDABOUT_ARC.speed:.3f} {turn_rate:.3f}")
     last_print = t.time()
     while not service.stop:
@@ -416,7 +402,6 @@ def driveRoundabout():
 
 
 def driveLineFollow(dist, speed):
-    """Follow the line for dist metres using the PD controller, then stop."""
     pose.tripBreset()
     edge.lineControl(velocity=speed, refPosition=0)
     if not service.is_quiet():
@@ -434,7 +419,6 @@ def driveLineFollow(dist, speed):
 
 
 def seekLine(speed, timeout_s):
-    """Drive forward at speed until the line sensor is confident (lineValidCnt > 4) or timeout."""
     pose.tripBreset()
     service.send("robobot/cmd/ti", f"rc {speed:.2f} 0.0")
     while not service.stop:
@@ -452,16 +436,7 @@ def seekLine(speed, timeout_s):
 
 
 def run_sequence(steps):
-    """Execute a list of (action, params) steps in order.
-    Stops early if service.stop is set (emergency stop).
-
-    Supported actions and their params:
-      "drive"     — dist (m), speed (m/s)
-      "turn"      — deg (°), dir ("left"/"right"), rate (rad/s, optional)
-      "arc"       — no params; uses ROUNDABOUT_ARC settings
-      "seek_line" — speed (m/s), timeout (s)
-      "servo"     — pos (PWM), hold (s, optional)
-    """
+    """Execute a list of (action, params) steps in order."""
     for action, params in steps:
         if service.stop:
             break
@@ -478,9 +453,9 @@ def run_sequence(steps):
         elif action == "servo":
             num = params.get("num", 1)
             service.send("robobot/cmd/T0", f"servo {num} {params['pos']} 100")
-            if "wait" in params:   # wait for servo to reach position
+            if "wait" in params:
                 t.sleep(params["wait"])
-            if "hold" in params:   # optional extra hold at position
+            if "hold" in params:
                 t.sleep(params["hold"])
         else:
             if not service.is_quiet():
@@ -488,47 +463,221 @@ def run_sequence(steps):
 
 
 ################################################################
+# KEY LISTENER + IN-PROCESS TELEOP HANDOFF
+#
+# While the mission runs we listen on stdin for hotkeys:
+#   SPACE      → stop mission AND switch to teleop afterwards
+#   q / ESC    → stop mission, do NOT start teleop
+#   anything else → ignored
+# Ctrl+C still works (ISIG kept enabled).
+#
+# When the mission ends with the teleop flag set, we load mqtt-teleop.py
+# in-process (same MQTT/Teensy/edge instances) and call its loop().
+################################################################
+
+class MissionKeyListener:
+    """Background thread reading stdin for mission hotkeys."""
+
+    def __init__(self):
+        self._fd = None
+        self._old = None
+        self._thread = None
+        self._stop_evt = threading.Event()
+        self.switch_to_teleop = False
+        self.user_quit = False
+
+    def start(self):
+        if not sys.stdin.isatty():
+            return self
+        try:
+            self._fd = sys.stdin.fileno()
+            self._old = termios.tcgetattr(self._fd)
+            mode = list(termios.tcgetattr(self._fd))
+            # Disable canonical mode + echo, keep ISIG so Ctrl+C still works.
+            mode[3] = mode[3] & ~(termios.ICANON | termios.ECHO)
+            mode[6] = list(mode[6])
+            mode[6][termios.VMIN] = 1
+            mode[6][termios.VTIME] = 0
+            termios.tcsetattr(self._fd, termios.TCSANOW, mode)
+        except Exception as e:
+            print(f"% key listener: tty setup failed ({e}) — disabled")
+            self._fd = None
+            self._old = None
+            return self
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        if not service.is_quiet():
+            print("% hotkeys: SPACE = stop + teleop, q/ESC = stop, Ctrl+C = abort")
+        return self
+
+    def _run(self):
+        while not self._stop_evt.is_set() and not service.stop:
+            try:
+                r, _, _ = select.select([sys.stdin], [], [], 0.1)
+            except Exception:
+                break
+            if not r:
+                continue
+            try:
+                ch = sys.stdin.read(1)
+            except Exception:
+                break
+            if ch == " ":
+                print("\n% spacebar → stopping mission, switching to teleop")
+                self.switch_to_teleop = True
+                service.stop = True
+                break
+            elif ch in ("q", "\x1b"):
+                label = "ESC" if ch == "\x1b" else "q"
+                print(f"\n% {label} → stopping mission")
+                self.user_quit = True
+                service.stop = True
+                break
+            # any other key: ignored
+
+    def stop(self):
+        self._stop_evt.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+        self._restore_tty()
+
+    def _restore_tty(self):
+        if self._old is not None and self._fd is not None:
+            try:
+                termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
+            except Exception:
+                pass
+            self._old = None
+            self._fd = None
+
+
+def _load_teleop_module():
+    """Import mqtt-teleop.py as a module (the dash in the name blocks `import`)."""
+    import importlib.util
+    teleop_path = Path(__file__).resolve().parent / "mqtt-teleop.py"
+    spec = importlib.util.spec_from_file_location("_mqtt_teleop_inproc", str(teleop_path))
+    if spec is None or spec.loader is None:
+        raise ImportError(f"could not load {teleop_path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def run_teleop_in_process():
+    """Hand control over to mqtt-teleop.loop() inside this process.
+    Reuses the existing service/Teensy/edge so there is no startup wait."""
+    try:
+        teleop = _load_teleop_module()
+    except Exception as e:
+        print(f"% could not load teleop module: {e}")
+        return
+
+    # Make sure the robot is stopped and line PD is off before keyboard takes over.
+    edge.lineControl(0)
+    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+    service.send("robobot/cmd/T0", "leds 16 0 0 30")  # blue: teleop active
+
+    # Reset stop flag so teleop's own loop can run; teleop sets it again on quit.
+    service.stop = False
+    print("% teleop active — w/a/s/d to drive, SPACE to halt, q to quit")
+    try:
+        teleop.loop(step_mode=True)
+    finally:
+        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+        service.send("robobot/cmd/T0", "leds 16 0 0 0")
+
+
+################################################################
+# CONTROLLER OVERRIDES (--kp/--kd/--ki/--alpha)
+################################################################
+
+DEFAULT_NORMAL_CONTROLLER = {
+    "lineKp": 0.5,
+    "lineKd": 0.1,
+    "lineKi": 0.0,
+    "lineOutputAlpha": 0.9,
+}
+
+
+def apply_pid_overrides():
+    """Set default 'normal' controller values for this mission, then apply
+    optional CLI overrides.
+
+    The defaults here are mission-local (mqtt-final only) and do not modify
+    mqtt-full-mission-simple.py defaults.
+    Called once after argparse but before mission start.
+    """
+    settings = dict(DEFAULT_NORMAL_CONTROLLER)
+    for key, attr in (
+        ("lineKp", "kp"),
+        ("lineKd", "kd"),
+        ("lineKi", "ki"),
+        ("lineOutputAlpha", "alpha"),
+    ):
+        val = getattr(service.args, attr, None)
+        if val is not None:
+            settings[key] = float(val)
+    settings["lineOutputAlpha"] = max(0.0, min(1.0, settings["lineOutputAlpha"]))
+    edge.PARAM_SETS["normal"].update(settings)
+    # Also push to the live attributes so any active control picks it up.
+    for k, v in settings.items():
+        setattr(edge, k, v)
+    if not service.is_quiet():
+        print(f"% normal controller: {settings}")
+
+
+################################################################
 # MAIN MISSION
 ################################################################
 
-def driveMission():
+def driveMission(submission="full"):
     """Full mission state machine.
 
     States:
-      0  — immediate start (IR gate check bypassed), then drive forward
+      0  — immediate start, drive forward (servo activation removed)
       1  — drive until line found, then start PD controller
       2  — wait for full stop, then exit
       10 — line following + crossing reactions + line-end detection
       11 — roundabout sequence (blocking), then resume line following
       20 — drive-to-goal sequence (blocking), then start final line follow
       21 — follow final line until it ends, then stop
+      30 — pure line following (no crossing/roundabout/end logic; tuning only)
       99 — mission complete (exits loop)
+
+    submission: name from SUBMISSIONS — selects an entry point and presets
+                state, counters and flags accordingly.
     """
-    state = 0
+    sub = SUBMISSIONS.get(submission, SUBMISSIONS["full"])
+
+    state = sub.get("start_state", 0)
     pose.tripBreset()
     dist_to_line = 0.0
 
-    # ── Crossing debounce state ───────────────────────────────────────────────
-    crossing_count        = 0       # how many crossings have been fully cleared (0-based)
-    was_at_crossing       = False   # True while robot is (or was) on a crossing
-    last_time_at_crossing = None    # timestamp when robot was last detected at a crossing
+    crossing_count        = sub.get("crossing_count", 0)
+    was_at_crossing       = False
+    last_time_at_crossing = None
 
-    # ── Per-crossing flags ────────────────────────────────────────────────────
-    first_cross_done  = False   # True once crossing-1 turn has been executed
-    last_hard_turn_time = None  # timestamp of last hard 90° turn (for cooldown)
+    first_cross_done    = sub.get("first_cross_done", False)
+    last_hard_turn_time = None
 
-    # ── Roundabout state ──────────────────────────────────────────────────────
-    roundabout_done     = False   # True after the roundabout sequence has run (prevents re-entry)
-    line_end_lost_count = 0       # consecutive samples below LINE_END.lost_cnt
+    roundabout_done     = sub.get("roundabout_done", False)
+    line_end_lost_count = 0
 
-    # ── Line-loss recovery (active only after roundabout) ────────────────────
     lost_line_since = None
-
-    # ── Final line-end detection (state 21) ──────────────────────────────────
     goal_line_end_count = 0
 
     if not service.is_quiet():
-        print("% driveMission: starting")
+        print(f"% driveMission: starting (submission={submission}, state={state}, "
+              f"crossing_count={crossing_count}, first_cross_done={first_cross_done}, "
+              f"roundabout_done={roundabout_done})")
+
+    line_ctrl_cfg = sub.get("line_control")
+    if line_ctrl_cfg is not None:
+        params_name, lc_speed = line_ctrl_cfg
+        if lc_speed is None:
+            lc_speed = LINE.approach_speed if params_name == "slow" else LINE.speed
+        edge.lineControl(velocity=lc_speed, refPosition=0, params=params_name)
+
     service.send("robobot/cmd/T0", "leds 16 0 100 0")  # green: running
 
     last_state = None
@@ -538,21 +687,19 @@ def driveMission():
             set_telemetry(state=str(state))
             last_state = state
 
-        # ── State 0: immediate start (no IR gate wait) ──────────────────────
+        # ── State 0: immediate start (no IR gate wait, no servo activation) ──
         if state == 0:
-            service.send("robobot/cmd/T0", "servo 1 -475 100")   # raise — match CATCH_BALL.servo1_up
-            service.send("robobot/cmd/T0", "servo 2  475 100")   # raise — match CATCH_BALL.servo2_up
+            # NOTE: servo lines from mqtt-full-mission-simple.py are intentionally
+            # removed here so the servos do not energise on mission start.
             service.send("robobot/cmd/ti", "rc 0.2 0.0")         # drive forward
             service.send("robobot/cmd/T0/", "lognow 3")          # start Teensy log
             state = 1
 
         # ── State 1: drive until line is found ───────────────────────────────
         elif state == 1:
-            # Safety: abort if line never appears
             if pose.tripB > 1.0 or pose.tripBtimePassed() > 15:
                 service.send("robobot/cmd/ti", "rc 0.0 0.0")
                 state = 2
-            # Line found: activate PD controller and start following
             if edge.lineValidCnt > 4:
                 edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
                 dist_to_line = pose.tripB
@@ -561,18 +708,15 @@ def driveMission():
                     print(f"% line found after {dist_to_line:.2f} m → state 10")
                 state = 10
 
-        # ── State 2: wait for full stop, then exit ────────────────────────────
+        # ── State 2: wait for full stop, then exit ───────────────────────────
         elif state == 2:
             if abs(pose.velocity()) < 0.001:
                 state = 99
 
-        # ── State 10: line following + crossing reactions + line-end detection ─
+        # ── State 10: line following + crossing reactions + line-end detection
         elif state == 10:
-            edge.mission_crossing_count = crossing_count  # shown in sedge status line
+            edge.mission_crossing_count = crossing_count
 
-            # ── Crossing detection (leave-delay debounce) ─────────────────────
-            # The crossing is counted only after the robot has been *clear* of it
-            # for CROSSINGS.leave_delay_s seconds — prevents double-counting jitter.
             at_crossing = edge.crossingLineCnt >= CROSSINGS.sensor_threshold
             now = datetime.now()
             if at_crossing:
@@ -587,14 +731,10 @@ def driveMission():
                     set_telemetry(crossing=crossing_count)
                     print(f"% crossing {crossing_count}")
 
-            # ── Crossing reactions (only while physically on a crossing) ───────
             if at_crossing:
-                # crossing_number is 1-based; crossing_count increments on *leaving*,
-                # so while we're still at crossing N, crossing_count = N-1.
                 crossing_number = crossing_count + 1
 
                 if crossing_number == 1 and not first_cross_done:
-                    # ── Crossing 1: turn left while moving forward, then resume ─
                     if not service.is_quiet():
                         print(f"% crossing 1 → turn {CROSSING1.turn_dir} {CROSSING1.turn_deg:.0f}°"
                               f" (fwd={CROSSING1.forward_speed:.2f} m/s)")
@@ -611,7 +751,6 @@ def driveMission():
                     edge.lineControl(velocity=LINE.approach_speed, refPosition=0, params="slow")
 
                 elif crossing_count == CROSSINGS.stop_at - 1:
-                    # ── Final crossing: stop and run end sequence ─────────────
                     print(f"% crossing {crossing_number}")
                     if not service.is_quiet():
                         print(f"% crossing {crossing_number} → end sequence")
@@ -620,9 +759,6 @@ def driveMission():
                     state = 20
 
                 elif crossing_count >= CROSSINGS.go_straight_until:
-                    # ── Hard 90° turn (crossing 4 and above) ─────────────────
-                    # Direction is auto-detected from which end of the sensor array is lit.
-                    # A cooldown prevents the same crossing from triggering a double-turn.
                     cooldown_ok = (
                         last_hard_turn_time is None or
                         (now - last_hard_turn_time).total_seconds() >= CROSSINGS.hard_turn_cooldown_s
@@ -644,10 +780,7 @@ def driveMission():
                             driveTurn(90.0, direction)
                             last_hard_turn_time = datetime.now()
                             edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
-                # Crossings 2 and 3 (crossing_count 1, 2 < go_straight_until=3): go straight
 
-            # ── Line-end detection (only before roundabout has run) ───────────
-            # Counts consecutive "no line" samples; confirms line end on 5 in a row.
             if not roundabout_done and state == 10:
                 if edge.lineValidCnt < LINE_END.lost_cnt:
                     line_end_lost_count += 1
@@ -659,8 +792,6 @@ def driveMission():
                     edge.lineControl(0)
                     state = 11
 
-            # ── Line-loss recovery (only after roundabout has run) ────────────
-            # If the line disappears unexpectedly on the return leg, stop safely.
             elif roundabout_done and state == 10:
                 if edge.lineValidCnt >= 4:
                     lost_line_since = None
@@ -676,21 +807,17 @@ def driveMission():
                         state = 2
 
         # ── State 11: roundabout sequence ────────────────────────────────────
-        # Runs ROUNDABOUT_SEQUENCE step-by-step, then resumes line following
-        # with crossing_count = 1 so the remaining crossings (2-5) map correctly.
         elif state == 11:
             run_sequence(ROUNDABOUT_SEQUENCE)
-            crossing_count  = 1      # crossing 1 was already handled before the roundabout
-            roundabout_done = True   # prevent line-end detection from triggering again
+            crossing_count  = 1
+            roundabout_done = True
             lost_line_since = None
             edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
             if not service.is_quiet():
                 print("% roundabout done → resuming line follow (crossing_count=1)")
             state = 10
 
-        # ── State 20: drive-to-goal sequence ──────────────────────────────────
-        # Runs DRIVE_TO_GOAL_SEQUENCE (positioning + seek_line), then activates
-        # the PD line controller and transitions to state 21 for final line follow.
+        # ── State 20: drive-to-goal sequence ─────────────────────────────────
         elif state == 20:
             run_sequence(DRIVE_TO_GOAL_SEQUENCE)
             goal_line_end_count = 0
@@ -699,7 +826,7 @@ def driveMission():
                 print("% drive-to-goal done → following final line to end")
             state = 21
 
-        # ── State 21: follow final line until it ends, then stop ──────────────
+        # ── State 21: follow final line until it ends, then stop ─────────────
         elif state == 21:
             if edge.lineValidCnt < LINE_END.lost_cnt:
                 goal_line_end_count += 1
@@ -712,8 +839,16 @@ def driveMission():
                     print("% final line ended → stopping")
                 state = 2
 
+        # ── State 30: pure line following (tuning only) ──────────────────────
+        # PD runs in sedge from the sensor callback; nothing else is checked.
+        # Loop exits only on service.stop (stop button / Ctrl-C).
+        elif state == 30:
+            edge.mission_crossing_count = 0
+            # intentionally no crossing reactions, no line-end detection,
+            # no recovery — the only goal is to feel the PD response.
+            pass
+
         else:
-            # state 99 (or unexpected): mission complete
             if not service.is_quiet():
                 print(f"% driveMission: done — dist to line {dist_to_line:.2f} m, "
                       f"along line {pose.tripB:.2f} m in {pose.tripBtimePassed():.1f} s")
@@ -722,7 +857,7 @@ def driveMission():
 
         t.sleep(0.01)   # 100 Hz control loop
 
-    service.send("robobot/cmd/T0", "leds 16 0 0 0")  # LEDs off
+    service.send("robobot/cmd/T0", "leds 16 0 0 0")
     if not service.is_quiet():
         print("% driveMission: end")
 
@@ -731,18 +866,18 @@ def driveMission():
 # TOP-LEVEL LOOP
 ################################################################
 
-def loop():
+def loop(submission="full"):
     from ulog import flog
     oldstate   = -1
     state_time = datetime.now()
 
-    service.send("robobot/cmd/T0", "leds 16 30 30 0")  # yellow: ready
-    edge.lineControl(0)   # ensure motors stopped before mission starts
+    service.send("robobot/cmd/T0", "leds 16 30 30 0")
+    edge.lineControl(0)
 
     state = 103
     while not service.stop:
         if state == 103:
-            driveMission()
+            driveMission(submission=submission)
             state = 99
         else:
             if not service.is_quiet():
@@ -758,7 +893,6 @@ def loop():
 
         t.sleep(0.1)
 
-    # Cleanup: stop robot and turn off LEDs
     service.send("robobot/cmd/T0", "leds 16 0 0 0")
     gpio.set_value(20, 0)
     edge.lineControl(0)
@@ -777,10 +911,6 @@ if __name__ == "__main__":
     else:
         setproctitle("mqtt-client")
 
-        # Register --video-out on the shared service argparser BEFORE
-        # service.setup() calls parse_args(). Two forms are supported:
-        #   --video-out                  → auto filename in cv_runs/
-        #   --video-out my_run.mp4       → explicit name (relative paths land in cv_runs/)
         service.parser.add_argument(
             "--video-out",
             nargs="?",
@@ -799,19 +929,55 @@ if __name__ == "__main__":
             action="store_true",
             help="Enable mission debug prints (default is quiet mode).",
         )
+        service.parser.add_argument(
+            "--submission",
+            default="full",
+            choices=sorted(SUBMISSIONS.keys()),
+            help=("Mission entry point. Choices: "
+                  + ", ".join(sorted(SUBMISSIONS.keys())) + " (default: full)."),
+        )
+        service.parser.add_argument(
+            "--kp", type=float, default=None,
+            help="Override line-follow Kp for params='normal' (e.g. 0.4).",
+        )
+        service.parser.add_argument(
+            "--kd", type=float, default=None,
+            help="Override line-follow Kd for params='normal' (e.g. 0.10).",
+        )
+        service.parser.add_argument(
+            "--ki", type=float, default=None,
+            help="Override line-follow Ki for params='normal' (default 0).",
+        )
+        service.parser.add_argument(
+            "--alpha", type=float, default=None,
+            help=("Override turn output filter alpha (0..1). "
+                  "Higher = less smoothing, faster turn response."),
+        )
+        # Note: -t/--test is registered by uservice; in this mission it ALSO
+        # enables the SPACE-to-teleop / q-to-quit hotkey listener. Without
+        # --test the mission ignores the keyboard entirely (production mode).
 
         start_teensy_interface()
         service.setup('localhost')
 
         recorder = None
         if service.connected:
-            # Mission defaults: quiet + immediate start.
             service.args.now = True
-            if not getattr(service.args, "verbose", False):
+            test_mode = bool(getattr(service.args, "test", False))
+            # Stay quiet unless --verbose or --test was given, so production runs
+            # are silent and tuning/test runs print useful diagnostics.
+            if not (getattr(service.args, "verbose", False) or test_mode):
                 service.args.silent = True
 
+            apply_pid_overrides()
+
+            submission = getattr(service.args, "submission", "full")
+            if submission not in SUBMISSIONS:
+                print(f"% unknown submission '{submission}', using 'full'")
+                submission = "full"
             if not service.is_quiet():
-                print("% Starting full mission")
+                print(f"% Starting final mission (submission={submission})")
+
             video_out = getattr(service.args, "video_out", "")
             if video_out:
                 recorder = MissionRecorder(
@@ -819,11 +985,27 @@ if __name__ == "__main__":
                     stream_url=getattr(service.args, "video_stream_url",
                                        DEFAULT_RECORD_STREAM_URL),
                 ).start()
+
+            key_listener = MissionKeyListener().start() if test_mode else None
             try:
-                loop()
+                loop(submission=submission)
+            except KeyboardInterrupt:
+                print("\n% Ctrl+C → aborting mission")
+                service.stop = True
             finally:
+                if key_listener is not None:
+                    key_listener.stop()
                 if recorder is not None:
                     recorder.stop()
+
+            # Hand over to teleop only in test mode AND when the user pressed SPACE.
+            # For line_follow submission, reorient with a 180° turn before teleop.
+            if key_listener is not None and key_listener.switch_to_teleop:
+                if submission == "line_follow" and not service.stop:
+                    if not service.is_quiet():
+                        print("% line_follow test handoff → turning 180° before teleop")
+                    driveTurn(180.0, "left")
+                run_teleop_in_process()
         service.terminate()
         stop_teensy_interface()
     if not service.is_quiet():

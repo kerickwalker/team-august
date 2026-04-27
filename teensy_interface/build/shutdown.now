@@ -28,3 +28,27 @@ Shutdown at 1775811465.638 (2026-04-10 10:57:45.638)
 Shutdown at 1775811466.137 (2026-04-10 10:57:46.137)
 # URobot:: received this 'hbt' with power-off bit set: hbt 10996.0342 112 1033 10.19 4 8 100.0 0.41 1145
 Shutdown at 1775811466.640 (2026-04-10 10:57:46.640)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12622.2148 112 1033 10.18 4 8 8.9 0.44 106
+Shutdown at 1777250337.248 (2026-04-27 02:38:57.248)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12626.7227 112 1033 10.19 4 8 100.0 0.45 147
+Shutdown at 1777250341.759 (2026-04-27 02:39:01.759)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12627.7256 112 1033 10.18 4 8 100.0 0.46 192
+Shutdown at 1777250342.762 (2026-04-27 02:39:02.762)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12628.2246 112 1033 10.18 4 8 4.6 0.43 127
+Shutdown at 1777250343.258 (2026-04-27 02:39:03.258)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12629.2266 112 1033 10.17 4 8 8.9 0.43 250
+Shutdown at 1777250344.260 (2026-04-27 02:39:04.260)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12629.7275 112 1033 10.19 4 8 100.0 0.46 471
+Shutdown at 1777250344.762 (2026-04-27 02:39:04.762)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12630.2266 112 1033 10.17 4 8 8.9 0.43 158
+Shutdown at 1777250345.260 (2026-04-27 02:39:05.260)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12630.7285 112 1033 10.19 4 8 391.1 0.46 380
+Shutdown at 1777250345.765 (2026-04-27 02:39:05.765)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12631.2295 112 1033 10.16 4 8 8.9 0.43 630
+Shutdown at 1777250346.263 (2026-04-27 02:39:06.263)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12631.7314 112 1033 10.18 4 8 100.6 0.46 852
+Shutdown at 1777250346.767 (2026-04-27 02:39:06.767)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12632.2305 112 1033 10.16 4 8 4.7 0.43 1102
+Shutdown at 1777250347.264 (2026-04-27 02:39:07.264)
+# URobot:: received this 'hbt' with power-off bit set: hbt 12632.7324 112 1033 10.19 4 8 100.0 0.45 1324
+Shutdown at 1777250347.768 (2026-04-27 02:39:07.768)

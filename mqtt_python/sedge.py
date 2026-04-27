@@ -35,7 +35,16 @@ class SEdge:
     # Line detection (livn 0–1000 scale)
     lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
     crossingThreshold = 700    # legacy: was used for average-based crossing; crossing now uses crossingMinSensors
-    crossingMinSensors = 4     # crossing when this many or more sensors above lineValidThreshold (lineState = "crossing")
+    crossingMinSensors = 4     # T-crossing: this many or more sensors above lineValidThreshold counts as a crossing
+    # Y-crossing detection: a crossing can also be declared with FEWER active sensors
+    # when the line splits into two narrow branches with a dark gap between them.
+    # All three Y conditions must hold:
+    #   sensorsAboveCount >= yMinSensors
+    #   (rightmostAboveIndex - leftmostAboveIndex) >= yMinSpan
+    #   at least one of the centre sensor indices in yMidIndices is NOT above threshold (centre gap)
+    yMinSensors = 3            # Y-crossing: minimum sensors above threshold
+    yMinSpan    = 4            # Y-crossing: minimum span between leftmost and rightmost active sensor
+    yMidIndices = (3, 4)       # centre sensor indices; if any are inactive while above conditions hold → Y
     low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
     # PID gains (turn rate rad/s; integral in error·s, derivative in error/s)
     lineKp = 0.4  # was 0.8 — reduced to soften proportional jerk
@@ -45,8 +54,8 @@ class SEdge:
     # Output saturation (turn rate rad/s)
     # Keep ≤ speed / (half_track_width) so inner wheel never reverses.
     # At 0.25 m/s, ~0.13 m track: max safe ≈ 1.9 rad/s → use 1.5 for margin.
-    lineYMax = 1.7
-    lineYMin = -1.7
+    lineYMax = 5.0
+    lineYMin = -5.0
     # Low-pass smoothing on the turn-rate output (0 = no filter, 1 = frozen)
     # Absorbs sensor noise between 30 ms livn updates without adding much lag.
     lineOutputAlpha = 0.4   # new = alpha*raw + (1-alpha)*prev; lower = smoother
@@ -381,15 +390,23 @@ class SEdge:
           if self.leftmostAboveIndex is None:
             self.leftmostAboveIndex = i
           self.rightmostAboveIndex = i
-      # Named state: no_line, line (1–2 sensors), crossing (3+ sensors)
+      # Crossing detection: T-pattern (many sensors across) OR Y-pattern (wide footprint with centre gap)
+      T_pattern = self.sensorsAboveCount >= self.crossingMinSensors
+      Y_pattern = False
+      if (self.sensorsAboveCount >= self.yMinSensors
+          and self.leftmostAboveIndex is not None
+          and self.rightmostAboveIndex is not None
+          and (self.rightmostAboveIndex - self.leftmostAboveIndex) >= self.yMinSpan):
+        # Centre gap = any of the middle sensors is below threshold
+        Y_pattern = any(not self.sensorAboveThreshold[i] for i in self.yMidIndices)
+      self.crossingLine = T_pattern or Y_pattern
+      # Named state for status prints / overlays
       if self.sensorsAboveCount == 0:
         self.lineState = "no_line"
-      elif self.sensorsAboveCount >= self.crossingMinSensors:
+      elif self.crossingLine:
         self.lineState = "crossing"
       else:
         self.lineState = "line"
-      # Crossing: 3 or more sensors above threshold (configurable via crossingMinSensors)
-      self.crossingLine = self.sensorsAboveCount >= self.crossingMinSensors
       # is line valid (high above threshold)
       self.lineValid = self.high >= self.lineValidThreshold
       # weighted center of mass (analog): sub-sensor resolution, smooth for PID
@@ -494,7 +511,7 @@ class SEdge:
         elif self.lineIntegral < -self.lineIntegralLimit:
           self.lineIntegral = -self.lineIntegralLimit
 
-      # PID output (u = P + I + D), clamp, then low-pass smooth
+      # PID output (u = P + I + D), clamp, then low-pass smooth.
       pTerm = self.lineKp * e
       iTerm = self.lineKi * self.lineIntegral
       self.u = pTerm + iTerm + self.lineKd * dTerm

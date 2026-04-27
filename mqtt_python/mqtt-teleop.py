@@ -2,15 +2,17 @@
 """
 Keyboard teleop control for Robobot over MQTT.
 
-Hold a key to move; release to stop.
+Default control mode is step/pulse: each keypress sends a fixed movement pulse.
+This is usually more predictable than hold-to-run under heavy CPU load.
 
   w / UP    : forward
   s / DOWN  : backward
   a / LEFT  : turn left (CCW)
   d / RIGHT : turn right (CW)
   SPACE     : stop immediately
-  + / -     : increase / decrease linear speed step
-  ] / [     : increase / decrease turn-rate step
+  + / -     : increase / decrease linear speed
+  ] / [     : increase / decrease turn-rate
+  m         : toggle step <-> hold mode
   q / ESC   : quit
 
 Run with -s to suppress verbose MQTT send prints:
@@ -24,6 +26,7 @@ import termios
 import select
 import time as t
 import cv2 as cv
+import argparse
 from setproctitle import setproctitle
 from uservice import service
 from uteensy import start_teensy_interface, stop_teensy_interface
@@ -42,6 +45,8 @@ TURN_STEP   = 0.35
 KEY_TIMEOUT     = 0.02
 HOLD_WINDOW     = 0.30
 RESEND_INTERVAL = 0.10
+STEP_LINEAR_SEC = 0.35
+STEP_TURN_SEC   = 0.25
 
 
 _stream_frame  = None
@@ -148,14 +153,14 @@ def read_key(fd):
 
 def print_status(linvel, turnrate, lin_speed, turn_speed):
     print(
-        f"\r  vel={linvel:+.2f} m/s  turn={turnrate:+.2f} rad/s"
-        f"  |  step: lin={lin_speed:.2f}  turn={turn_speed:.2f}   ",
+        f"\r  step: lin={lin_speed:.2f}  turn={turn_speed:.2f}"
+        f"  |  command={'MOVE' if (linvel or turnrate) else 'STOP'}   ",
         end="",
         flush=True,
     )
 
 
-def loop():
+def loop(step_mode=True, step_linear_sec=STEP_LINEAR_SEC, step_turn_sec=STEP_TURN_SEC):
     lin_speed = LINEAR_VEL
     turn_speed = TURN_RATE
     linvel = 0.0
@@ -164,6 +169,8 @@ def loop():
     held_turnrate = 0.0
     last_key_time = 0.0
     last_send_time = 0.0
+    pulse_until = 0.0
+    force_send = False
 
     print("=== Robobot Keyboard Teleop ===")
     print("  w/s or UP/DOWN   : forward / backward")
@@ -171,7 +178,12 @@ def loop():
     print("  SPACE            : stop")
     print("  +/-              : linear speed step")
     print("  ]/[              : turn rate step")
+    print("  m                : toggle step/hold mode")
     print("  q or ESC         : quit")
+    print(
+        f"  mode             : {'step' if step_mode else 'hold'}"
+        f" (step lin={step_linear_sec:.2f}s, turn={step_turn_sec:.2f}s)"
+    )
     print()
 
     service.send("robobot/cmd/T0", "leds 16 0 0 30")
@@ -189,18 +201,32 @@ def loop():
             if key in ("w", "arrow_A"):
                 held_linvel, held_turnrate = lin_speed, 0.0
                 last_key_time = now
+                force_send = True
+                if step_mode:
+                    pulse_until = now + step_linear_sec
             elif key in ("s", "arrow_B"):
                 held_linvel, held_turnrate = -lin_speed, 0.0
                 last_key_time = now
+                force_send = True
+                if step_mode:
+                    pulse_until = now + step_linear_sec
             elif key in ("a", "arrow_D"):
                 held_linvel, held_turnrate = 0.0, turn_speed
                 last_key_time = now
+                force_send = True
+                if step_mode:
+                    pulse_until = now + step_turn_sec
             elif key in ("d", "arrow_C"):
                 held_linvel, held_turnrate = 0.0, -turn_speed
                 last_key_time = now
+                force_send = True
+                if step_mode:
+                    pulse_until = now + step_turn_sec
             elif key == " ":
                 held_linvel, held_turnrate = 0.0, 0.0
                 last_key_time = 0.0
+                pulse_until = 0.0
+                force_send = True
             elif key == "+":
                 lin_speed = min(1.0, lin_speed + LINEAR_STEP)
                 update_speed = True
@@ -213,23 +239,37 @@ def loop():
             elif key == "[":
                 turn_speed = max(0.1, turn_speed - TURN_STEP)
                 update_speed = True
+            elif key == "m":
+                step_mode = not step_mode
+                pulse_until = 0.0
+                held_linvel, held_turnrate = 0.0, 0.0
+                last_key_time = 0.0
+                print(
+                    f"\n% Control mode: {'step' if step_mode else 'hold'} "
+                    f"(lin={step_linear_sec:.2f}s turn={step_turn_sec:.2f}s)"
+                )
+                update_speed = True
+                force_send = True
             elif key in ("q", "\x1b"):
                 break
 
-            if (now - last_key_time) < HOLD_WINDOW:
+            if step_mode and now < pulse_until:
+                target_linvel, target_turnrate = held_linvel, held_turnrate
+            elif (not step_mode) and (now - last_key_time) < HOLD_WINDOW:
                 target_linvel, target_turnrate = held_linvel, held_turnrate
             else:
                 target_linvel, target_turnrate = 0.0, 0.0
 
             changed = (target_linvel != linvel or target_turnrate != turnrate)
             due = (now - last_send_time) >= RESEND_INTERVAL
-            if changed or due or update_speed:
+            if changed or due or update_speed or force_send:
                 linvel, turnrate = target_linvel, target_turnrate
                 _teleop_status["linvel"] = linvel
                 _teleop_status["turnrate"] = turnrate
                 service.send("robobot/cmd/ti", f"rc {linvel:.2f} {turnrate:.2f}")
                 last_send_time = now
                 print_status(linvel, turnrate, lin_speed, turn_speed)
+                force_send = False
 
     except KeyboardInterrupt:
         pass
@@ -242,6 +282,41 @@ def loop():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Keyboard teleop over MQTT")
+    parser.add_argument(
+        "--vision",
+        choices=("on", "off"),
+        default="off",
+        help="Enable camera + CV processing thread (default: off).",
+    )
+    parser.add_argument(
+        "--web-stream",
+        choices=("on", "off"),
+        default="off",
+        help="Enable local MJPEG web stream server (default: off).",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("step", "hold"),
+        default="step",
+        help="Control mode: step pulse per keypress or hold mode (default: step).",
+    )
+    parser.add_argument(
+        "--step-linear-sec",
+        type=float,
+        default=STEP_LINEAR_SEC,
+        help="Pulse duration for forward/back in step mode.",
+    )
+    parser.add_argument(
+        "--step-turn-sec",
+        type=float,
+        default=STEP_TURN_SEC,
+        help="Pulse duration for turning in step mode.",
+    )
+    args, unknown = parser.parse_known_args()
+    # Keep downstream parsers (e.g. uservice) from seeing teleop-only flags.
+    sys.argv = [sys.argv[0]] + unknown
+
     if service.process_running("mqtt-client"):
         print("% mqtt-client is already running — terminating")
     else:
@@ -251,9 +326,17 @@ if __name__ == "__main__":
         start_teensy_interface()
         service.setup("localhost")
         if service.connected:
-            start_stream_server(port=5000)
-            threading.Thread(target=_camera_loop, daemon=True).start()
-            loop()
+            if args.web_stream == "on":
+                start_stream_server(port=5000)
+            if args.vision == "on":
+                threading.Thread(target=_camera_loop, daemon=True).start()
+            else:
+                print("% Vision disabled (--vision off).")
+            loop(
+                step_mode=(args.mode == "step"),
+                step_linear_sec=max(0.05, args.step_linear_sec),
+                step_turn_sec=max(0.05, args.step_turn_sec),
+            )
         service.terminate()
         stop_teensy_interface()
     print("% Teleop terminated")
