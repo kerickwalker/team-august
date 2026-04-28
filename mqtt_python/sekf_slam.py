@@ -706,8 +706,8 @@ class SEkfSlam:
                     bearing_meas: float,
                     z_obs:        Optional[float] = None):
         """
-        Full-state Joseph-form EKF update for a range+bearing (2D) or
-        range+bearing+Z (3D) observation.
+        Full-state Joseph-form EKF update for a single range+bearing
+        observation.
 
         lm_idx=None  -> the landmark world position is fixed (known landmark).
                         Only the 3 robot-pose rows/cols of H are non-zero.
@@ -715,39 +715,29 @@ class SEkfSlam:
         z_obs        -> if provided (and lm_idx is not None), performs a 3D
                         update that also refines the landmark's Z state.
         """
-        x, y, yaw = self._x[0], self._x[1], self._x[2]
-        dx = lx - x
-        dy = ly - y
-        r_pred = math.sqrt(dx * dx + dy * dy)
-        if r_pred < 1e-4:
-            return
+        max_iter = 3  # Number of iterations
+        for iteration in range(max_iter):
+            x, y, yaw = self._x[0], self._x[1], self._x[2]
+            dx = lx - x
+            dy = ly - y
+            r_pred = math.sqrt(dx * dx + dy * dy)
+            if r_pred < 1e-4:
+                return
 
         b_pred = _wrap(math.atan2(dy, dx) - yaw)
-        H_pose, H_lm_2d = _meas_jacobians(x, y, yaw, lx, ly, r_pred, dx, dy)
+        innov  = np.array([range_meas - r_pred,
+                           _wrap(bearing_meas - b_pred)])
+
         n = len(self._x)
+        H = np.zeros((2, n))
+        H_pose, H_lm = _meas_jacobians(x, y, yaw, lx, ly, r_pred, dx, dy)
+        H[:, :3] = H_pose
 
-        if z_obs is not None and lm_idx is not None:
-            # 3D update: measurement vector [range, bearing, z]
-            innov = np.array([range_meas - r_pred,
-                              _wrap(bearing_meas - b_pred),
-                              z_obs - lz])
-            H = np.zeros((3, n))
-            H[:2, :3] = H_pose
-            base = 3 + 3 * lm_idx
-            H[:2, base:base + 2] = H_lm_2d[:, :2]   # range+bearing, x/y cols
-            H[2,  base + 2]      = 1.0               # dz/dlz = 1
-            self._x, self._P = _joseph_update(self._x, self._P, innov, H, self.R_3d)
-        else:
-            # 2D update: measurement vector [range, bearing]
-            innov = np.array([range_meas - r_pred,
-                              _wrap(bearing_meas - b_pred)])
-            H = np.zeros((2, n))
-            H[:, :3] = H_pose
-            if lm_idx is not None:
-                base = 3 + 3 * lm_idx
-                H[:, base:base + 2] = H_lm_2d[:, :2]   # only x/y cols
-            self._x, self._P = _joseph_update(self._x, self._P, innov, H, self.R)
+        if lm_idx is not None:
+            base = 3 + 2 * lm_idx
+            H[:, base:base + 2] = H_lm
 
+        self._x, self._P = _joseph_update(self._x, self._P, innov, H, self.R)
         self._x[2] = _wrap(self._x[2])
 
     def _add_landmark(self, wx: float, wy: float, wz: float,
