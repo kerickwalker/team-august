@@ -454,35 +454,37 @@ class SEkfSlam:
                     range_meas:  float,
                     bearing_meas: float):
         """
-        Full-state Joseph-form EKF update for a single range+bearing
-        observation.
+        Iterative full-state Joseph-form EKF update for a single range+bearing
+        observation. Performs multiple iterations for better linearization.
 
         lm_idx=None  → the landmark world position is fixed (known landmark).
                         Only the 3 robot-pose rows/cols of H are non-zero.
         lm_idx=i     → auto-discovered landmark at state index 3+2i.
         """
-        x, y, yaw = self._x[0], self._x[1], self._x[2]
-        dx = lx - x
-        dy = ly - y
-        r_pred = math.sqrt(dx * dx + dy * dy)
-        if r_pred < 1e-4:
-            return
+        max_iter = 3  # Number of iterations
+        for iteration in range(max_iter):
+            x, y, yaw = self._x[0], self._x[1], self._x[2]
+            dx = lx - x
+            dy = ly - y
+            r_pred = math.sqrt(dx * dx + dy * dy)
+            if r_pred < 1e-4:
+                return
 
-        b_pred = _wrap(math.atan2(dy, dx) - yaw)
-        innov  = np.array([range_meas - r_pred,
-                           _wrap(bearing_meas - b_pred)])
+            b_pred = _wrap(math.atan2(dy, dx) - yaw)
+            innov  = np.array([range_meas - r_pred,
+                               _wrap(bearing_meas - b_pred)])
 
-        n = len(self._x)
-        H = np.zeros((2, n))
-        H_pose, H_lm = _meas_jacobians(x, y, yaw, lx, ly, r_pred, dx, dy)
-        H[:, :3] = H_pose
+            n = len(self._x)
+            H = np.zeros((2, n))
+            H_pose, H_lm = _meas_jacobians(x, y, yaw, lx, ly, r_pred, dx, dy)
+            H[:, :3] = H_pose
 
-        if lm_idx is not None:
-            base = 3 + 2 * lm_idx
-            H[:, base:base + 2] = H_lm
+            if lm_idx is not None:
+                base = 3 + 2 * lm_idx
+                H[:, base:base + 2] = H_lm
 
-        self._x, self._P = _joseph_update(self._x, self._P, innov, H, self.R)
-        self._x[2] = _wrap(self._x[2])
+            self._x, self._P = _joseph_update(self._x, self._P, innov, H, self.R)
+            self._x[2] = _wrap(self._x[2])
 
     def _add_landmark(self, wx: float, wy: float,
                       r_obs: float, b_obs: float):

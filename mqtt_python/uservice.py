@@ -284,8 +284,8 @@ class UService:
             print(f"% I am now accepted as master of robot {robot.robotName}")
           self.confirmedMaster = True
         else:
-          self.confirmedNotMaster = True
-          print("% I am not robot master, quitting!")
+          # Allow multiple clients, don't quit
+          pass
         # print(f"% got master {msg} my ID is {str(self.startTime)}")
         pass
       elif subtopic == "kalman/cmd":
