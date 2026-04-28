@@ -51,11 +51,17 @@ class SEdge:
     lineKi = 0.0
     lineKd = 0.1  # was 0.05 — slightly more damping
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
+    # Sample period used by the PID (s). T0/livn is published every ~10 ms
+    # ("sub livn 3"), so the controller assumes a fixed dt to keep Kd and Ki
+    # tuning independent of MQTT arrival jitter / EWMA warm-up. The measured
+    # interval (edge_nInterval) is kept only for diagnostics + drift warning.
+    TS_NOMINAL = 0.010
+    TS_DRIFT_WARN_FRAC = 0.30  # one-shot warn if measured Ts drifts >this fraction from nominal
     # Output saturation (turn rate rad/s)
     # Keep ≤ speed / (half_track_width) so inner wheel never reverses.
     # At 0.25 m/s, ~0.13 m track: max safe ≈ 1.9 rad/s → use 1.5 for margin.
-    lineYMax = 5.0
-    lineYMin = -5.0
+    lineYMax = 3.0
+    lineYMin = -3.0
     # Low-pass smoothing on the turn-rate output (0 = no filter, 1 = frozen)
     # Absorbs sensor noise between 30 ms livn updates without adding much lag.
     lineOutputAlpha = 0.4   # new = alpha*raw + (1-alpha)*prev; lower = smoother
@@ -489,15 +495,28 @@ class SEdge:
       lineCenter = self.lineCenterWeighted
       e = self.refPosition - lineCenter
       # line center to the right -> positive e -> robot too far left -> negative turn corrects
-      Tsec = self.edge_nInterval / 1000.0 if self.edge_nInterval > 0 else 0.01
+      # Fixed sample period: makes Kd and Ki immune to MQTT arrival jitter and the
+      # EWMA warm-up on edge_nInterval. The measured interval is checked once for
+      # gross drift from nominal so a firmware cadence change can't silently rescale D/I.
+      Tsec = self.TS_NOMINAL
+      if (self.edge_nInterval > 0
+          and self.edge_nUpdCnt > 100
+          and not getattr(self, '_ts_warned', False)
+          and abs(self.edge_nInterval / 1000.0 - self.TS_NOMINAL) / self.TS_NOMINAL
+              > self.TS_DRIFT_WARN_FRAC):
+        if not service.is_quiet():
+          print(f"% sedge: measured Ts {self.edge_nInterval:.1f} ms differs "
+                f">{self.TS_DRIFT_WARN_FRAC*100:.0f}% from TS_NOMINAL "
+                f"{self.TS_NOMINAL*1000:.0f} ms — review TS_NOMINAL")
+        self._ts_warned = True
 
       # Reset integral when line lost (avoid windup during search)
       if not self.lineValid:
         self.lineIntegral = 0.0
         self.lineE_prev = e
 
-      # Derivative: (e - e_prev) / dt; zero on first sample or when dt invalid
-      if self.lineE_prev is not None and Tsec > 0:
+      # Derivative: (e - e_prev) / Tsec; zero on first sample after line recovery.
+      if self.lineE_prev is not None:
         dTerm = (e - self.lineE_prev) / Tsec
       else:
         dTerm = 0.0

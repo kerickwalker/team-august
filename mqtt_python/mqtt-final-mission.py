@@ -64,6 +64,20 @@ DEFAULT_RECORD_FPS        = 20.0
 _telemetry = {"state": "init", "crossing": 0}
 _telemetry_lock = threading.Lock()
 
+# When the MissionKeyListener wants the mission to stop (q/ESC) or hand off
+# to teleop (SPACE), it sets this event INSTEAD of touching service.stop.
+# That keeps the MQTT loop + alive heartbeat threads (which exit on
+# service.stop) running, so pose/sensor updates keep flowing into the
+# post-mission turn and the in-process teleop. Anything that previously
+# checked `not service.stop` to decide whether to keep running should now use
+# `not _aborted()` so it also exits on a mission-level abort.
+_mission_abort_evt = threading.Event()
+
+
+def _aborted():
+    """True if a hard service stop OR a mission-level abort has been signalled."""
+    return service.stop or _mission_abort_evt.is_set()
+
 
 def set_telemetry(**kwargs):
     with _telemetry_lock:
@@ -300,15 +314,23 @@ SUBMISSIONS = {
 # PRIMITIVE DRIVE HELPERS
 ################################################################
 
-def driveTurn(deg, direction, turn_rate=0.5):
+def driveTurn(deg, direction, turn_rate=0.5, timeout_s=None):
     pose.tripBreset()
     signed_rate = turn_rate if direction == "left" else -turn_rate
     target_rad  = np.radians(deg)
+    if timeout_s is None:
+        # Keep turns bounded even if heading integration stalls/noises out.
+        nominal_time = target_rad / max(abs(signed_rate), 0.05)
+        timeout_s = max(2.0, nominal_time * 2.0)
     state = 0
     if not service.is_quiet():
         print(f"% driveTurn: {deg:.0f}° {direction} at {turn_rate:.2f} rad/s")
     service.send("robobot/cmd/T0", "leds 16 0 100 0")
-    while not service.stop:
+    while not _aborted():
+        if pose.tripBtimePassed() > timeout_s:
+            if not service.is_quiet():
+                print(f"% driveTurn: timeout after {timeout_s:.2f} s")
+            break
         if state == 0:
             service.send("robobot/cmd/ti", f"rc 0.0 {signed_rate:.2f}")
             state = 1
@@ -334,13 +356,13 @@ def driveTurnForward(deg, direction, linvel, turn_rate=0.5, stop_after=True):
         print(f"% driveTurnForward: {deg:.0f}° {direction}, v={linvel:.2f} m/s, w={turn_rate:.2f} rad/s")
     service.send("robobot/cmd/T0", "leds 16 0 100 0")
     service.send("robobot/cmd/ti", f"rc {linvel:.2f} {signed_rate:.2f}")
-    while not service.stop:
+    while not _aborted():
         if abs(pose.tripBh) >= target_rad:
             break
         t.sleep(0.02)
     if stop_after:
         service.send("robobot/cmd/ti", "rc 0.0 0.0")
-        while not service.stop and (abs(pose.velocity()) > 0.001 or abs(pose.turnrate()) > 0.001):
+        while not _aborted() and (abs(pose.velocity()) > 0.001 or abs(pose.turnrate()) > 0.001):
             t.sleep(0.02)
     service.send("robobot/cmd/T0", "leds 16 0 0 0")
     if not service.is_quiet():
@@ -355,7 +377,7 @@ def driveDistance(dist, speed=0.2):
     if not service.is_quiet():
         print(f"% driveDistance: {dist:.2f} m at {actual_speed:.2f} m/s")
     service.send("robobot/cmd/T0", "leds 16 0 100 0")
-    while not service.stop:
+    while not _aborted():
         if state == 0:
             service.send("robobot/cmd/ti", f"rc {actual_speed:.2f} 0.0")
             state = 1
@@ -386,7 +408,7 @@ def driveRoundabout():
     service.send("robobot/cmd/T0", "leds 16 0 0 30")
     service.send("robobot/cmd/ti", f"rc {ROUNDABOUT_ARC.speed:.3f} {turn_rate:.3f}")
     last_print = t.time()
-    while not service.stop:
+    while not _aborted():
         if abs(pose.tripBh) >= target_rad:
             break
         if not service.is_quiet() and t.time() - last_print >= 0.5:
@@ -394,7 +416,7 @@ def driveRoundabout():
             last_print = t.time()
         t.sleep(0.02)
     service.send("robobot/cmd/ti", "rc 0.0 0.0")
-    while not service.stop and abs(pose.velocity()) > 0.001:
+    while not _aborted() and abs(pose.velocity()) > 0.001:
         t.sleep(0.02)
     service.send("robobot/cmd/T0", "leds 16 0 0 0")
     if not service.is_quiet():
@@ -406,13 +428,13 @@ def driveLineFollow(dist, speed):
     edge.lineControl(velocity=speed, refPosition=0)
     if not service.is_quiet():
         print(f"% driveLineFollow: {dist:.2f} m at {speed:.2f} m/s")
-    while not service.stop:
+    while not _aborted():
         if pose.tripB >= dist:
             break
         t.sleep(0.01)
     edge.lineControl(0)
     service.send("robobot/cmd/ti", "rc 0.0 0.0")
-    while not service.stop and abs(pose.velocity()) > 0.001:
+    while not _aborted() and abs(pose.velocity()) > 0.001:
         t.sleep(0.02)
     if not service.is_quiet():
         print(f"# driveLineFollow: drove {pose.tripB:.3f} m")
@@ -421,14 +443,14 @@ def driveLineFollow(dist, speed):
 def seekLine(speed, timeout_s):
     pose.tripBreset()
     service.send("robobot/cmd/ti", f"rc {speed:.2f} 0.0")
-    while not service.stop:
+    while not _aborted():
         if edge.lineValidCnt > 4:
             break
         if pose.tripBtimePassed() > timeout_s:
             break
         t.sleep(0.01)
     service.send("robobot/cmd/ti", "rc 0.0 0.0")
-    while not service.stop and abs(pose.velocity()) > 0.001:
+    while not _aborted() and abs(pose.velocity()) > 0.001:
         t.sleep(0.02)
     if not service.is_quiet():
         result = "found" if edge.lineValidCnt > 4 else "timeout"
@@ -438,7 +460,7 @@ def seekLine(speed, timeout_s):
 def run_sequence(steps):
     """Execute a list of (action, params) steps in order."""
     for action, params in steps:
-        if service.stop:
+        if _aborted():
             break
         if action == "drive":
             driveDistance(params["dist"], params.get("speed", 0.2))
@@ -511,7 +533,7 @@ class MissionKeyListener:
         return self
 
     def _run(self):
-        while not self._stop_evt.is_set() and not service.stop:
+        while not self._stop_evt.is_set() and not _aborted():
             try:
                 r, _, _ = select.select([sys.stdin], [], [], 0.1)
             except Exception:
@@ -525,13 +547,18 @@ class MissionKeyListener:
             if ch == " ":
                 print("\n% spacebar → stopping mission, switching to teleop")
                 self.switch_to_teleop = True
-                service.stop = True
+                # Use the mission abort event (NOT service.stop) so the MQTT
+                # loop + alive heartbeat threads stay running. Killing them
+                # has previously corrupted pose feedback during the post-
+                # mission turn (delayed/buffered messages caused tripBh to
+                # oscillate, and the robot kept turning at max rate).
+                _mission_abort_evt.set()
                 break
             elif ch in ("q", "\x1b"):
                 label = "ESC" if ch == "\x1b" else "q"
                 print(f"\n% {label} → stopping mission")
                 self.user_quit = True
-                service.stop = True
+                _mission_abort_evt.set()
                 break
             # any other key: ignored
 
@@ -563,6 +590,81 @@ def _load_teleop_module():
     return mod
 
 
+def safeHandoffTurn180(direction="left",
+                       turn_rate=1.0,
+                       hard_time_cap_s=4.5,
+                       overshoot_factor=1.25):
+    """SAFETY-CRITICAL: ~180° in-place turn with hard, mechanical bounds.
+
+    This is intentionally simple and conservative. It exists because relying
+    purely on closed-loop pose feedback has hurt us before: pose updates can
+    lag, buffer, or wrap incorrectly while the wheels keep spinning, leading
+    to runaway rotation. Here we layer multiple independent stop conditions:
+
+      1. abs(pose.tripBh) >= 180°            → normal completion via odometry
+      2. abs(pose.tripBh) >= 180° * overshoot_factor → odometry overshoot guard
+      3. integrated commanded angle >= 180° * overshoot_factor → open-loop guard
+         (works even if pose feedback is broken)
+      4. wall-clock elapsed >= hard_time_cap_s → final watchdog
+      5. _aborted() (Ctrl+C, GPIO stop, etc.) → user/system abort
+
+    Even worst-case (pose feedback completely dead AND robot drives at the
+    full commanded rate), this caps the rotation at roughly
+    `turn_rate * hard_time_cap_s` rad. With defaults that's 0.5 * 4.5 = 2.25 rad
+    (~129°) commanded; if the robot's actual rate is up to ~2× the commanded
+    rate the worst-case real rotation is still bounded (~258°)."""
+    target_rad = np.pi
+    # Overshoot reduction: run fast for most of the rotation, then slow down and
+    # stop slightly before 180° to account for drivetrain lag/inertia.
+    slow_zone_rad = np.radians(140.0)
+    stop_at_rad = np.radians(172.0)
+    slow_turn_rate = 0.35
+    sign = 1.0 if direction == "left" else -1.0
+    pose.tripBreset()
+    initial_pose_cnt = pose.poseCnt
+
+    service.send("robobot/cmd/T0", "leds 16 0 100 0")
+
+    start_t = t.time()
+    last_t = start_t
+    last_dbg = 0.0
+    commanded_angle = 0.0
+    reason = "service_stop"
+
+    while not _aborted():
+        now = t.time()
+        dt = now - last_t
+        last_t = now
+        elapsed = now - start_t
+
+        if elapsed >= hard_time_cap_s:
+            reason = "hard_time_cap"
+            break
+
+        progress = abs(pose.tripBh)
+        if progress >= stop_at_rad:
+            reason = "pose_target_reached"
+            break
+        if progress >= target_rad * overshoot_factor:
+            reason = "pose_overshoot_guard"
+            break
+        if commanded_angle >= target_rad * overshoot_factor:
+            reason = "commanded_overshoot_guard"
+            break
+
+        active_rate = turn_rate if progress < slow_zone_rad else slow_turn_rate
+        service.send("robobot/cmd/ti", f"rc 0.0 {sign * active_rate:.3f}")
+        commanded_angle += active_rate * dt
+
+        t.sleep(0.02)
+
+    # Multiple stop sends for redundancy in case one drops.
+    for _ in range(3):
+        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+        t.sleep(0.02)
+    service.send("robobot/cmd/T0", "leds 16 0 0 0")
+
+
 def run_teleop_in_process():
     """Hand control over to mqtt-teleop.loop() inside this process.
     Reuses the existing service/Teensy/edge so there is no startup wait."""
@@ -577,7 +679,10 @@ def run_teleop_in_process():
     service.send("robobot/cmd/ti", "rc 0.0 0.0")
     service.send("robobot/cmd/T0", "leds 16 0 0 30")  # blue: teleop active
 
-    # Reset stop flag so teleop's own loop can run; teleop sets it again on quit.
+    # Mission abort came via _mission_abort_evt (not service.stop), but clear
+    # both just in case anything else set them. Teleop's own loop checks
+    # service.stop and will set it again on quit.
+    _mission_abort_evt.clear()
     service.stop = False
     print("% teleop active — w/a/s/d to drive, SPACE to halt, q to quit")
     try:
@@ -681,7 +786,7 @@ def driveMission(submission="full"):
     service.send("robobot/cmd/T0", "leds 16 0 100 0")  # green: running
 
     last_state = None
-    while not service.stop:
+    while not _aborted():
 
         if state != last_state:
             set_telemetry(state=str(state))
@@ -841,7 +946,7 @@ def driveMission(submission="full"):
 
         # ── State 30: pure line following (tuning only) ──────────────────────
         # PD runs in sedge from the sensor callback; nothing else is checked.
-        # Loop exits only on service.stop (stop button / Ctrl-C).
+        # Loop exits only on _aborted() (stop button / Ctrl-C / mission abort).
         elif state == 30:
             edge.mission_crossing_count = 0
             # intentionally no crossing reactions, no line-end detection,
@@ -875,7 +980,7 @@ def loop(submission="full"):
     edge.lineControl(0)
 
     state = 103
-    while not service.stop:
+    while not _aborted():
         if state == 103:
             driveMission(submission=submission)
             state = 99
@@ -998,13 +1103,24 @@ if __name__ == "__main__":
                 if recorder is not None:
                     recorder.stop()
 
-            # Hand over to teleop only in test mode AND when the user pressed SPACE.
-            # For line_follow submission, reorient with a 180° turn before teleop.
+            # Hand over to teleop only in test mode AND when the user pressed
+            # SPACE. SPACE only sets _mission_abort_evt — it does NOT touch
+            # service.stop — so the MQTT loop + alive heartbeat threads stay
+            # alive and pose feedback keeps flowing. We just clear the abort
+            # event before performing the post-mission turn.
             if key_listener is not None and key_listener.switch_to_teleop:
-                if submission == "line_follow" and not service.stop:
-                    if not service.is_quiet():
-                        print("% line_follow test handoff → turning 180° before teleop")
-                    driveTurn(180.0, "left")
+                _mission_abort_evt.clear()
+                # Drain any keys typed during the handoff so they don't leak
+                # into teleop and trigger unintended pulses.
+                try:
+                    termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
+                except Exception:
+                    pass
+                print("% test handoff → turning 180° before teleop")
+                safeHandoffTurn180(direction="left",
+                                   turn_rate=1.0,
+                                   hard_time_cap_s=4.5,
+                                   overshoot_factor=1.25)
                 run_teleop_in_process()
         service.terminate()
         stop_teensy_interface()
