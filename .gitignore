@@ -24,7 +24,7 @@ venv/
 *.log
 *.err
 log*.txt
-
+*console.txt
 
 # Ignore all JPEG images
 *.jpg

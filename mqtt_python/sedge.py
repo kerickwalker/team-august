@@ -53,8 +53,8 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.4, lineKi=0.0, lineKd=0.1,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.4),
+        "normal": dict(lineKp=0.6, lineKi=0.0, lineKd=0.1,
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.5),
         "slow":   dict(lineKp=0.4, lineKi=0.0, lineKd=0.1,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.4),
     }
@@ -66,12 +66,14 @@ class SEdge:
     lineTauZ = 0.8
     lineTauP = 0.25
     # --- Follow-line block print (gated by --test/--silent). Print + flog next to each other: ---
-    print_follow_line_block = True  # set True to re-enable; False = no print in hot path (test responsiveness)
-    follow_line_print_every_n = 10  # print one line every Nth livn update when enabled
+    print_follow_line_block = True  # temporary diagnostics: keep enabled to inspect per-sensor livn values
+    follow_line_print_every_n = 5   # temporary diagnostics: denser prints for debugging line loss
     flog_write_every_n = 1         # flog.write() every Nth livn update (appends line/sensor log line to file)
     
     print_follow_line_fields = (
-        'center', 'state', 'aboveCnt', 'crossingCnt', 'leftMost', 'rightMost', 'e', 'y'
+        # temporary diagnostics profile: include raw normalized sensor vector
+        'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
+        'leftMost', 'rightMost', 'center', 'e', 'y'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
