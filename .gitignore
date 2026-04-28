@@ -29,6 +29,9 @@ log*.txt
 # Ignore all JPEG images
 *.jpg
 
+# macOS Finder metadata
+.DS_Store
+
 mqtt_python/CLAUDE.md
 
 # Field visualization scripts (local only)

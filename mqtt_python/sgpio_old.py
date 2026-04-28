@@ -156,7 +156,7 @@ class SGpio:
         return False
 
     def print(self):
-      from uservice import service
+      from util.uservice import service
       print("% GPIO button " + str(self.accTime - service.startTime))
 
     def decode(self, topic, msg):

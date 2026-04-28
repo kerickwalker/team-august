@@ -33,7 +33,7 @@ try:
   GPIO.setup(list, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
   gpioFound = True
   try:
-    from uservice import service
+    from util.uservice import service
     if not service.is_quiet():
       print("% BCM GPIO found OK")
   except Exception:
@@ -47,7 +47,7 @@ class SGpio:
     onPi = False
 
     def setup(self):
-      from uservice import service
+      from util.uservice import service
       if gpioFound:
         # import RPi.GPIO as GPIO
         if not service.is_quiet():
@@ -109,7 +109,7 @@ class SGpio:
 
 
     def terminate(self):
-      from uservice import service
+      from util.uservice import service
       if self.onPi:
         # import RPi.GPIO as GPIO
         GPIO.cleanup()

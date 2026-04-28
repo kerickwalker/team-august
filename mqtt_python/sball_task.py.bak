@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""
+sball_task.py
+-------------
+Collects balls from dispenser, drives to Zone C, drops them.
+
+Navigation strategy (two-phase):
+  Phase 1 — encoder odometry drives to within ~50 cm of Zone C
+  Phase 2 — ArUco markers 14 / 15 give the final alignment & stop
+
+Sequence:
+  0  → lower mechanism (servo down)
+  1  → shake so balls fall into tray
+  2  → encoder drive to Zone C vicinity
+  3  → ArUco fine-align to Zone C (scan if needed)
+  4  → open slider → balls drop
+  5  → reset (close slider, raise mechanism)
+  99 → done
+
+Run from mqtt_python/:
+    python3 sball_task.py [robot-ip]
+"""
+
+import time as t
+import math
+import sys
+from util.uservice import service
+from sensors.spose import pose
+from sensors.scam import cam
+from perception.camera.saruco import aruco_detector
+
+# ---------------------------------------------------------------------------
+# Servo config
+# ---------------------------------------------------------------------------
+SERVO_MECHANISM   = 1      # lowers the ball-holding box
+SERVO_SLIDER      = 3      # opens the slide gate
+
+POS_MECH_DOWN     =  100   # mechanism lowered (from mqtt-client-custom.py)
+POS_MECH_UP       = -840   # mechanism raised  (from mqtt-client-custom.py)
+POS_SLIDER_OPEN   =  900   # gate open  → balls drop (tune with test_servo.py)
+POS_SLIDER_CLOSED =    0   # gate closed
+SERVO_SPEED       =  100   # slow speed (from mqtt-client-custom.py)
+
+# ---------------------------------------------------------------------------
+# Navigation
+# ---------------------------------------------------------------------------
+# Zone C from field_map_2026:
+#   SortingCenter center=(1.8, 1.2), zone_size=0.30  → C = (1.80, 1.35)
+TARGET_X  = 1.80
+TARGET_Y  = 1.35
+
+# Phase 1 — encoder approach (stop this far from target, then switch to ArUco)
+ARUCO_HANDOFF_DIST = 0.50   # m — switch to ArUco phase when this close
+
+KV          = 0.35
+KW          = 1.20
+MAX_V       = 0.25   # m/s
+MAX_W       = 1.00   # rad/s
+GOAL_TOL    = 0.08   # m — encoder phase "close enough"
+NAV_TIMEOUT = 30.0
+
+# Phase 2 — ArUco alignment
+ZONE_C_ARUCO_IDS  = {14, 15}   # Zone C markers
+ARUCO_TARGET_RANGE = 0.25      # m — stop this far from marker face
+ARUCO_RANGE_TOL    = 0.05      # m — ±5 cm acceptable
+ARUCO_BEAR_TOL     = math.radians(5)   # ±5° acceptable
+ARUCO_KV           = 0.20
+ARUCO_KW           = 1.00
+ARUCO_SCAN_W       = 0.40      # rad/s — slow scan when no marker in view
+ARUCO_SCAN_TIMEOUT = 8.0       # s — give up scanning after this long
+
+# Shake
+SHAKE_CYCLES    = 4
+SHAKE_AMPLITUDE = 0.6   # rad/s
+SHAKE_HALF_T    = 0.18  # s per half-cycle
+
+
+# ---------------------------------------------------------------------------
+
+class SBallTask:
+
+    def _servo(self, sid, pos, spd=SERVO_SPEED):
+        service.send("robobot/cmd/T0", f"servo {sid} {pos} {spd}")
+
+    def _drive(self, v, w):
+        service.send("robobot/cmd/ti", f"rc {v:.3f} {w:.3f}")
+
+    def _stop(self):
+        self._drive(0.0, 0.0)
+
+    def _wrap(self, a):
+        return (a + math.pi) % (2 * math.pi) - math.pi
+
+    # ------------------------------------------------------------------
+    def _shake(self):
+        print("% SBallTask:: shaking")
+        for _ in range(SHAKE_CYCLES):
+            self._drive(0,  SHAKE_AMPLITUDE)
+            t.sleep(SHAKE_HALF_T)
+            self._drive(0, -SHAKE_AMPLITUDE)
+            t.sleep(SHAKE_HALF_T)
+        self._stop()
+        t.sleep(0.3)
+
+    # ------------------------------------------------------------------
+    def _encoder_approach(self, tx, ty, stop_dist):
+        """Drive toward (tx, ty) using encoder pose; stop at stop_dist."""
+        print(f"% SBallTask:: encoder approach → ({tx:.2f}, {ty:.2f})")
+        t0 = t.time()
+        while not service.stop:
+            if t.time() - t0 > NAV_TIMEOUT:
+                print("% SBallTask:: encoder approach timeout")
+                break
+
+            dx   = tx - pose.x()
+            dy   = ty - pose.y()
+            dist = math.hypot(dx, dy)
+
+            if dist <= stop_dist:
+                print(f"% SBallTask:: encoder handoff at dist={dist:.2f} m")
+                break
+
+            bearing   = math.atan2(dy, dx)
+            angle_err = self._wrap(bearing - pose.h())
+
+            v = min(KV * dist, MAX_V)
+            w = max(-MAX_W, min(MAX_W, KW * angle_err))
+            if abs(angle_err) > math.radians(30):
+                v *= 0.4
+
+            self._drive(v, w)
+            t.sleep(0.05)
+
+        self._stop()
+        t.sleep(0.3)
+
+    # ------------------------------------------------------------------
+    def _aruco_align(self):
+        """
+        Fine-align to Zone C using ArUco markers 14 or 15.
+        - If no marker in view: scan slowly (rotate) for up to ARUCO_SCAN_TIMEOUT.
+        - Once visible: drive toward it until range ≈ ARUCO_TARGET_RANGE and bearing ≈ 0.
+        Returns True if aligned, False if timed out.
+        """
+        print("% SBallTask:: ArUco align phase")
+        scan_start = None
+
+        while not service.stop:
+            ok, frame, _ = cam.getImage()
+            if not ok:
+                t.sleep(0.03)
+                continue
+
+            detections = aruco_detector.process(frame)
+            zone_c_det = [d for d in detections if d['id'] in ZONE_C_ARUCO_IDS]
+
+            if not zone_c_det:
+                # No Zone C marker visible — scan
+                if scan_start is None:
+                    scan_start = t.time()
+                    print("% SBallTask:: scanning for ArUco 14/15…")
+                elif t.time() - scan_start > ARUCO_SCAN_TIMEOUT:
+                    print("% SBallTask:: ArUco scan timeout — continuing anyway")
+                    self._stop()
+                    return False
+                self._drive(0.0, ARUCO_SCAN_W)
+                t.sleep(0.03)
+                continue
+
+            # Marker found — reset scan timer
+            scan_start = None
+
+            # Pick closest marker
+            det = min(zone_c_det, key=lambda d: d['range'])
+            rng     = det['range']
+            bearing = det['bearing']
+
+            range_err = rng - ARUCO_TARGET_RANGE
+            bear_ok   = abs(bearing)   < ARUCO_BEAR_TOL
+            range_ok  = abs(range_err) < ARUCO_RANGE_TOL
+
+            if bear_ok and range_ok:
+                print(f"% SBallTask:: aligned  id={det['id']} "
+                      f"range={rng:.2f} m  bearing={math.degrees(bearing):+.1f}°")
+                self._stop()
+                return True
+
+            # Steer toward marker and adjust distance
+            v = max(-MAX_V, min(MAX_V, ARUCO_KV * range_err))
+            w = max(-MAX_W, min(MAX_W, ARUCO_KW * bearing))
+            self._drive(v, w)
+            t.sleep(0.03)
+
+        self._stop()
+        return False
+
+    # ------------------------------------------------------------------
+    def run(self):
+        state = 0
+        while not service.stop:
+
+            if state == 0:
+                print("% SBallTask:: [0] lowering mechanism")
+                self._servo(SERVO_MECHANISM, POS_MECH_DOWN)
+                t.sleep(1.5)
+                state = 1
+
+            elif state == 1:
+                print("% SBallTask:: [1] shaking")
+                self._shake()
+                state = 2
+
+            elif state == 2:
+                print("% SBallTask:: [2] encoder approach to Zone C")
+                self._encoder_approach(TARGET_X, TARGET_Y, ARUCO_HANDOFF_DIST)
+                state = 3
+
+            elif state == 3:
+                print("% SBallTask:: [3] ArUco fine-align")
+                self._aruco_align()   # even if it times out we proceed
+                state = 4
+
+            elif state == 4:
+                print("% SBallTask:: [4] opening slider")
+                self._servo(SERVO_SLIDER, POS_SLIDER_OPEN)
+                t.sleep(2.0)
+                state = 5
+
+            elif state == 5:
+                print("% SBallTask:: [5] resetting")
+                self._servo(SERVO_SLIDER,    POS_SLIDER_CLOSED)
+                t.sleep(0.8)
+                self._servo(SERVO_MECHANISM, POS_MECH_UP)
+                t.sleep(1.0)
+                state = 99
+
+            elif state == 99:
+                print("% SBallTask:: done")
+                break
+
+
+ball_task = SBallTask()
+
+if __name__ == "__main__":
+    host = sys.argv[1] if len(sys.argv) > 1 else "10.197.219.117"
+    service.setup(host)
+    if service.connected:
+        ball_task.run()
+    service.terminate()

@@ -113,7 +113,7 @@ class SPathFollow:
             return
         linvel, turnrate = pursuit.compute_command(
             self._x, self._y, self._heading, self._speed)
-        from uservice import service
+        from util.uservice import service
         service.send("robobot/cmd/ti", f"rc {linvel:.3f} {turnrate:.3f}")
 
     def terminate(self):
