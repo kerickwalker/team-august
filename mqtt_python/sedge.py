@@ -31,7 +31,7 @@ from ulog import flog
 class SEdge:
     # ============= TUNING & PRINT OPTIONS (edit these) =============
     # Forward speed when following line (m/s). Mission scripts pass this to lineControl(); change here to tune.
-    defaultLineVelocity = 0.5   # m/s (e.g. 0.15 = slower, 0.25 = faster)
+    defaultLineVelocity = 0.4   # m/s (e.g. 0.15 = slower, 0.25 = faster)
     # Line detection (livn 0–1000 scale)
     lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
     crossingThreshold = 700    # legacy: was used for average-based crossing; crossing now uses crossingMinSensors
@@ -68,25 +68,26 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.15,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.3),
-        "slow":   dict(lineKp=0.25, lineKi=0.0, lineKd=0.2,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.4),
+        "normal": dict(lineKp=0.6, lineKi=0.0, lineKd=0.5,
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.5),
+        "slow":   dict(lineKp=0.3, lineKi=0.0, lineKd=0.2, #0.4, 0.1
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.25),
     }
     # Recovery when line lost (A1/A4: turn toward last line side)
-    recoveryTurnRate = 0.5   # rad/s when turning to find line during recovery
-    recoveryVelocity = 0.2   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
+    recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
+    recoveryVelocity = 0.0   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
     recovery_timeout_s = 5.0 # mission stops after this many seconds without line (recovery runs until then)
     # Legacy lead (unused when using PID; for optional re-enable later)
     lineTauZ = 0.8
     lineTauP = 0.25
     # --- Follow-line block print (gated by --test/--silent). Print + flog next to each other: ---
     print_follow_line_block = True  # set True to re-enable; False = no print in hot path (test responsiveness)
-    follow_line_print_every_n = 10  # print one line every Nth livn update when enabled
+    follow_line_print_every_n = 5   # diagnostics: denser prints for line-loss debugging
     flog_write_every_n = 1         # flog.write() every Nth livn update (appends line/sensor log line to file)
     
     print_follow_line_fields = (
-        'center', 'state', 'aboveCnt', 'crossingCnt', 'leftMost', 'rightMost', 'e', 'y'
+        'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
+        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'y'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
@@ -475,8 +476,9 @@ class SEdge:
         velocity = self.defaultLineVelocity
       self.velocity = velocity
       self.refPosition = refPosition
-      # velocity 0 (or negative) is turning off line control
-      self.lineCtrl = velocity > 0.001
+      # Any non-trivial speed (forward or reverse) enables line control.
+      # 0 keeps the existing "off" behavior used throughout missions.
+      self.lineCtrl = abs(velocity) > 0.001
       if params in self.PARAM_SETS:
         for k, v in self.PARAM_SETS[params].items():
           setattr(self, k, v)
@@ -563,6 +565,11 @@ class SEdge:
       else:
         sent_velocity = self.velocity
         sent_turn = self.lineY
+      # Reverse line-following: the front-mounted sensor leads when going
+      # forward, but trails when going backward — so the same error must
+      # produce the opposite ω to keep the sensor over the line.
+      if sent_velocity < 0.0:
+        sent_turn = -sent_turn
       par = f"rc {sent_velocity:.3f} {sent_turn:.3f} {t.time()}"
       service.send("robobot/cmd/ti", par)
       # test print only when line-following (interval and CLI gated; see print_follow_line_block at top)
