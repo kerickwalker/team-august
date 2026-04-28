@@ -4,24 +4,12 @@
 #*   Copyright (C) 2025 by DTU
 #*   jcan@dtu.dk
 #*
-#*
 #* The MIT License (MIT)  https://mit-license.org/
-#*
-#* Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-#* and associated documentation files (the "Software"), to deal in the Software without restriction,
-#* including without limitation the rights to use, copy, modify, merge, publish, distribute,
-#* sublicense, and/or sell copies of the Software, and to permit persons to whom the Software
-#* is furnished to do so, subject to the following conditions:
-#*
-#* The above copyright notice and this permission notice shall be included in all copies
-#* or substantial portions of the Software.
-#*
-#* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-#* INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-#* PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-#* FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-#* ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#* THE SOFTWARE. */
+#***************************************************************************/
+
+# Golf hole detection using Canny edge detection + ellipse fitting.
+# No colour filtering — robust to lighting changes and white-balance shifts.
+# Tune parameters with calibrate_hole.py.
 
 import cv2 as cv
 import numpy as np
@@ -30,58 +18,47 @@ from datetime import datetime
 
 class SHole:
 
-    # --- CLAHE (local contrast enhancement) ---
-    # Amplifies the subtle brightness difference between the hole and the track
-    # before thresholding. Higher clip_limit = more aggressive enhancement.
-    clahe_clip      = 3.2    # contrast limit per tile (1.0 = off, 2-4 typical)
-    clahe_tile      = 2      # tile grid size (NxN pixels per tile)
-
-    # --- Dark region threshold ---
-    # After CLAHE, pixels below this value are treated as the hole interior.
-    # Tune with calibrate_hole.py — depends on track brightness after CLAHE.
-    dark_threshold  = 63     # 0-255
+    # --- Edge detection parameters ---
+    # Tune with calibrate_hole.py; copy printed values here.
+    blur_size        = 5      # Gaussian blur kernel size (must be odd)
+    canny_lo         = 30     # Canny lower threshold
+    canny_hi         = 80     # Canny upper threshold
 
     # --- Contour size filter ---
-    # Reject blobs that are clearly too small (noise) or too large (shadows,
-    # track edges). Units are pixels^2 of contour area.
-    min_area        = 400    # px²
-    max_area        = 40000  # px²
+    min_area         = 500    # px²
+    max_area         = 40000  # px²
 
     # --- Ellipse shape filter ---
-    # Rejects elongated shapes that can't plausibly be a round hole in perspective.
-    # Ratio of major to minor axis; 1.0 = perfect circle, higher = more elongated.
-    max_aspect_ratio = 3.0
-
-    # --- Circularity filter ---
-    # 4π·area/perimeter² — 1.0 = perfect circle, lower = more irregular.
-    # Drops sharply for jagged/non-convex shapes even if their bounding ellipse
-    # looks reasonable. Raise this to be more strict (0.6–0.8 is a useful range).
-    min_circularity  = 0.28
+    max_aspect_ratio = 4.0    # major/minor axis ratio; allows elongated ellipses from angled view
+    min_circularity  = 0.15   # 4π·area/perimeter² — rejects very non-ellipse-like contours
 
     # --- Ground ROI ---
-    # Only search the bottom fraction of the frame where the ground is visible.
-    roi_fraction    = 0.6    # bottom 60% of the frame
+    roi_fraction     = 0.5    # search only the bottom fraction of the frame
+
+    # --- Detection persistence ---
+    persistence_frames = 5    # keep last known position for this many consecutive misses
 
     # --- Detection results (updated each detect() call) ---
     detected      = False
-    cx            = 0        # pixel x of hole centre (full-frame coordinates)
-    cy            = 0        # pixel y of hole centre (full-frame coordinates)
-    radius        = 0        # average semi-axis length in px (for isClose())
-    axes          = (0, 0)   # (semi-minor, semi-major) in px
-    angle         = 0.0      # ellipse rotation angle in degrees
+    cx            = 0         # pixel x of hole centre (full-frame coordinates)
+    cy            = 0         # pixel y of hole centre (full-frame coordinates)
+    radius        = 0         # average semi-axis length in px
+    axes          = (0, 0)    # (semi-minor, semi-major) in px
+    angle         = 0.0       # ellipse rotation angle in degrees
     detectedTime  = datetime.now()
     detCnt        = 0
 
     # --- Internal ---
     _img_w        = 0
     _img_h        = 0
+    _miss_count   = 0
 
     ##########################################################
 
     def setup(self):
-        print("% SHole:: ready")
-        print(f"%         clahe_clip={self.clahe_clip}  clahe_tile={self.clahe_tile}")
-        print(f"%         dark_threshold={self.dark_threshold}")
+        print("% SHole:: ready (Canny edge pipeline)")
+        print(f"%         blur_size={self.blur_size}  "
+              f"canny_lo={self.canny_lo}  canny_hi={self.canny_hi}")
         print(f"%         min_area={self.min_area}  max_area={self.max_area}")
         print(f"%         max_aspect_ratio={self.max_aspect_ratio}  "
               f"min_circularity={self.min_circularity}  "
@@ -90,41 +67,29 @@ class SHole:
     ##########################################################
 
     def detect(self, img):
-        """Detect a golf hole in a BGR image using CLAHE contrast enhancement,
-        dark-region thresholding, contour detection, and ellipse fitting.
-        The hole appears as a slightly darker oval on the track surface.
-        Updates detected, cx, cy, radius, axes, angle.
+        """Detect a golf hole in a BGR image using Canny edge detection and
+        ellipse fitting. Updates detected, cx, cy, radius, axes, angle.
         Returns True if a hole was found."""
         h, w = img.shape[:2]
         self._img_w = w
         self._img_h = h
 
-        # 1. Restrict to ground ROI — hole is always in the lower part of the frame
+        # 1. Restrict to ground ROI
         roi_y = int(h * (1.0 - self.roi_fraction))
         roi   = img[roi_y:, :]
 
-        # 2. Grayscale + CLAHE to amplify local contrast between hole and track
+        # 2. Edge map: grayscale → blur → Canny → close gaps in ellipse boundary
         gray    = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
-        clahe   = cv.createCLAHE(clipLimit=self.clahe_clip,
-                                  tileGridSize=(self.clahe_tile, self.clahe_tile))
-        enhanced = clahe.apply(gray)
+        blurred = cv.GaussianBlur(gray, (self.blur_size, self.blur_size), 0)
+        edges   = cv.Canny(blurred, self.canny_lo, self.canny_hi)
+        kernel  = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
+        closed  = cv.morphologyEx(edges, cv.MORPH_CLOSE, kernel, iterations=2)
 
-        # 3. Blur to suppress noise before thresholding
-        blurred = cv.GaussianBlur(enhanced, (5, 5), 1)
+        # 3. Find contours of closed edge regions
+        contours, _ = cv.findContours(closed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-        # 4. Isolate dark regions (the hole interior is darker than the track)
-        _, mask = cv.threshold(blurred, self.dark_threshold, 255, cv.THRESH_BINARY_INV)
-
-        # 5. Morphological cleanup — close gaps in the hole rim, remove specks
-        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
-        mask   = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel, iterations=2)
-        mask   = cv.morphologyEx(mask, cv.MORPH_OPEN,  kernel, iterations=1)
-
-        # 6. Find contours of dark blobs
-        contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-
-        # 7. Filter contours by area, circularity, and ellipse shape.
-        #    Score by circularity so the most circle-like blob wins.
+        # 4. Filter by area, circularity, and ellipse shape.
+        #    Score by circularity so the most ellipse-like blob wins.
         best_score   = -1.0
         best_ellipse = None
 
@@ -132,7 +97,7 @@ class SHole:
             area = cv.contourArea(cnt)
             if area < self.min_area or area > self.max_area:
                 continue
-            if len(cnt) < 5:          # fitEllipse requires at least 5 points
+            if len(cnt) < 5:
                 continue
 
             perimeter = cv.arcLength(cnt, closed=True)
@@ -140,7 +105,7 @@ class SHole:
                 continue
             circularity = (4 * np.pi * area) / (perimeter * perimeter)
             if circularity < self.min_circularity:
-                continue            # too irregular — not a round hole
+                continue
 
             ellipse = cv.fitEllipse(cnt)
             (ex, ey), (d1, d2), ang = ellipse
@@ -150,7 +115,7 @@ class SHole:
             if minor_r == 0:
                 continue
             if (major_r / minor_r) > self.max_aspect_ratio:
-                continue            # too elongated — not a round hole
+                continue
 
             if circularity > best_score:
                 best_score   = circularity
@@ -161,15 +126,19 @@ class SHole:
             minor_r = min(d1, d2) / 2.0
             major_r = max(d1, d2) / 2.0
             self.cx           = int(ex)
-            self.cy           = int(ey) + roi_y   # convert back to full-frame coords
+            self.cy           = int(ey) + roi_y
             self.axes         = (int(minor_r), int(major_r))
             self.radius       = int((minor_r + major_r) / 2.0)
             self.angle        = ang
             self.detected     = True
             self.detectedTime = datetime.now()
             self.detCnt      += 1
+            self._miss_count  = 0
         else:
-            self.detected = False
+            self._miss_count += 1
+            if self._miss_count >= self.persistence_frames:
+                self.detected = False
+            # else: keep detected=True with last known cx/cy/radius
 
         return self.detected
 
@@ -194,9 +163,7 @@ class SHole:
 
     def paint(self, img):
         """Draw detection overlay onto img in-place."""
-        grey = (160, 160, 160)
-
-        # Draw the ROI boundary so it's clear what area is being searched
+        grey  = (160, 160, 160)
         roi_y = int(self._img_h * (1.0 - self.roi_fraction))
         cv.line(img, (0, roi_y), (self._img_w, roi_y), (60, 60, 60), 1)
 
@@ -205,20 +172,16 @@ class SHole:
                        cv.FONT_HERSHEY_PLAIN, 1.4, grey, thickness=2)
             return
 
-        # Draw the fitted ellipse
         cv.ellipse(img,
                    (self.cx, self.cy),
-                   self.axes,          # (semi-minor, semi-major)
+                   self.axes,
                    self.angle,
                    0, 360,
                    grey, thickness=2)
-        # Centre dot
         cv.circle(img, (self.cx, self.cy), 3, grey, thickness=-1)
-        # Image centre reference line
         cv.line(img, (self._img_w // 2, 0), (self._img_w // 2, self._img_h),
                 (200, 200, 200), thickness=1)
-        # Status text
-        err = self.steeringError()
+        err   = self.steeringError()
         label = f"Hole: r={self.radius}px  err={err:+.2f}"
         cv.putText(img, label, (self.cx + self.axes[1] + 4, self.cy),
                    cv.FONT_HERSHEY_PLAIN, 1.2, grey, thickness=2)
@@ -229,5 +192,5 @@ class SHole:
         print("% SHole:: terminated")
 
 
-# singleton instance — mirrors pattern used by sball, sgate, svline, etc.
+# singleton instance
 hole = SHole()

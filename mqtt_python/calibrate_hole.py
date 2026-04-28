@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 # Offline calibration utility for shole.py (golf hole detection).
+# Uses Canny edge detection + ellipse fitting — no colour filtering,
+# so results are robust across lighting changes and white-balance shifts.
 #
 # Two modes:
 #   Capture mode  — connect to robot stream, grab a single raw frame, save it,
@@ -13,7 +15,7 @@
 #
 # Windows:
 #   "Source + detection"  — original frame with fitted ellipse drawn on top
-#   "CLAHE + mask"        — contrast-enhanced image and dark-region mask side by side
+#   "Canny edges"         — edge image used for detection
 #   "Controls"            — trackbars
 #
 # Keys:
@@ -27,64 +29,57 @@ import numpy as np
 from datetime import datetime
 
 
-WINDOW_SRC  = "Source + detection  (s=save values  q=quit)"
-WINDOW_MASK = "CLAHE enhanced  |  Dark mask"
-WINDOW_CTRL = "Controls"
+WINDOW_SRC   = "Source + detection  (s=save values  q=quit)"
+WINDOW_EDGES = "Canny edges"
+WINDOW_CTRL  = "Controls"
 
 
 def nothing(_):
     pass
 
 
-def build_controls(clahe_clip_x10, clahe_tile, dark_thresh,
-                   min_area, max_area, max_aspect_x10, min_circ_x100, roi_pct):
+def build_controls(blur, canny_lo, canny_hi, min_area, max_area,
+                   max_aspect_x10, min_circ_x100, roi_pct):
     cv.namedWindow(WINDOW_CTRL, cv.WINDOW_NORMAL)
-    cv.resizeWindow(WINDOW_CTRL, 440, 420)
-    cv.createTrackbar("CLAHE clip (x10)",   WINDOW_CTRL, clahe_clip_x10,  100,  nothing)
-    cv.createTrackbar("CLAHE tile",         WINDOW_CTRL, clahe_tile,      32,   nothing)
-    cv.createTrackbar("Dark threshold",     WINDOW_CTRL, dark_thresh,     255,  nothing)
-    cv.createTrackbar("Min area (px^2)",    WINDOW_CTRL, min_area,        5000, nothing)
-    cv.createTrackbar("Max area (x100px^2)",WINDOW_CTRL, max_area,        1000, nothing)
-    cv.createTrackbar("Max aspect (x10)",   WINDOW_CTRL, max_aspect_x10,  100,  nothing)
-    cv.createTrackbar("Min circular (x100)",WINDOW_CTRL, min_circ_x100,   100,  nothing)
-    cv.createTrackbar("ROI % from bottom",  WINDOW_CTRL, roi_pct,         100,  nothing)
+    cv.resizeWindow(WINDOW_CTRL, 440, 460)
+    cv.createTrackbar("Blur (odd)",          WINDOW_CTRL, blur,           15,   nothing)
+    cv.createTrackbar("Canny low",           WINDOW_CTRL, canny_lo,       300,  nothing)
+    cv.createTrackbar("Canny high",          WINDOW_CTRL, canny_hi,       300,  nothing)
+    cv.createTrackbar("Min area (px^2)",     WINDOW_CTRL, min_area,       5000, nothing)
+    cv.createTrackbar("Max area (x100px^2)", WINDOW_CTRL, max_area,       1000, nothing)
+    cv.createTrackbar("Max aspect (x10)",    WINDOW_CTRL, max_aspect_x10, 100,  nothing)
+    cv.createTrackbar("Min circ (x100)",     WINDOW_CTRL, min_circ_x100,  100,  nothing)
+    cv.createTrackbar("ROI % from bottom",   WINDOW_CTRL, roi_pct,        100,  nothing)
 
 
 def read_controls():
-    clip_x10      = max(cv.getTrackbarPos("CLAHE clip (x10)",     WINDOW_CTRL), 1)
-    tile          = max(cv.getTrackbarPos("CLAHE tile",           WINDOW_CTRL), 2)
-    dark_thresh   = cv.getTrackbarPos("Dark threshold",           WINDOW_CTRL)
-    min_area      = cv.getTrackbarPos("Min area (px^2)",          WINDOW_CTRL)
-    max_area_x100 = max(cv.getTrackbarPos("Max area (x100px^2)",  WINDOW_CTRL), 1)
-    aspect_x10    = max(cv.getTrackbarPos("Max aspect (x10)",     WINDOW_CTRL), 10)
-    circ_x100     = cv.getTrackbarPos("Min circular (x100)",      WINDOW_CTRL)
-    roi_pct       = max(cv.getTrackbarPos("ROI % from bottom",    WINDOW_CTRL), 1)
-    return (clip_x10 / 10.0, tile, dark_thresh,
-            min_area, max_area_x100 * 100,
+    blur_raw      = cv.getTrackbarPos("Blur (odd)",          WINDOW_CTRL)
+    blur          = max(blur_raw | 1, 1)          # force odd, minimum 1
+    canny_lo      = cv.getTrackbarPos("Canny low",           WINDOW_CTRL)
+    canny_hi      = cv.getTrackbarPos("Canny high",          WINDOW_CTRL)
+    min_area      = cv.getTrackbarPos("Min area (px^2)",     WINDOW_CTRL)
+    max_area_x100 = max(cv.getTrackbarPos("Max area (x100px^2)", WINDOW_CTRL), 1)
+    aspect_x10    = max(cv.getTrackbarPos("Max aspect (x10)",    WINDOW_CTRL), 10)
+    circ_x100     = cv.getTrackbarPos("Min circ (x100)",    WINDOW_CTRL)
+    roi_pct       = max(cv.getTrackbarPos("ROI % from bottom", WINDOW_CTRL), 1)
+    return (blur, canny_lo, canny_hi, min_area, max_area_x100 * 100,
             aspect_x10 / 10.0, circ_x100 / 100.0, roi_pct / 100.0)
 
 
-def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
-                    min_area, max_area, max_aspect, min_circularity, roi_fraction):
+def detect_and_draw(img, blur, canny_lo, canny_hi, min_area, max_area,
+                    max_aspect, min_circularity, roi_fraction):
     h, w = img.shape[:2]
     roi_y = int(h * (1.0 - roi_fraction))
     roi   = img[roi_y:, :]
 
-    # CLAHE contrast enhancement
+    # Edge map: grayscale → blur → Canny → close gaps in the ellipse boundary
     gray    = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
-    clahe   = cv.createCLAHE(clipLimit=clahe_clip,
-                               tileGridSize=(clahe_tile, clahe_tile))
-    enhanced = clahe.apply(gray)
-    blurred  = cv.GaussianBlur(enhanced, (5, 5), 1)
-
-    # Dark region mask
-    _, mask = cv.threshold(blurred, dark_thresh, 255, cv.THRESH_BINARY_INV)
+    blurred = cv.GaussianBlur(gray, (blur, blur), 0)
+    edges   = cv.Canny(blurred, canny_lo, canny_hi)
     kernel  = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
-    mask    = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel, iterations=2)
-    mask    = cv.morphologyEx(mask, cv.MORPH_OPEN,  kernel, iterations=1)
+    closed  = cv.morphologyEx(edges, cv.MORPH_CLOSE, kernel, iterations=2)
 
-    # Contour detection + ellipse fitting
-    contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv.findContours(closed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
     overlay      = img.copy()
     best_score   = -1.0
@@ -109,9 +104,9 @@ def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
         major_r = max(d1, d2) / 2.0
         if minor_r == 0 or (major_r / minor_r) > max_aspect:
             continue
-        # Draw all passing candidates in dim grey, labelled with circularity
         center = (int(ex), int(ey) + roi_y)
         axes   = (int(minor_r), int(major_r))
+        # Draw all passing candidates in dim grey
         cv.ellipse(overlay, center, axes, ang, 0, 360, (80, 80, 80), 1)
         cv.putText(overlay, f"{circularity:.2f}", (center[0] + int(major_r) + 2, center[1]),
                    cv.FONT_HERSHEY_PLAIN, 0.9, (80, 80, 80), 1)
@@ -119,7 +114,6 @@ def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
             best_score   = circularity
             best_ellipse = (ellipse, roi_y)
 
-    # Draw ROI boundary
     cv.line(overlay, (0, roi_y), (w, roi_y), (60, 60, 60), 1)
     cv.line(overlay, (w // 2, 0), (w // 2, h), (180, 180, 180), 1)
 
@@ -142,25 +136,21 @@ def detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
         cv.putText(overlay, "No hole detected", (10, 50),
                    cv.FONT_HERSHEY_PLAIN, 1.4, (0, 0, 200), 2)
 
-    # Side-by-side debug view: CLAHE enhanced | mask (pad to full-frame height)
-    pad_top   = roi_y
-    enhanced3 = cv.cvtColor(enhanced, cv.COLOR_GRAY2BGR)
-    mask3     = cv.cvtColor(mask,     cv.COLOR_GRAY2BGR)
-    black_top = np.zeros((pad_top, w, 3), dtype=np.uint8)
-    debug     = np.hstack([
-        np.vstack([black_top, enhanced3]),
-        np.vstack([black_top, mask3]),
-    ])
+    # Pad Canny edges back to full frame height for display
+    pad_top = roi_y
+    edges3  = cv.cvtColor(closed, cv.COLOR_GRAY2BGR)
+    black   = np.zeros((pad_top, w, 3), dtype=np.uint8)
+    debug   = np.vstack([black, edges3])
 
     return overlay, debug
 
 
-def print_values(clahe_clip, clahe_tile, dark_thresh,
-                 min_area, max_area, max_aspect, min_circularity, roi_fraction):
+def print_values(blur, canny_lo, canny_hi, min_area, max_area,
+                 max_aspect, min_circularity, roi_fraction):
     print("\n--- Copy these values into shole.py ---")
-    print(f"    clahe_clip       = {clahe_clip}")
-    print(f"    clahe_tile       = {clahe_tile}")
-    print(f"    dark_threshold   = {dark_thresh}")
+    print(f"    blur_size        = {blur}")
+    print(f"    canny_lo         = {canny_lo}")
+    print(f"    canny_hi         = {canny_hi}")
     print(f"    min_area         = {min_area}")
     print(f"    max_area         = {max_area}")
     print(f"    max_aspect_ratio = {max_aspect}")
@@ -190,47 +180,48 @@ def capture_frame(host):
 
 
 def calibrate(img):
-    max_dim = 900
     h, w = img.shape[:2]
-    if max(h, w) > max_dim:
-        scale = max_dim / max(h, w)
-        img   = cv.resize(img, (int(w * scale), int(h * scale)))
+    print(f"% Image resolution: {w}x{h} (no resize — thresholds match shole.py directly)")
 
-    # Seed trackbars with shole.py defaults
+    # Seed trackbars with reasonable starting defaults
     build_controls(
-        clahe_clip_x10=30,   # 3.0
-        clahe_tile=8,
-        dark_thresh=80,
-        min_area=400,
-        max_area=400,        # 400 * 100 = 40000 px²
-        max_aspect_x10=30,   # 3.0
-        min_circ_x100=55,    # 0.55
-        roi_pct=60,
+        blur=5,
+        canny_lo=30,
+        canny_hi=80,
+        min_area=500,
+        max_area=400,       # 400 * 100 = 40 000 px²
+        max_aspect_x10=40,  # 4.0 — allows fairly elongated ellipses from angled view
+        min_circ_x100=15,   # 0.15 — low default; raise to reject non-ellipse shapes
+        roi_pct=50,
     )
 
-    print("Adjust trackbars until the hole is clearly outlined in the source window.")
-    print("  Step 1 — use CLAHE clip + Dark threshold until the hole shows as a white")
-    print("           blob in the mask panel (right half of the debug window).")
-    print("  Step 2 — use Min/Max area to filter out noise blobs.")
-    print("  Step 3 — use Max aspect to reject elongated false positives.")
+    print("Canny edges window shows what the detector sees.")
+    print("  Step 1 — raise Canny high until the hole boundary appears as a clear arc.")
+    print("  Step 2 — tune Canny low (usually ~1/3 of high) to fill in weak edges.")
+    print("  Step 3 — adjust Blur to smooth noise without erasing the hole edge.")
+    print("  Step 4 — tune Min/Max area to isolate the hole blob size.")
+    print("  Step 5 — raise Max aspect if the ellipse is being rejected as too elongated.")
+    print("  Step 6 — raise Min circ to reject non-ellipse-shaped noise, if needed.")
     print("  s = print values  |  q = quit")
 
     while True:
-        (clahe_clip, clahe_tile, dark_thresh,
-         min_area, max_area, max_aspect, min_circ, roi_frac) = read_controls()
+        (blur, canny_lo, canny_hi,
+         min_area, max_area,
+         max_aspect, min_circ, roi_frac) = read_controls()
 
-        overlay, debug = detect_and_draw(img, clahe_clip, clahe_tile, dark_thresh,
-                                         min_area, max_area, max_aspect, min_circ, roi_frac)
+        overlay, debug = detect_and_draw(img, blur, canny_lo, canny_hi,
+                                         min_area, max_area,
+                                         max_aspect, min_circ, roi_frac)
 
-        cv.imshow(WINDOW_SRC,  overlay)
-        cv.imshow(WINDOW_MASK, debug)
+        cv.imshow(WINDOW_SRC,   overlay)
+        cv.imshow(WINDOW_EDGES, debug)
 
         key = cv.waitKey(30) & 0xFF
         if key == ord('q'):
             break
         if key == ord('s'):
-            print_values(clahe_clip, clahe_tile, dark_thresh,
-                         min_area, max_area, max_aspect, min_circ, roi_frac)
+            print_values(blur, canny_lo, canny_hi, min_area, max_area,
+                         max_aspect, min_circ, roi_frac)
 
     cv.destroyAllWindows()
 

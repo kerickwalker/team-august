@@ -9,9 +9,8 @@
 
 # Ball-to-hole guiding module.
 # Call guide.guide() from the main mission loop after the ball is collected.
-# The arm remains in the closed/down position throughout — the ball is already
-# captured and is guided into the hole by driving over it.
-# Returns True when the hole is reached, False if interrupted (service.stop).
+# Expects arm up and gate closed (as left by scollect.py).
+# Returns True when the ball is deposited, False if interrupted (service.stop).
 
 import time as t
 from uservice import service
@@ -22,19 +21,27 @@ class SGuide:
 
     # --- Servo parameters (must match scollect.py) ---
     servo_id    = 1
-    pos_closed  = 0      # arm down — ball held in cage throughout
+    pos_open    = -900   # arm up — for searching
+    pos_closed  = 400    # arm down — for deposit
     servo_speed = 300
 
+    # --- Gate parameters (must match scollect.py) ---
+    gate_id     = 3
+    gate_open   =  900   # gate open — releases ball into hole
+    gate_closed = -900   # gate closed — retains ball during approach
+
     # --- Drive parameters ---
-    drive_speed     = 0.12   # forward speed during approach (m/s) — slightly
-                             # slower than collection to keep ball in cage
+    drive_speed     = 0.12   # forward speed during approach (m/s)
     turn_gain       = 1.0    # steeringError → turn rate (rad/s)
     align_threshold = 0.15   # max |steeringError| to consider hole centred
-    close_radius    = 60     # hole.isClose() threshold in pixels
+    commit_radius    = 35     # hole radius (px) that triggers centering step
+    center_threshold = 0.05  # max |steeringError| to consider hole centered before deposit run
+    commit_speed     = 0.10  # forward speed during blind deposit run (m/s)
+    commit_duration  = 1.0   # seconds to drive straight before depositing
 
-    # --- Deposit nudge ---
-    nudge_speed    = 0.08    # slow forward speed for final push into hole (m/s)
-    nudge_duration = 0.8     # seconds to drive forward after isClose() triggers
+    # --- Wiggle parameters ---
+    wiggle_rate     = 0.5    # turn rate during wiggle (rad/s)
+    wiggle_duration = 0.5    # seconds per half-swing (~15° at 0.5 rad/s)
 
     # --- Debug ---
     verbose = False           # set True in test scripts for per-tick logging
@@ -44,6 +51,10 @@ class SGuide:
     def _servo(self, position):
         service.send("robobot/cmd/T0",
                      f"servo {self.servo_id} {position} {self.servo_speed}")
+
+    def _gate(self, position):
+        service.send("robobot/cmd/T0",
+                     f"servo {self.gate_id} {position} {self.servo_speed}")
 
     def _drive(self, velocity, turn_rate):
         service.send("robobot/cmd/ti", f"rc {velocity:.3f} {turn_rate:.3f}")
@@ -61,9 +72,8 @@ class SGuide:
         while not service.stop:
 
             if state == 0:
-                # Confirm arm is down with ball captured, then start searching
-                self._servo(self.pos_closed)
-                print("% SGuide:: state 0 — arm down, starting hole search")
+                # Arm is already up and gate closed from scollect — start searching
+                print("% SGuide:: state 0 — starting hole search")
                 state = 1
 
             elif state == 1:
@@ -79,7 +89,7 @@ class SGuide:
                     print(f"% [s1] detected={hole.detected}  "
                           f"r={hole.radius}px  "
                           f"err={hole.steeringError():+.3f}  "
-                          f"close={hole.isClose(self.close_radius)}")
+                          f"commit={hole.detected and hole.radius >= self.commit_radius}")
 
                 if not hole.detected:
                     # No hole in view — rotate slowly to scan
@@ -91,14 +101,13 @@ class SGuide:
                               f"(err={err:+.2f}), advancing to approach")
                         state = 2
                     else:
-                        # Steer toward hole while creeping forward
-                        turn = self.turn_gain * err
+                        turn = -self.turn_gain * err
                         self._drive(self.drive_speed * 0.5, turn)
 
                 t.sleep(0.02)
 
             elif state == 2:
-                # Drive toward hole with continuous steering correction
+                # Drive toward hole with continuous steering correction until commit radius
                 ok, img, _ = cam.getImage()
                 if not ok:
                     t.sleep(0.02)
@@ -110,26 +119,78 @@ class SGuide:
                     print(f"% [s2] detected={hole.detected}  "
                           f"r={hole.radius}px  "
                           f"err={hole.steeringError():+.3f}  "
-                          f"close={hole.isClose(self.close_radius)}")
+                          f"commit={hole.detected and hole.radius >= self.commit_radius}")
 
                 if not hole.detected:
                     # Briefly lost hole — hold course
                     self._drive(self.drive_speed, 0)
-                elif hole.isClose(self.close_radius):
+                elif hole.radius >= self.commit_radius:
                     self._drive(0, 0)
-                    print(f"% SGuide:: state 2 — hole close (r={hole.radius}px), depositing")
+                    print(f"% SGuide:: state 2 — hole at commit radius "
+                          f"(r={hole.radius}px >= {self.commit_radius}px), centering")
                     state = 3
                 else:
-                    turn = self.turn_gain * hole.steeringError()
+                    turn = -self.turn_gain * hole.steeringError()
                     self._drive(self.drive_speed, turn)
 
                 t.sleep(0.02)
 
             elif state == 3:
-                # Nudge forward to push ball fully into hole, then stop
-                print("% SGuide:: state 3 — nudging ball into hole")
-                self._drive(self.nudge_speed, 0)
-                t.sleep(self.nudge_duration)
+                # Rotate in place until hole is centered before the deposit run
+                ok, img, _ = cam.getImage()
+                if not ok:
+                    t.sleep(0.02)
+                    continue
+
+                hole.detect(img)
+
+                if self.verbose:
+                    print(f"% [s3] detected={hole.detected}  "
+                          f"r={hole.radius}px  "
+                          f"err={hole.steeringError():+.3f}")
+
+                if not hole.detected:
+                    # Briefly lost hole — hold still
+                    self._drive(0, 0)
+                else:
+                    err = hole.steeringError()
+                    if abs(err) <= self.center_threshold:
+                        self._drive(0, 0)
+                        print(f"% SGuide:: state 3 — hole centered "
+                              f"(err={err:+.3f}), starting deposit run")
+                        state = 4
+                    else:
+                        self._drive(0, -self.turn_gain * err)
+
+                t.sleep(0.02)
+
+            elif state == 4:
+                # Drive straight toward hole for a fixed duration
+                print(f"% SGuide:: state 4 — driving straight {self.commit_duration}s")
+                self._drive(self.commit_speed, 0)
+                t.sleep(self.commit_duration)
+                self._drive(0, 0)
+                state = 5
+
+            elif state == 5:
+                # Lower arm over hole, then open gate to release ball
+                self._servo(self.pos_closed)
+                print("% SGuide:: state 5 — arm lowered over hole")
+                t.sleep(1.0)
+                self._gate(self.gate_open)
+                print("% SGuide:: state 5 — gate open, ball released")
+                t.sleep(0.5)
+                state = 6
+
+            elif state == 6:
+                # Wiggle left and right to help seat the ball in the hole
+                print("% SGuide:: state 6 — wiggling to seat ball")
+                self._drive(0, -self.wiggle_rate)          # swing left
+                t.sleep(self.wiggle_duration)
+                self._drive(0,  self.wiggle_rate)          # swing right (through centre)
+                t.sleep(2 * self.wiggle_duration)
+                self._drive(0, -self.wiggle_rate)          # return to centre
+                t.sleep(self.wiggle_duration)
                 self._drive(0, 0)
                 print("% SGuide:: ball deposited")
                 return True
