@@ -280,6 +280,30 @@ class SGround:
         P = self._t_cam + D * d_hat
         return True, float(P[0]), float(P[1]), float(P[2])
 
+    def pixel_ray_robot(self, u: float, v: float):
+        """
+        Return the unit viewing ray for pixel (u, v) in robot coordinates.
+
+        Returns (ok, rx, ry, rz), where the ray points away from the camera
+        centre and is normalized to unit length.
+        """
+        if not self.ready:
+            return False, 0.0, 0.0, 0.0
+
+        pt = np.array([[[float(u), float(v)]]], dtype=np.float32)
+        pt_norm = cv2.undistortPoints(pt, self.camera_matrix, self.dist_coeffs)
+        xn = float(pt_norm[0, 0, 0])
+        yn = float(pt_norm[0, 0, 1])
+
+        d_cam = np.array([xn, yn, 1.0])
+        d_rob = self._R_c2r @ d_cam
+        norm = np.linalg.norm(d_rob)
+        if norm < 1e-9:
+            return False, 0.0, 0.0, 0.0
+
+        d_hat = d_rob / norm
+        return True, float(d_hat[0]), float(d_hat[1]), float(d_hat[2])
+
 
     def pixels_to_ground(self, points):
         """

@@ -387,10 +387,16 @@ class _PoseEKF:
         self.x, self.P = _joseph_update(self.x, self.P, z, h, H, self.R_enc_vel)
 
     def update_vision_pose(self, x_v: float, y_v: float, yaw_v: float,
-                           z_v: float = None, pitch_v: float = None):
+                           z_v: float = None, pitch_v: float = None,
+                           r_scale: float = 1.0):
         """
         Update from vision.  x, y, yaw always used; z and pitch when provided.
         """
+        if z_v is not None and not math.isfinite(float(z_v)):
+            z_v = None
+        if pitch_v is not None and not math.isfinite(float(pitch_v)):
+            pitch_v = None
+        r_scale = max(1.0, float(r_scale))
         if z_v is None and pitch_v is None:
             # 3-measurement update
             H = np.zeros((3, self.N))
@@ -399,7 +405,7 @@ class _PoseEKF:
             H[2, self.YAW] = 1.0
             h = np.array([self.x[self.X], self.x[self.Y], self.x[self.YAW]])
             z = np.array([x_v, y_v, _unwrap_near(yaw_v, self.x[self.YAW])])
-            R = self.R_vision[:3, :3]
+            R = self.R_vision[:3, :3] * r_scale
         else:
             # 5-measurement update (full 3-D vision)
             z_v     = float(z_v)     if z_v     is not None else self.x[self.Z]
@@ -414,7 +420,7 @@ class _PoseEKF:
                           self.x[self.Z], self.x[self.PITCH]])
             z = np.array([x_v, y_v, _unwrap_near(yaw_v, self.x[self.YAW]),
                           z_v, _unwrap_near(pitch_v, self.x[self.PITCH])])
-            R = self.R_vision
+            R = self.R_vision * r_scale
         self.x, self.P = _joseph_update(self.x, self.P, z, h, H, R)
         self.x[self.YAW]   = _wrap(self.x[self.YAW])
         self.x[self.PITCH] = _wrap(self.x[self.PITCH])
@@ -689,13 +695,14 @@ class SKalman:
 
     # --------------------------------------------------------------- vision pose
 
-    def set_vision_pose(self, x, y, yaw, pitch=0.0, z=0.0, timestamp=None):
+    def set_vision_pose(self, x, y, yaw, pitch=0.0, z=float('nan'), timestamp=None, r_scale=1.0):
         if timestamp is None:
             timestamp = datetime.now()
         elif isinstance(timestamp, (int, float)):
             timestamp = datetime.fromtimestamp(float(timestamp))
         self._vision      = np.array([float(x), float(y), float(z),
-                                       _wrap(float(yaw)), _wrap(float(pitch))])
+                                       _wrap(float(yaw)), _wrap(float(pitch)),
+                                       max(1.0, float(r_scale))])
         self._vision_time = timestamp
         self._vision_cnt += 1
 
@@ -704,10 +711,14 @@ class SKalman:
         if len(gg) < 5:
             return False
         ts = float(gg[0])
-        if len(gg) >= 6:
+        if len(gg) >= 7:
+            self.set_vision_pose(
+                gg[1], gg[2], gg[4], pitch=gg[5], z=gg[3], timestamp=ts, r_scale=gg[6]
+            )
+        elif len(gg) >= 6:
             self.set_vision_pose(gg[1], gg[2], gg[4], pitch=gg[5], z=gg[3], timestamp=ts)
         else:
-            self.set_vision_pose(gg[1], gg[2], gg[3], pitch=gg[4], timestamp=ts)
+            self.set_vision_pose(gg[1], gg[2], gg[3], pitch=gg[4], z=float('nan'), timestamp=ts)
         return True
 
     # --------------------------------------------------------------- state publish
@@ -773,12 +784,23 @@ class SKalman:
         # Vision can arrive on any path
         if topic == "T0/vision_pose":
             if self._decode_vision_pose(msg) and self.has_estimate():
+                self._last_meas.update({
+                    'vision_pose': {
+                        'x': float(self._vision[0]),
+                        'y': float(self._vision[1]),
+                        'z': float(self._vision[2]),
+                        'yaw': float(self._vision[3]),
+                        'pitch': float(self._vision[4]),
+                        'r_scale': float(self._vision[5]) if len(self._vision) > 5 else 1.0,
+                    }
+                })
                 self.pose.update_vision_pose(
                     float(self._vision[0]),
                     float(self._vision[1]),
                     float(self._vision[3]),
                     z_v=float(self._vision[2]),
                     pitch_v=float(self._vision[4]),
+                    r_scale=float(self._vision[5]) if len(self._vision) > 5 else 1.0,
                 )
             return True
 
