@@ -7,8 +7,8 @@
 #      for every submission — arm stays up; no lowering during the mission.
 #   2. A SUBMISSIONS registry + --submission <name> flag for jumping straight
 #      to a given mission segment without editing the file.
-#   3. --kp / --kd / --ki / --alpha / --beta flags that override both
-#      "normal" and "slow" line-follow PID sets at runtime.
+#   3. --kp / --kd / --ki / --alpha / --beta flags that override the "normal" line-follow PID
+#      gains at runtime, so PID tuning does not require editing sedge.py.
 #
 # Run examples:
 #   python3 mqtt-final-mission.py
@@ -184,20 +184,10 @@ class MissionRecorder:
 # CONFIGURATION
 ################################################################
 
-# ---------- Line-follow behavior rules (PID-related mission policy) ----------
 LINE = SimpleNamespace(
+    speed           = 0.3,
+    approach_speed  = 0.15,
     lost_timeout    = 5.0,
-)
-
-LINE_SPEEDS = SimpleNamespace(
-    normal=float(edge.PARAM_SETS.get("normal", {}).get("lineVelocity", edge.defaultLineVelocity)),
-    slow=float(edge.PARAM_SETS.get("slow", {}).get("lineVelocity", edge.defaultLineVelocity)),
-)
-
-LINE_SEEK = SimpleNamespace(
-    forward_speed = 0.2,
-    max_dist_m    = 1.0,
-    max_time_s    = 15.0,
 )
 
 CROSSINGS = SimpleNamespace(
@@ -215,19 +205,8 @@ CROSSING1 = SimpleNamespace(
     forward_speed = 0.15,
 )
 
-LINE_FOLLOW_RULES = SimpleNamespace(
-    line_detect_valid_cnt     = 4,   # consider line "found" when lineValidCnt > this
-    line_reacquire_valid_cnt  = 4,   # clear lost-line timer when lineValidCnt >= this
-    line_lost_valid_cnt       = 2,   # consider line "lost" when lineValidCnt < this
-    line_lost_stop_confirm_cnt= 3,   # consecutive lost samples before stop-on-loss triggers
-    post_stop_settle_s        = 0.05,
-    hard_turn_deg             = 90.0,
-)
-
-# ---------- Mission-specific geometry/maneuvers ----------
-
 ROUNDABOUT_ENTRY = SimpleNamespace(
-    drive_dist_m = 0.35,
+    drive_dist_m = 0.29,
     drive_speed  = 0.25,
     turn_deg     = 90.0,
     turn_dir     = "right",
@@ -264,108 +243,81 @@ DRIVE_TO_GOAL = SimpleNamespace(
     seek_timeout  = 30.0,
 )
 
-END = SimpleNamespace(
-    initial=SimpleNamespace(
-        pre_turn_nudge_m     = 0.05,
-        pre_turn_nudge_speed = 0.2,
-        first_turn_deg       = 90.0,
-        first_turn_dir       = "left",
-        follow_speed         = 0.15,
-        follow_params        = "slow",
-    ),
-    crossing_maneuver=SimpleNamespace(
-        sensor_threshold  = CROSSINGS.sensor_threshold,   # 2 sensors = crossing
-        leave_delay_s     = CROSSINGS.leave_delay_s,      # 0.5 s debounce
-        turn180_deg       = 180.0,
-        turn180_dir       = "left",
-        follow_dist_m     = 1.3,                          # line-follow distance after 180°
-        follow_speed      = 0.15,
-        follow_params     = "slow",
-        final_turn_deg    = 90.0,                         # right turn after line follow
-        final_turn_dir    = "right",
-        fwd_dist_m        = 1.45,                         # straight drive after right turn
-        fwd_speed         = 0.2,
-        post_fwd_turn_deg = 90.0,                         # left turn before rejoining
-        post_fwd_turn_dir = "left",
-    ),
-    exit=SimpleNamespace(
-        reverse_dist_m = 0.15,
-        turn1_deg      = 90.0,
-        turn1_dir      = "right",
-        fwd_dist_m     = 1.50,
-        turn2_deg      = 90.0,
-        turn2_dir      = "left",
-        drive_speed    = 0.2,
-    ),
-    rejoin=SimpleNamespace(
-        forward_before_seek_m     = 1.00,
-        forward_before_seek_speed = 0.2,
-        seek_speed                = 0.2,
-        seek_timeout_s            = 30.0,
-        pre_turn_nudge_m          = 0.05,
-        pre_turn_nudge_speed      = 0.2,
-        turn_deg                  = 90.0,
-        turn_dir                  = "left",
-        turn_rate                 = 0.3,
-        follow_speed              = 0.15,
-        follow_params             = "slow",
-    ),
-    crossing=SimpleNamespace(
-        sensor_threshold = CROSSINGS.sensor_threshold,
-        leave_delay_s    = CROSSINGS.leave_delay_s,
-        turn_deg         = CROSSING1.turn_deg,
-        turn_dir         = "right",
-        turn_rate        = 0.3,
-        forward_speed    = 0.15,
-        resume_speed     = 0.15,
-        resume_params    = "slow",
-    ),
+END_INITIAL = SimpleNamespace(
+    pre_turn_nudge_m     = 0.05,
+    pre_turn_nudge_speed = 0.2,
+    first_turn_deg       = 90.0,
+    first_turn_dir       = "left",
+    follow_speed         = 0.15,
+    follow_params        = "slow",
+)
+
+END_CROSSING_MANEUVER = SimpleNamespace(
+    sensor_threshold  = CROSSINGS.sensor_threshold,   # 2 sensors = crossing
+    leave_delay_s     = CROSSINGS.leave_delay_s,      # 0.5 s debounce
+    turn180_deg       = 180.0,
+    turn180_dir       = "left",
+    follow_dist_m     = 1.3,                          # line-follow distance after 180°
+    follow_speed      = END_INITIAL.follow_speed,     # 0.2 m/s
+    follow_params     = "slow",
+    final_turn_deg    = 90.0,                         # right turn after line follow
+    final_turn_dir    = "right",
+    fwd_dist_m        = 1.45,                          # straight drive after right turn
+    fwd_speed         = 0.2,
+    post_fwd_turn_deg = 90.0,                         # left turn before rejoining
+    post_fwd_turn_dir = "left",
+)
+
+END_EXIT = SimpleNamespace(
+    reverse_dist_m = 0.15,
+    turn1_deg      = 90.0,
+    turn1_dir      = "right",
+    fwd_dist_m     = 1.50,
+    turn2_deg      = 90.0,
+    turn2_dir      = "left",
+    drive_speed    = 0.2,
+)
+
+END_REJOIN = SimpleNamespace(
+    forward_before_seek_m    = 1.00,
+    forward_before_seek_speed= 0.2,
+    seek_speed               = 0.2,
+    seek_timeout_s           = 30.0,
+    pre_turn_nudge_m         = 0.05,
+    pre_turn_nudge_speed     = 0.2,
+    turn_deg                 = 90.0,
+    turn_dir                 = "left",
+    turn_rate                = 0.3,
+    follow_speed             = 0.15,
+    follow_params            = "slow",
+)
+
+END_CROSSING = SimpleNamespace(
+    sensor_threshold = CROSSINGS.sensor_threshold,
+    leave_delay_s    = CROSSINGS.leave_delay_s,
+    turn_deg         = CROSSING1.turn_deg,
+    turn_dir         = "right",
+    turn_rate        = 0.3,
+    forward_speed    = 0.15,
+    resume_speed     = 0.15,
+    resume_params    = "slow",
 )
 
 # Arm servo — same PWM targets as mqtt_python/test_servo.py / scollect pos_open·pos_closed
 SERVO = SimpleNamespace(
     arm_id = 1,
-    arm_mirror_id = 2,
-    up     = -475, #-900
-    down   = 480, #400
+    up     = -900,
+    down   = 400,
     speed  = 100,
 )
 
 
-def servo_set_arm(position, speed=None):
-    """Set both arm servos with mirrored positions (servo2 = -servo1)."""
-    if speed is None:
-        speed = SERVO.speed
-    service.send("robobot/cmd/T0", f"servo {SERVO.arm_id} {position} {speed}")
-    service.send("robobot/cmd/T0", f"servo {SERVO.arm_mirror_id} {-position} {speed}")
-
-
 def servo_arm_up():
-    """Drive arm servos to raised position; servo2 mirrors servo1."""
-    servo_set_arm(SERVO.up, SERVO.speed)
-
-
-def servo_arm_down():
-    """Drive arm servos to lowered position; servo2 mirrors servo1."""
-    servo_set_arm(SERVO.down, SERVO.speed)
-
-
-def line_detected():
-    return edge.lineValidCnt > LINE_FOLLOW_RULES.line_detect_valid_cnt
-
-
-def line_reacquired():
-    return edge.lineValidCnt >= LINE_FOLLOW_RULES.line_reacquire_valid_cnt
-
-
-def line_lost():
-    return edge.lineValidCnt < LINE_FOLLOW_RULES.line_lost_valid_cnt
-
-
-def speed_for_params(params_name):
-    if params_name == "slow":
-        return LINE_SPEEDS.slow
-    return LINE_SPEEDS.normal
+    """Drive arm servo to raised position; holds torque at SERVO.up."""
+    service.send(
+        "robobot/cmd/T0",
+        f"servo {SERVO.arm_id} {SERVO.up} {SERVO.speed}",
+    )
 
 
 ################################################################
@@ -381,7 +333,7 @@ ROUNDABOUT_SEQUENCE = [
 ]
 
 DRIVE_TO_GOAL_SEQUENCE = [
-    ("follow_line", {"dist": DRIVE_TO_GOAL.follow_dist_m, "speed": LINE_SPEEDS.normal}),
+    ("follow_line", {"dist": DRIVE_TO_GOAL.follow_dist_m, "speed": LINE.speed}),
     ("turn",        {"deg":  DRIVE_TO_GOAL.turn1_deg,     "dir":   "right"}),
     ("drive",     {"dist":  DRIVE_TO_GOAL.fwd2_dist_m,  "speed":   DRIVE_TO_GOAL.drive_speed}),
     ("turn",      {"deg":   DRIVE_TO_GOAL.turn2_deg,    "dir":     "left"}),
@@ -391,51 +343,17 @@ DRIVE_TO_GOAL_SEQUENCE = [
 ]
 
 END_AFTER_LINE_LOST_SEQUENCE = [
-    ("drive", {"dist": -END.exit.reverse_dist_m, "speed": END.exit.drive_speed}),
-    ("turn",  {"deg": END.exit.turn1_deg,        "dir": END.exit.turn1_dir}),
-    ("drive", {"dist": END.exit.fwd_dist_m,      "speed": END.exit.drive_speed}),
-    ("turn",  {"deg": END.exit.turn2_deg,        "dir": END.exit.turn2_dir}),
+    ("drive", {"dist": -END_EXIT.reverse_dist_m, "speed": END_EXIT.drive_speed}),
+    ("turn",  {"deg": END_EXIT.turn1_deg,        "dir": END_EXIT.turn1_dir}),
+    ("drive", {"dist": END_EXIT.fwd_dist_m,      "speed": END_EXIT.drive_speed}),
+    ("turn",  {"deg": END_EXIT.turn2_deg,        "dir": END_EXIT.turn2_dir}),
 ]
 
 END_REJOIN_SEQUENCE = [
-    ("drive",     {"dist": END.rejoin.forward_before_seek_m, "speed": END.rejoin.forward_before_seek_speed}),
-    ("seek_line", {"speed": END.rejoin.seek_speed, "timeout": END.rejoin.seek_timeout_s}),
-    ("drive",     {"dist": END.rejoin.pre_turn_nudge_m, "speed": END.rejoin.pre_turn_nudge_speed}),
-    ("turn",      {"deg": END.rejoin.turn_deg, "dir": END.rejoin.turn_dir, "rate": END.rejoin.turn_rate}),
-]
-
-# Initial end-mode actions right after first line detection in state 1.
-END_INITIAL_SEQUENCE = [
-    ("drive", {"dist": END.initial.pre_turn_nudge_m, "speed": END.initial.pre_turn_nudge_speed}),
-    ("turn",  {"deg": END.initial.first_turn_deg, "dir": END.initial.first_turn_dir}),
-]
-
-# End-mode crossing maneuver executed from state 21 before rejoin.
-END_CROSSING_MANEUVER_SEQUENCE = [
-    ("turn",        {"deg": END.crossing_maneuver.turn180_deg, "dir": END.crossing_maneuver.turn180_dir}),
-    ("follow_line", {"dist": END.crossing_maneuver.follow_dist_m,
-                     "speed": END.crossing_maneuver.follow_speed,
-                     "params": END.crossing_maneuver.follow_params}),
-    ("turn",        {"deg": END.crossing_maneuver.final_turn_deg, "dir": END.crossing_maneuver.final_turn_dir}),
-    ("drive",       {"dist": END.crossing_maneuver.fwd_dist_m, "speed": END.crossing_maneuver.fwd_speed}),
-    ("turn",        {"deg": END.crossing_maneuver.post_fwd_turn_deg, "dir": END.crossing_maneuver.post_fwd_turn_dir}),
-]
-
-# End-mode crossing action used in state 23 before resuming slow follow.
-END_REJOIN_CROSSING_SEQUENCE = [
-    ("turn_forward", {"deg": END.crossing.turn_deg,
-                      "dir": END.crossing.turn_dir,
-                      "speed": END.crossing.forward_speed,
-                      "rate": END.crossing.turn_rate,
-                      "stop_after": False}),
-]
-
-FIRST_CROSSING_SEQUENCE = [
-    ("turn_forward", {"deg": CROSSING1.turn_deg,
-                      "dir": CROSSING1.turn_dir,
-                      "speed": CROSSING1.forward_speed,
-                      "rate": CROSSING1.turn_rate,
-                      "stop_after": False}),
+    ("drive",     {"dist": END_REJOIN.forward_before_seek_m, "speed": END_REJOIN.forward_before_seek_speed}),
+    ("seek_line", {"speed": END_REJOIN.seek_speed, "timeout": END_REJOIN.seek_timeout_s}),
+    ("drive",     {"dist": END_REJOIN.pre_turn_nudge_m, "speed": END_REJOIN.pre_turn_nudge_speed}),
+    ("turn",      {"deg": END_REJOIN.turn_deg, "dir": END_REJOIN.turn_dir, "rate": END_REJOIN.turn_rate}),
 ]
 
 
@@ -451,7 +369,8 @@ FIRST_CROSSING_SEQUENCE = [
 #   first_cross_done  — preset crossing-1 handled flag (default False)
 #   roundabout_done   — preset roundabout-done flag (default False)
 #   line_control      — ("params_set", speed) to engage line PD before the loop;
-#                       speed=None falls back to PARAM_SETS[params_set].lineVelocity.
+#                       speed=None falls back to LINE.speed (or LINE.approach_speed
+#                       when params_set == "slow").
 #   stop_at_roundabout — if True, when the line-end trigger that would normally
 #                       start the roundabout sequence fires, stop the robot
 #                       instead. Useful for verifying exactly when the
@@ -464,18 +383,6 @@ FIRST_CROSSING_SEQUENCE = [
 #   pure_follow_after_seek — if True, state 0/1 runs normally to find the line,
 #                       then jumps to state 30 (pure PID follow) instead of
 #                       entering state 10 mission logic.
-#   arm_position       — "up" (default) or "down"; command arm position once
-#                       at driveMission entry and keep holding that position.
-#   arm_settle_before_start_s — if set, hold robot stationary in state 0 for
-#                       this many seconds before starting line-seek drive.
-#   arm_raise_after_s  — if set, raise arm to SERVO.up after this many seconds
-#                       of line-following time in state 30.
-#   arm_raise_stages   — optional list of (position, hold_s) steps executed
-#                       after arm_raise_after_s in state 30.
-#   stop_on_line_loss  — if True in state 30, stop mission when line is lost
-#                       (instead of letting sedge recovery keep turning).
-#   line_loss_forward_s — if stop_on_line_loss is True, drive straight forward
-#                       this many seconds before final stop.
 #
 # Add or rename entries freely.
 ################################################################
@@ -486,23 +393,7 @@ SUBMISSIONS = {
     # line, then switch to state 30 with no crossings/roundabout/end logic.
     # Runs until stop button or Ctrl-C. Use this for PID tuning.
     "line_follow":     dict(start_state=0,
-                            pure_follow_params="normal",
                             pure_follow_after_seek=True),
-    "slow_line":       dict(start_state=0,
-                            pure_follow_params="slow",
-                            pure_follow_after_seek=True),
-    "seesaw":          dict(start_state=0,
-                            pure_follow_params="slow",
-                            pure_follow_after_seek=True,
-                            arm_position="down",
-                            arm_settle_before_start_s=1.0,
-                            arm_raise_after_s=4.0,
-                            arm_raise_stages=[
-                                (300, 0.5),
-                                (0, 0.5),
-                            ],
-                            stop_on_line_loss=True,
-                            line_loss_forward_s=2.0),
     "after_crossing_1": dict(start_state=10,
                              first_cross_done=True,
                              line_control=("slow", None)),
@@ -685,26 +576,11 @@ def driveLineFollowTime(seconds, speed):
         print(f"# driveLineFollowTime: ran for {pose.tripBtimePassed():.2f} s")
 
 
-def driveForwardTime(seconds, speed):
-    """Drive straight for seconds at speed (m/s), then stop."""
-    pose.tripBreset()
-    service.send("robobot/cmd/ti", f"rc {speed:.2f} 0.0")
-    while not _aborted():
-        if pose.tripBtimePassed() >= seconds:
-            break
-        t.sleep(0.01)
-    service.send("robobot/cmd/ti", "rc 0.0 0.0")
-    while not _aborted() and abs(pose.velocity()) > 0.001:
-        t.sleep(0.02)
-    if not service.is_quiet():
-        print(f"# driveForwardTime: ran for {pose.tripBtimePassed():.2f} s at {speed:.2f} m/s")
-
-
 def seekLine(speed, timeout_s):
     pose.tripBreset()
     service.send("robobot/cmd/ti", f"rc {speed:.2f} 0.0")
     while not _aborted():
-        if line_detected():
+        if edge.lineValidCnt > 4:
             break
         if pose.tripBtimePassed() > timeout_s:
             break
@@ -713,7 +589,7 @@ def seekLine(speed, timeout_s):
     while not _aborted() and abs(pose.velocity()) > 0.001:
         t.sleep(0.02)
     if not service.is_quiet():
-        result = "found" if line_detected() else "timeout"
+        result = "found" if edge.lineValidCnt > 4 else "timeout"
         print(f"% seekLine: {result} after {pose.tripBtimePassed():.1f} s")
 
 
@@ -726,23 +602,14 @@ def run_sequence(steps):
             driveDistance(params["dist"], params.get("speed", 0.2))
         elif action == "turn":
             driveTurn(params["deg"], params["dir"], params.get("rate", 0.5))
-        elif action == "turn_forward":
-            speed = params.get("speed", 0.0)
-            if speed > 0:
-                driveTurnForward(params["deg"], params["dir"],
-                                 speed, params.get("rate", 0.5),
-                                 params.get("stop_after", True))
-            else:
-                driveTurn(params["deg"], params["dir"], params.get("rate", 0.5))
         elif action == "arc":
             driveRoundabout()
         elif action == "seek_line":
             seekLine(params["speed"], params["timeout"])
         elif action == "follow_line":
-            params_name = params.get("params", "normal")
-            driveLineFollow(params["dist"], params.get("speed", speed_for_params(params_name)), params_name)
+            driveLineFollow(params["dist"], params.get("speed", LINE.speed), params.get("params", "normal"))
         elif action == "follow_line_time":
-            driveLineFollowTime(params["seconds"], params.get("speed", LINE_SPEEDS.normal))
+            driveLineFollowTime(params["seconds"], params.get("speed", LINE.speed))
         elif action == "servo":
             num = params.get("num", 1)
             service.send("robobot/cmd/T0", f"servo {num} {params['pos']} 100")
@@ -968,10 +835,11 @@ def run_teleop_in_process():
 ################################################################
 
 def apply_pid_overrides():
-    """Apply optional CLI overrides to both sedge.PARAM_SETS["normal"/"slow"].
+    """Apply optional CLI overrides on top of sedge.PARAM_SETS["normal"].
 
-    No implicit defaults: if no flags are given, sedge.py's PARAM_SETS are the
-    single source of truth. Each flag overrides ONLY the corresponding field.
+    No implicit defaults: if no flags are given, sedge.py's PARAM_SETS["normal"]
+    is the single source of truth. Each flag overrides ONLY the corresponding
+    field, so the rest of the slow/normal sets are untouched.
 
     Called once after argparse but before mission start.
     """
@@ -992,12 +860,11 @@ def apply_pid_overrides():
         overrides["lineDerivativeBeta"] = max(0.0, min(1.0, overrides["lineDerivativeBeta"]))
     if not overrides:
         return
-    for params_name in ("normal", "slow"):
-        edge.PARAM_SETS[params_name].update(overrides)
+    edge.PARAM_SETS["normal"].update(overrides)
     for k, v in overrides.items():
         setattr(edge, k, v)
     if not service.is_quiet():
-        print(f"% controller overrides applied to normal+slow: {overrides}")
+        print(f"% normal controller overrides applied: {overrides}")
 
 
 ################################################################
@@ -1040,19 +907,7 @@ def driveMission(submission="full"):
     stop_at_roundabout  = sub.get("stop_at_roundabout", False)
     end_mode            = sub.get("end_mode", False)
     pure_follow_after_seek = sub.get("pure_follow_after_seek", False)
-    pure_follow_params  = sub.get("pure_follow_params", "normal")
-    arm_settle_before_start_s = sub.get("arm_settle_before_start_s", None)
-    arm_raise_after_s   = sub.get("arm_raise_after_s", None)
-    arm_raise_stages    = sub.get("arm_raise_stages", None)
-    stop_on_line_loss   = bool(sub.get("stop_on_line_loss", False))
-    line_loss_forward_s = float(sub.get("line_loss_forward_s", 0.0))
     line_end_lost_count = 0
-    pure_follow_lost_count = 0
-    pure_follow_stop_pending = False
-    arm_raised_after_delay = False
-    arm_raise_stage_idx = -1
-    arm_raise_stage_deadline = None
-    arm_start_settle_done = False
 
     lost_line_since = None
     goal_line_end_count = 0
@@ -1067,23 +922,15 @@ def driveMission(submission="full"):
               f"crossing_count={crossing_count}, first_cross_done={first_cross_done}, "
               f"roundabout_done={roundabout_done})")
 
-    arm_position = sub.get("arm_position", "up")
-    if arm_position == "down":
-        servo_arm_down()
-        if not service.is_quiet():
-            print(f"% servo arm → down (servo {SERVO.arm_id} {SERVO.down} {SERVO.speed}, "
-                  f"servo {SERVO.arm_mirror_id} {-SERVO.down} {SERVO.speed})")
-    else:
-        servo_arm_up()
-        if not service.is_quiet():
-            print(f"% servo arm → up (servo {SERVO.arm_id} {SERVO.up} {SERVO.speed}, "
-                  f"servo {SERVO.arm_mirror_id} {-SERVO.up} {SERVO.speed})")
+    servo_arm_up()
+    if not service.is_quiet():
+        print(f"% servo arm → up (servo {SERVO.arm_id} {SERVO.up} {SERVO.speed})")
 
     line_ctrl_cfg = sub.get("line_control")
     if line_ctrl_cfg is not None:
         params_name, lc_speed = line_ctrl_cfg
         if lc_speed is None:
-            lc_speed = speed_for_params(params_name)
+            lc_speed = LINE.approach_speed if params_name == "slow" else LINE.speed
         edge.lineControl(velocity=lc_speed, refPosition=0, params=params_name)
 
     service.send("robobot/cmd/T0", "leds 16 0 100 0")  # green: running
@@ -1097,22 +944,16 @@ def driveMission(submission="full"):
 
         # ── State 0: immediate start (no IR gate wait; arm raised once at driveMission entry)
         if state == 0:
-            if arm_settle_before_start_s and not arm_start_settle_done:
-                service.send("robobot/cmd/ti", "rc 0.0 0.0")
-                if not service.is_quiet():
-                    print(f"% state 0: settling with arm position for {arm_settle_before_start_s:.1f}s")
-                t.sleep(float(arm_settle_before_start_s))
-                arm_start_settle_done = True
-            service.send("robobot/cmd/ti", f"rc {LINE_SEEK.forward_speed:.2f} 0.0")  # drive toward line
+            service.send("robobot/cmd/ti", "rc 0.2 0.0")         # drive forward
             service.send("robobot/cmd/T0/", "lognow 3")          # start Teensy log
             state = 1
 
         # ── State 1: drive until line is found ───────────────────────────────
         elif state == 1:
-            if pose.tripB > LINE_SEEK.max_dist_m or pose.tripBtimePassed() > LINE_SEEK.max_time_s:
+            if pose.tripB > 1.0 or pose.tripBtimePassed() > 15:
                 service.send("robobot/cmd/ti", "rc 0.0 0.0")
                 state = 2
-            if line_detected():
+            if edge.lineValidCnt > 4:
                 dist_to_line = pose.tripB
                 pose.tripBreset()
                 if end_mode:
@@ -1121,22 +962,20 @@ def driveMission(submission="full"):
                     if not service.is_quiet():
                         print(f"% line found after {dist_to_line:.2f} m → end: hard right 90°")
                     service.send("robobot/cmd/ti", "rc 0.0 0.0")
-                    t.sleep(LINE_FOLLOW_RULES.post_stop_settle_s)
+                    t.sleep(0.05)
                     # Only this first end-mode right turn gets the nudge.
-                    run_sequence(END_INITIAL_SEQUENCE)
-                    edge.lineControl(velocity=END.initial.follow_speed, refPosition=0, params=END.initial.follow_params)
+                    driveDistance(END_INITIAL.pre_turn_nudge_m, END_INITIAL.pre_turn_nudge_speed)
+                    driveTurn(END_INITIAL.first_turn_deg, END_INITIAL.first_turn_dir)
+                    edge.lineControl(velocity=END_INITIAL.follow_speed, refPosition=0, params=END_INITIAL.follow_params)
                     goal_line_end_count = 0
                     state = 21
                 else:
+                    edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
                     if pure_follow_after_seek:
-                        pure_speed = speed_for_params(pure_follow_params)
-                        edge.lineControl(velocity=pure_speed, refPosition=0, params=pure_follow_params)
                         if not service.is_quiet():
-                            print(f"% line found after {dist_to_line:.2f} m → pure line follow "
-                                  f"(state 30, params={pure_follow_params}, v={pure_speed:.2f})")
+                            print(f"% line found after {dist_to_line:.2f} m → pure line follow (state 30)")
                         state = 30
                     else:
-                        edge.lineControl(velocity=LINE_SPEEDS.normal, refPosition=0, params="normal")
                         if not service.is_quiet():
                             print(f"% line found after {dist_to_line:.2f} m → state 10")
                         state = 10
@@ -1172,9 +1011,16 @@ def driveMission(submission="full"):
                         print(f"% crossing 1 → turn {CROSSING1.turn_dir} {CROSSING1.turn_deg:.0f}°"
                               f" (fwd={CROSSING1.forward_speed:.2f} m/s)")
                     edge.lineControl(0)
-                    run_sequence(FIRST_CROSSING_SEQUENCE)
+                    if CROSSING1.forward_speed > 0:
+                        driveTurnForward(CROSSING1.turn_deg, CROSSING1.turn_dir,
+                                         CROSSING1.forward_speed, CROSSING1.turn_rate,
+                                         stop_after=False)
+                    else:
+                        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                        t.sleep(0.05)
+                        driveTurn(CROSSING1.turn_deg, CROSSING1.turn_dir, CROSSING1.turn_rate)
                     first_cross_done = True
-                    edge.lineControl(velocity=LINE_SPEEDS.slow, refPosition=0, params="slow")
+                    edge.lineControl(velocity=LINE.approach_speed, refPosition=0, params="slow")
 
                 elif crossing_count == CROSSINGS.stop_at - 1:
                     print(f"% crossing {crossing_number}")
@@ -1202,13 +1048,13 @@ def driveMission(submission="full"):
                                 print(f"% crossing {crossing_number} → hard turn {direction} 90°")
                             edge.lineControl(0)
                             service.send("robobot/cmd/ti", "rc 0.0 0.0")
-                            t.sleep(LINE_FOLLOW_RULES.post_stop_settle_s)
-                            driveTurn(LINE_FOLLOW_RULES.hard_turn_deg, direction)
+                            t.sleep(0.05)
+                            driveTurn(90.0, direction)
                             last_hard_turn_time = datetime.now()
-                            edge.lineControl(velocity=LINE_SPEEDS.normal, refPosition=0, params="normal")
+                            edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
 
             if not roundabout_done and state == 10:
-                if line_lost():
+                if edge.lineValidCnt < LINE_END.lost_cnt:
                     line_end_lost_count += 1
                 else:
                     line_end_lost_count = 0
@@ -1227,9 +1073,9 @@ def driveMission(submission="full"):
                         state = 11
 
             elif roundabout_done and state == 10:
-                if line_reacquired():
+                if edge.lineValidCnt >= 4:
                     lost_line_since = None
-                elif line_lost():
+                elif edge.lineValidCnt < 2:
                     if lost_line_since is None:
                         lost_line_since = datetime.now()
                     elapsed = (datetime.now() - lost_line_since).total_seconds()
@@ -1246,7 +1092,7 @@ def driveMission(submission="full"):
             crossing_count  = 1
             roundabout_done = True
             lost_line_since = None
-            edge.lineControl(velocity=LINE_SPEEDS.normal, refPosition=0, params="normal")
+            edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
             if not service.is_quiet():
                 print("% roundabout done → resuming line follow (crossing_count=1)")
             state = 10
@@ -1255,7 +1101,7 @@ def driveMission(submission="full"):
         elif state == 20:
             run_sequence(DRIVE_TO_GOAL_SEQUENCE)
             goal_line_end_count = 0
-            edge.lineControl(velocity=LINE_SPEEDS.normal, refPosition=0, params="normal")
+            edge.lineControl(velocity=LINE.speed, refPosition=0, params="normal")
             if not service.is_quiet():
                 print("% drive-to-goal done → following final line to end")
             state = 21
@@ -1263,14 +1109,14 @@ def driveMission(submission="full"):
         # ── State 21: end_mode: follow until crossing → maneuver; else: follow until line ends ──
         elif state == 21:
             if end_mode:
-                at_crossing = edge.crossingLineCnt >= END.crossing_maneuver.sensor_threshold
+                at_crossing = edge.crossingLineCnt >= END_CROSSING_MANEUVER.sensor_threshold
                 now = datetime.now()
                 if at_crossing:
                     end21_last_time_at_crossing = now
                     end21_was_at_crossing = True
                 elif end21_was_at_crossing and end21_last_time_at_crossing is not None:
                     clear_s = (now - end21_last_time_at_crossing).total_seconds()
-                    if clear_s >= END.crossing_maneuver.leave_delay_s:
+                    if clear_s >= END_CROSSING_MANEUVER.leave_delay_s:
                         end21_was_at_crossing = False
                         end21_last_time_at_crossing = None
                         if not service.is_quiet():
@@ -1279,10 +1125,16 @@ def driveMission(submission="full"):
                         service.send("robobot/cmd/ti", "rc 0.0 0.0")
                         while not _aborted() and abs(pose.velocity()) > 0.001:
                             t.sleep(0.02)
-                        run_sequence(END_CROSSING_MANEUVER_SEQUENCE)
+                        driveTurn(END_CROSSING_MANEUVER.turn180_deg, END_CROSSING_MANEUVER.turn180_dir)
+                        driveLineFollow(END_CROSSING_MANEUVER.follow_dist_m,
+                                        END_CROSSING_MANEUVER.follow_speed,
+                                        params=END_CROSSING_MANEUVER.follow_params)
+                        driveTurn(END_CROSSING_MANEUVER.final_turn_deg, END_CROSSING_MANEUVER.final_turn_dir)
+                        driveDistance(END_CROSSING_MANEUVER.fwd_dist_m, END_CROSSING_MANEUVER.fwd_speed)
+                        driveTurn(END_CROSSING_MANEUVER.post_fwd_turn_deg, END_CROSSING_MANEUVER.post_fwd_turn_dir)
                         state = 22
             else:
-                if line_lost():
+                if edge.lineValidCnt < LINE_END.lost_cnt:
                     goal_line_end_count += 1
                 else:
                     goal_line_end_count = 0
@@ -1301,103 +1153,47 @@ def driveMission(submission="full"):
             end_rejoin_crossing_done = False
             end_rejoin_was_at_crossing = False
             end_rejoin_last_time_at_crossing = None
-            edge.lineControl(velocity=END.rejoin.follow_speed, refPosition=0, params=END.rejoin.follow_params)
+            edge.lineControl(velocity=END_REJOIN.follow_speed, refPosition=0, params=END_REJOIN.follow_params)
             state = 23
 
         # ── State 23: end-mode follow + first crossing right turn ─────────────
         elif state == 23:
             edge.mission_crossing_count = 0 if not end_rejoin_crossing_done else 1
-            at_crossing = edge.crossingLineCnt >= END.crossing.sensor_threshold
+            at_crossing = edge.crossingLineCnt >= END_CROSSING.sensor_threshold
             now = datetime.now()
             if at_crossing:
                 end_rejoin_last_time_at_crossing = now
                 end_rejoin_was_at_crossing = True
             elif end_rejoin_was_at_crossing and end_rejoin_last_time_at_crossing is not None:
                 clear_s = (now - end_rejoin_last_time_at_crossing).total_seconds()
-                if clear_s >= END.crossing.leave_delay_s:
+                if clear_s >= END_CROSSING.leave_delay_s:
                     end_rejoin_was_at_crossing = False
                     end_rejoin_last_time_at_crossing = None
 
             if at_crossing and not end_rejoin_crossing_done:
                 if not service.is_quiet():
-                    print(f"% end mode crossing → turn {END.crossing.turn_dir} "
-                          f"{END.crossing.turn_deg:.0f}° (fwd={END.crossing.forward_speed:.2f} m/s)")
+                    print(f"% end mode crossing → turn {END_CROSSING.turn_dir} "
+                          f"{END_CROSSING.turn_deg:.0f}° (fwd={END_CROSSING.forward_speed:.2f} m/s)")
                 edge.lineControl(0)
-                run_sequence(END_REJOIN_CROSSING_SEQUENCE)
+                if END_CROSSING.forward_speed > 0:
+                    driveTurnForward(END_CROSSING.turn_deg, END_CROSSING.turn_dir,
+                                     END_CROSSING.forward_speed, END_CROSSING.turn_rate,
+                                     stop_after=False)
+                else:
+                    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                    t.sleep(0.05)
+                    driveTurn(END_CROSSING.turn_deg, END_CROSSING.turn_dir, END_CROSSING.turn_rate)
                 end_rejoin_crossing_done = True
-                edge.lineControl(velocity=END.crossing.resume_speed, refPosition=0, params=END.crossing.resume_params)
+                edge.lineControl(velocity=END_CROSSING.resume_speed, refPosition=0, params=END_CROSSING.resume_params)
 
         # ── State 30: pure line following (tuning only) ──────────────────────
         # PD runs in sedge from the sensor callback; nothing else is checked.
         # Loop exits only on _aborted() (stop button / Ctrl-C / mission abort).
         elif state == 30:
             edge.mission_crossing_count = 0
-            # Pure follow mode: optionally run staged arm raise after a delay.
-            if (arm_raise_after_s is not None and not arm_raised_after_delay
-                    and arm_raise_stage_idx < 0
-                    and pose.tripBtimePassed() >= arm_raise_after_s):
-                if arm_raise_stages:
-                    arm_raise_stage_idx = 0
-                    p0, hold0 = arm_raise_stages[0]
-                    servo_set_arm(int(p0))
-                    arm_raise_stage_deadline = t.time() + float(hold0)
-                    if not service.is_quiet():
-                        print(f"% state 30: arm stage 1/{len(arm_raise_stages)} -> {int(p0)} "
-                              f"for {float(hold0):.1f}s after {arm_raise_after_s:.1f}s follow")
-                else:
-                    servo_arm_up()
-                    arm_raised_after_delay = True
-                    if not service.is_quiet():
-                        print(f"% state 30: arm raised after {arm_raise_after_s:.1f}s follow")
-
-            if arm_raise_stage_idx >= 0 and arm_raise_stage_deadline is not None and t.time() >= arm_raise_stage_deadline:
-                nxt = arm_raise_stage_idx + 1
-                if arm_raise_stages and nxt < len(arm_raise_stages):
-                    pos, hold_s = arm_raise_stages[nxt]
-                    servo_set_arm(int(pos))
-                    arm_raise_stage_idx = nxt
-                    arm_raise_stage_deadline = t.time() + float(hold_s)
-                    if not service.is_quiet():
-                        print(f"% state 30: arm stage {nxt+1}/{len(arm_raise_stages)} -> {int(pos)} "
-                              f"for {float(hold_s):.1f}s")
-                else:
-                    arm_raised_after_delay = True
-                    arm_raise_stage_idx = -1
-                    arm_raise_stage_deadline = None
-                    if not service.is_quiet():
-                        print("% state 30: arm staged raise complete")
-
-            # Optional safety for seesaw-like runs: stop on line loss instead of
-            # letting sedge recovery keep turning in place.
-            if stop_on_line_loss:
-                if line_lost():
-                    pure_follow_lost_count += 1
-                else:
-                    pure_follow_lost_count = 0
-                if pure_follow_lost_count >= LINE_FOLLOW_RULES.line_lost_stop_confirm_cnt:
-                    pure_follow_stop_pending = True
-                    pure_follow_lost_count = 0
-                    if not service.is_quiet():
-                        print("% state 30: line lost → stop pending (wait for arm stages)")
-
-            if pure_follow_stop_pending:
-                arm_seq_done = (
-                    arm_raise_after_s is None
-                    or arm_raised_after_delay
-                )
-                if arm_seq_done:
-                    edge.lineControl(0)
-                    if line_loss_forward_s > 0.0:
-                        fwd_speed = speed_for_params(pure_follow_params)
-                        if not service.is_quiet():
-                            print(f"% state 30: line lost → driving forward {line_loss_forward_s:.1f}s "
-                                  f"at {fwd_speed:.2f} m/s before stop")
-                        driveForwardTime(line_loss_forward_s, fwd_speed)
-                    else:
-                        service.send("robobot/cmd/ti", "rc 0.0 0.0")
-                    if not service.is_quiet():
-                        print("% state 30: stopping after arm stages complete")
-                    state = 2
+            # intentionally no crossing reactions, no line-end detection,
+            # no recovery — the only goal is to feel the PD response.
+            pass
 
         else:
             if not service.is_quiet():
@@ -1489,25 +1285,25 @@ if __name__ == "__main__":
         )
         service.parser.add_argument(
             "--kp", type=float, default=None,
-            help="Override line-follow Kp for params='normal' and 'slow' (e.g. 0.4).",
+            help="Override line-follow Kp for params='normal' (e.g. 0.4).",
         )
         service.parser.add_argument(
             "--kd", type=float, default=None,
-            help="Override line-follow Kd for params='normal' and 'slow' (e.g. 0.10).",
+            help="Override line-follow Kd for params='normal' (e.g. 0.10).",
         )
         service.parser.add_argument(
             "--ki", type=float, default=None,
-            help="Override line-follow Ki for params='normal' and 'slow' (default 0).",
+            help="Override line-follow Ki for params='normal' (default 0).",
         )
         service.parser.add_argument(
             "--alpha", type=float, default=None,
             help=("Override turn output filter alpha (0..1). "
-                  "Higher = less smoothing, faster turn response. Applies to normal+slow."),
+                  "Higher = less smoothing, faster turn response."),
         )
         service.parser.add_argument(
             "--beta", type=float, default=None,
             help=("Override D-path EWMA on tracking error (0..1). "
-                  "Smooths e before (e_filt-e_filt_prev)/dt; P and I still use raw e. Applies to normal+slow. "
+                  "Smooths e before (e_filt-e_filt_prev)/dt; P and I still use raw e. "
                   "See mqtt_python/PID_explanation.md."),
         )
         # Note: -t/--test is registered by uservice; in this mission it ALSO

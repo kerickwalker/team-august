@@ -31,7 +31,7 @@ from ulog import flog
 class SEdge:
     # ============= TUNING & PRINT OPTIONS (edit these) =============
     # Forward speed when following line (m/s). Mission scripts pass this to lineControl(); change here to tune.
-    defaultLineVelocity = 0.4   # m/s (e.g. 0.15 = slower, 0.25 = faster)
+    defaultLineVelocity = 0.3   # m/s (e.g. 0.15 = slower, 0.25 = faster)
     # Line detection (livn 0–1000 scale)
     lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
     crossingThreshold = 700    # legacy: was used for average-based crossing; crossing now uses crossingMinSensors
@@ -65,13 +65,21 @@ class SEdge:
     # Low-pass smoothing on the turn-rate output (0 = no filter, 1 = frozen)
     # Absorbs sensor noise between 30 ms livn updates without adding much lag.
     lineOutputAlpha = 0.4   # new = alpha*raw + (1-alpha)*prev; lower = smoother
+    # EWMA on tracking error for the D-term only (does not smooth P or I).
+    # e_filt = beta * e_filt + (1 - beta) * e ; beta in [0, 1]. beta=0 → e_filt = e
+    # each step (classic derivative on raw error). beta>0 low-pass filters e before
+    # differencing, which cuts Kd amplification of single-sample sensor noise; see
+    # mqtt_python/PID_explanation.md and --beta on mission scripts.
+    lineDerivativeBeta = 0.0
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.6, lineKi=0.0, lineKd=0.5,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.5),
-        "slow":   dict(lineKp=0.3, lineKi=0.0, lineKd=0.2, #0.4, 0.1
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.25),
+        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.3,
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.5,
+                       lineDerivativeBeta=0.5, lineVelocity=0.30),
+        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.2, #0.4, 0.1
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.5,
+                       lineDerivativeBeta=0.2, lineVelocity=0.15),
     }
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
@@ -98,7 +106,9 @@ class SEdge:
     #   center = weighted center (-3.5..3.5); cross = crossing detected 
     #   e = error (ref - center)
     #   p, i, d = P, I, D terms (rad/s);
-    #   dTerm = raw (e-e_prev)/dt in error/s; d = Kd*dTerm  
+    #   dTerm = (e_filt - e_filt_prev)/dt in error/s when using lineDerivativeBeta;
+    #           with beta=0, e_filt equals e each sample (same as classic (e-e_prev)/dt).
+    #           d = Kd*dTerm
     #   integral = accumulated error·s before Ki; 
     #   u = PID before clamp; y = turn rate sent in rc
     #   rc = command sent
@@ -155,7 +165,9 @@ class SEdge:
     tauZ2mT = 0.0
     # PID state
     lineIntegral = 0.0
-    lineE_prev = None  # previous error for derivative; None on first sample or after line lost
+    lineE_prev = None  # previous raw error (updated every sample; used for diagnostics consistency)
+    lineE_filt = 0.0   # EWMA of e for D-term when lineDerivativeBeta > 0
+    lineE_filt_prev = None  # previous e_filt for derivative; None resets D spike
     lineE1 = 0.0
     lineY1 = 0.0
     lineY = 0.0  # control output (rad/s), clamped and smoothed
@@ -483,6 +495,7 @@ class SEdge:
         for k, v in self.PARAM_SETS[params].items():
           setattr(self, k, v)
         self.lineIntegral = 0.0  # reset integral to avoid windup carry-over on mode switch
+        self.lineE_filt_prev = None  # cold-start EWMA / avoid bogus D after mode switch
 
     ##########################################################
 
@@ -512,16 +525,28 @@ class SEdge:
                 f"{self.TS_NOMINAL*1000:.0f} ms — review TS_NOMINAL")
         self._ts_warned = True
 
-      # Reset integral when line lost (avoid windup during search)
+      # Reset integral when line lost (avoid windup during search); reset D filter state.
       if not self.lineValid:
         self.lineIntegral = 0.0
         self.lineE_prev = e
+        self.lineE_filt = e
+        self.lineE_filt_prev = None
+      elif self.lineDerivativeBeta > 0.0:
+        # EWMA on e for D only — reduces Kd · noise from raw (e[k]-e[k-1])/dt
+        if self.lineE_filt_prev is None:
+          self.lineE_filt = e
+        else:
+          b = self.lineDerivativeBeta
+          self.lineE_filt = b * self.lineE_filt + (1.0 - b) * e
+      else:
+        self.lineE_filt = e
 
-      # Derivative: (e - e_prev) / Tsec; zero on first sample after line recovery.
-      if self.lineE_prev is not None:
-        dTerm = (e - self.lineE_prev) / Tsec
+      # Derivative: (e_filt - e_filt_prev) / Tsec; zero when e_filt_prev is None.
+      if self.lineE_filt_prev is not None:
+        dTerm = (self.lineE_filt - self.lineE_filt_prev) / Tsec
       else:
         dTerm = 0.0
+      self.lineE_filt_prev = self.lineE_filt
       self.lineE_prev = e
 
       # Integral: accumulate with clamp (anti-windup)

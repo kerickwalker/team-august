@@ -52,3 +52,43 @@ Shutdown at 1777250346.767 (2026-04-27 02:39:06.767)
 Shutdown at 1777250347.264 (2026-04-27 02:39:07.264)
 # URobot:: received this 'hbt' with power-off bit set: hbt 12632.7324 112 1033 10.19 4 8 100.0 0.45 1324
 Shutdown at 1777250347.768 (2026-04-27 02:39:07.768)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4948.1230 112 1033 10.09 4 8 48.5 1.57 154
+Shutdown at 1777441157.365 (2026-04-29 07:39:17.365)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4948.6230 112 1033 10.12 4 8 4.8 1.64 146
+Shutdown at 1777441157.971 (2026-04-29 07:39:17.971)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4949.1230 112 1033 10.12 4 8 9.6 2.46 130
+Shutdown at 1777441158.364 (2026-04-29 07:39:18.364)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4949.6226 112 1033 10.07 4 8 9.1 1.75 352
+Shutdown at 1777441158.863 (2026-04-29 07:39:18.863)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4950.1230 112 1033 10.08 4 8 4.8 2.13 550
+Shutdown at 1777441159.363 (2026-04-29 07:39:19.363)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4950.6230 112 1033 10.05 4 8 9.0 1.70 769
+Shutdown at 1777441159.863 (2026-04-29 07:39:19.863)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4951.1230 112 1033 10.13 4 8 9.1 1.42 990
+Shutdown at 1777441160.364 (2026-04-29 07:39:20.364)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4951.6230 112 1033 9.91 4 8 9.0 3.20 1209
+Shutdown at 1777441160.865 (2026-04-29 07:39:20.865)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4993.4849 112 1033 10.15 4 8 9.0 0.87 161
+Shutdown at 1777441202.726 (2026-04-29 07:40:02.726)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4993.9849 112 1033 10.17 4 8 390.0 0.85 382
+Shutdown at 1777441203.228 (2026-04-29 07:40:03.228)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4994.4854 112 1033 10.15 4 8 9.6 0.74 632
+Shutdown at 1777441203.727 (2026-04-29 07:40:03.727)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4994.9868 112 1033 10.15 4 8 99.4 0.88 854
+Shutdown at 1777441204.237 (2026-04-29 07:40:04.237)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4995.4873 112 1033 10.12 4 8 9.5 0.84 1104
+Shutdown at 1777441204.728 (2026-04-29 07:40:04.728)
+# URobot:: received this 'hbt' with power-off bit set: hbt 4995.9888 112 1033 10.18 4 8 100.0 0.48 1326
+Shutdown at 1777441205.231 (2026-04-29 07:40:05.231)
+# URobot:: received this 'hbt' with power-off bit set: hbt 5038.5010 112 1033 10.16 4 8 9.2 0.43 4991
+Shutdown at 1777441247.742 (2026-04-29 07:40:47.742)
+# URobot:: received this 'hbt' with power-off bit set: hbt 5039.0474 112 1033 10.17 4 8 100.0 0.42 5235
+Shutdown at 1777441248.291 (2026-04-29 07:40:48.291)
+# URobot:: received this 'hbt' with power-off bit set: hbt 5039.5469 112 1033 10.16 4 8 8.9 0.41 5485
+Shutdown at 1777441248.788 (2026-04-29 07:40:48.788)
+# URobot:: received this 'hbt' with power-off bit set: hbt 5040.0493 112 1033 10.17 4 8 99.4 0.42 5707
+Shutdown at 1777441249.293 (2026-04-29 07:40:49.293)
+# URobot:: received this 'hbt' with power-off bit set: hbt 5040.5488 112 1033 10.17 4 8 9.4 0.42 5957
+Shutdown at 1777441249.790 (2026-04-29 07:40:49.790)
+# URobot:: received this 'hbt' with power-off bit set: hbt 5041.0493 112 1033 10.16 4 8 99.4 0.42 6178
+Shutdown at 1777441250.292 (2026-04-29 07:40:50.292)
