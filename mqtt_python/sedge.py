@@ -90,6 +90,9 @@ class SEdge:
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
     recoveryVelocity = 0.0   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
+    recoveryStraightCenter = 0.8      # if last valid center was this close, assume straight-line dropout
+    recoveryStraightTime = 0.35       # seconds to creep straight before falling back to turn recovery
+    recoveryStraightVelocity = 0.08   # m/s during straight-line dropout recovery
     recovery_timeout_s = 5.0 # mission stops after this many seconds without line (recovery runs until then)
     # Legacy lead (unused when using PID; for optional re-enable later)
     lineTauZ = 0.8
@@ -101,12 +104,13 @@ class SEdge:
     
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
-        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'i', 'd', 'u', 'y', 'rc'
+        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'i', 'd', 'u',
+        'y', 'recStraight', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
     #   livn, avg, high, valid, validCnt, center, state, aboveCnt,
-    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, rc, lastLineSide
+    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, recStraight, rc, lastLineSide
     #   e = error (ref - center); u = p+i+d; y = clamped turn rate.
     # ============= end tuning & print options =============
 
@@ -164,6 +168,9 @@ class SEdge:
     lineY1 = 0.0
     lineY = 0.0  # control output (rad/s), clamped and smoothed
     lineLastControlTime = 0.0
+    lineLostStartTime = 0.0
+    lastValidLineCenter = 0.0
+    recoveryStraightActive = False
     lineDerivativeGuardActive = False
     lineMinTurnActive = False
     lineTurnSlewActive = False
@@ -493,6 +500,8 @@ class SEdge:
         self.lineY1 = 0.0
         self.lineIntegral = 0.0
         self.lineE_prev = None
+        self.lineLostStartTime = 0.0
+        self.recoveryStraightActive = False
       self.lineLastControlTime = 0.0
       if params in self.PARAM_SETS:
         for k, v in self.PARAM_SETS[params].items():
@@ -550,6 +559,9 @@ class SEdge:
 
       if self.lineValid:
         self.lineE_prev = e
+        self.lineLostStartTime = 0.0
+        self.lastValidLineCenter = lineCenter
+        self.recoveryStraightActive = False
         if e > 0:
           self.lastLineSide = 1
         elif e < 0:
@@ -558,8 +570,20 @@ class SEdge:
         self.lineE_prev = None
 
       if not self.lineValid:
-        sent_velocity = self.recoveryVelocity
-        sent_turn = self.recoveryTurnRate * (self.lastLineSide if self.lastLineSide != 0 else 1)
+        if self.lineLostStartTime <= 0.0:
+          self.lineLostStartTime = now
+        lost_time = now - self.lineLostStartTime
+        straight_drop = (abs(self.lastValidLineCenter) <= self.recoveryStraightCenter
+                         and lost_time <= self.recoveryStraightTime)
+        if straight_drop:
+          speed_sign = 1.0 if self.velocity >= 0.0 else -1.0
+          sent_velocity = speed_sign * min(abs(self.velocity), self.recoveryStraightVelocity)
+          sent_turn = 0.0
+          self.recoveryStraightActive = True
+        else:
+          sent_velocity = self.recoveryVelocity
+          sent_turn = self.recoveryTurnRate * (self.lastLineSide if self.lastLineSide != 0 else 1)
+          self.recoveryStraightActive = False
         if sent_turn > self.lineYMax:
           sent_turn = self.lineYMax
         elif sent_turn < self.lineYMin:
@@ -598,7 +622,7 @@ class SEdge:
           parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
         if 'center' in enabled:
           parts.append(f"center={lineCenter:5.2f}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'rc', 'lastLineSide')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'recStraight', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
           parts.append(f"e={e:6.3f}")
@@ -612,6 +636,8 @@ class SEdge:
           parts.append(f"u={self.u:6.3f}")
         if 'y' in enabled:
           parts.append(f"y={self.lineY:6.3f}")
+        if 'recStraight' in enabled:
+          parts.append(f"recStraight={str(self.recoveryStraightActive):5}")
         if 'rc' in enabled:
           parts.append(f"-> rc {sent_velocity:.3f} {sent_turn:.3f}")
         if 'lastLineSide' in enabled:
