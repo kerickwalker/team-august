@@ -102,11 +102,12 @@ class SEdge:
     
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
-        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'd', 'u', 'y', 'rc'
+        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'd', 'u',
+        'minTurn', 'y', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
-    #   livn, avg, high, valid, validCnt, posL, posR, center, cross, state, aboveCnt, crossingCnt, leftMost, rightMost, e, p, i, d, dTerm, integral, u, y, rc, lastLineSide
+    #   livn, avg, high, valid, validCnt, posL, posR, center, cross, state, aboveCnt, crossingCnt, leftMost, rightMost, e, p, i, d, dTerm, integral, u, minTurn, y, rc, lastLineSide
     #   livn = normalized sensor values [8]; avg = 8-sensor avg 
     #   high = peak; valid = line valid; validCnt = 0..20
     #   posL, posR = line position -3.5..3.5 left/right edge (sensors 1..8); controller uses center for error
@@ -117,7 +118,7 @@ class SEdge:
     #           with beta=0, e_filt equals e each sample (same as classic (e-e_prev)/dt).
     #           unclamped d = Kd*dTerm
     #   integral = accumulated error·s before Ki; 
-    #   u = PID before clamp; y = turn rate sent in rc
+    #   u = PID before clamp; minTurn = True when the far-off-center minimum turn rescue overrides y; y = turn rate sent in rc
     #   rc = command sent
     #   lastLineSide = -1/0/+1 (line was left/unknown/right when last valid); recovery turns this way
     #   state = lineState ("no_line"|"line"|"crossing"); aboveCnt = sensorsAboveCount (0..8)
@@ -178,6 +179,7 @@ class SEdge:
     lineE1 = 0.0
     lineY1 = 0.0
     lineY = 0.0  # control output (rad/s), clamped and smoothed
+    lineMinTurnActive = False
     # memory for recovery (A4: remember last side)
     lastLineSide = 0   # -1 = line was left, +1 = line was right, 0 = unknown; recovery turns this way
     # management
@@ -584,12 +586,14 @@ class SEdge:
       self.lineY = self.lineOutputAlpha * raw_y + (1.0 - self.lineOutputAlpha) * self.lineY1
       # If the line is still visible but far from the center, do not allow a
       # derivative spike or output smoothing to nearly cancel the steering command.
+      self.lineMinTurnActive = False
       min_turn_error = abs(getattr(self, 'lineMinTurnError', 0.0))
       min_turn_rate = abs(getattr(self, 'lineMinTurnRate', 0.0))
       if self.lineValid and min_turn_error > 0.0 and min_turn_rate > 0.0 and abs(e) >= min_turn_error:
         error_sign = 1.0 if e > 0.0 else -1.0 if e < 0.0 else 0.0
         if error_sign != 0.0 and abs(self.lineY) < min_turn_rate:
           self.lineY = error_sign * min_turn_rate
+          self.lineMinTurnActive = True
       self.lineE1 = self.u
       self.lineY1 = self.lineY
       # remember for recovery: which side the line was on when last valid
@@ -652,7 +656,7 @@ class SEdge:
           parts.append(f"leftMost={self.leftmostAboveIndex if self.leftmostAboveIndex is not None else '-'}")
         if 'rightMost' in enabled:
           parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'y', 'rc', 'lastLineSide')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'minTurn', 'y', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
           parts.append(f"e={e:6.3f}")
@@ -668,6 +672,8 @@ class SEdge:
           parts.append(f"integral={self.lineIntegral:6.3f}")
         if 'u' in enabled:
           parts.append(f"u={self.u:6.3f}")
+        if 'minTurn' in enabled:
+          parts.append(f"minTurn={str(self.lineMinTurnActive):5}")
         if 'y' in enabled:
           parts.append(f"y={self.lineY:6.3f}")
         if 'rc' in enabled:
