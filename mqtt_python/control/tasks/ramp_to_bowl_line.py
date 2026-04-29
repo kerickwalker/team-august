@@ -1,105 +1,74 @@
-#!/usr/bin/env python3
-"""Ramp-exit → forward → left → find-line → left sequence.
-
-Robot starts where the short ramp lets out. Plan:
-    1. forward F1 metres (off the ramp area)
-    2. yaw left  Y1 rad   (face roughly toward the line)
-    3. creep forward, watching the floor IR line sensor;
-       stop as soon as the white line is detected
-    4. yaw left  Y2 rad   (align onto the line)
-
-All motion uses raw paho MQTT — no uservice/srobot heartbeat dependency.
-Line sensor source:
-    topic robobot/drive/T0/livn  -> "<ts> s1 s2 ... s8"  (0..1000 normalized).
-    line "valid" when peak sensor >= LINE_VALID_THRESHOLD.
-
-Each phase asks for confirmation so you can tune step-by-step.
-
-Run from mqtt_python/:
-    python3 -m control.tasks.ramp_to_bowl_line [robot-ip] [--from N]
-    python3 -m control.tasks.ramp_to_bowl_line 10.197.219.117 --from 5
-        → starts at phase 5 (skips 1..4)
-"""
 from __future__ import annotations
 import json
 import sys
+import threading
 import time as t
 
 from paho.mqtt import client as mqtt_client
 
 DEFAULT_IP = "10.197.219.117"
 
-# ---------------------------------------------------------------------------
-# FIELD_TUNE — tweak these on the day, every value is "small and slow first".
-# ---------------------------------------------------------------------------
-F1_DIST_M       = 0.78      # phase 1: forward off ramp  (~4.3 s @ 0.18 m/s)
-F1_SPEED        = 0.18      # m/s
+F1_DIST_M       = 0.78     
+F1_SPEED        = 0.18      
 
-# Arm/tray servo — keep raised while driving so it doesn't drop the bowl
 SERVO_ARM       = 1
-ARM_UP_PWM      = -800      # tray raised, but not slammed against stop (cooler)
-SERVO_SPEED_HOLD = 150      # gentler hold — was 300 and overheating
-ARM_PRESET_S    = 1.5       # let the servo fully reach UP before driving
+ARM_UP_PWM      = -700      
 
-Y1_RAD          = 1.57      # phase 2: yaw left ~90°  (positive = CCW = left)
-Y1_RATE         = 0.6       # rad/s
+SERVO_SPEED_HOLD = 200      
+                            
+ARM_PRESET_S    = 1.8       
 
-F3_SPEED        = 0.06      # phase 3: creep speed while looking for the line
-F3_MAX_DIST_M   = 0.80      # safety cap — stop after this much travel even without line
+Y1_RAD          = 1.57     
+Y1_RATE         = 0.6       
+
+F3_SPEED        = 0.06      
+F3_MAX_DIST_M   = 0.80      
 F3_TIMEOUT_S    = 15.0
-F3_OVERSHOOT_M  = 0.02      # creep this much further AFTER line detected, so the
-                            # turn pivots over the line (otherwise we knock the bowl)
-F3_WARMUP_M     = 0.06      # ignore line detection for the first N metres — robot
-                            # ends phase 2 already on/near a line and would trigger
-                            # immediately. Drive blindly past it first.
+F3_OVERSHOOT_M  = 0.02      
+F3_WARMUP_M     = 0.06      
 
-Y2_RAD          = -1.57     # phase 4: yaw RIGHT after line is found  (negative = CW)
-Y2_RATE         = 0.6       # rad/s
+Y2_RAD          = -1.57     
+Y2_RATE         = 0.6       
 
-F5_DIST_M       = 0.40      # phase 5: gentle approach onto the bowl
-F5_SPEED        = 0.05      # m/s — very slow so we don't slam the bowl
-F5_RAMP_S       = 0.6       # smooth accel/decel — extra cushion for the cargo
+F5_DIST_M       = 0.40      
+F5_SPEED        = 0.05      
+F5_RAMP_S       = 0.6       
 
-# Phase 6: place the bowl down (legacy — drop arm onto floor)
-ARM_DOWN_PWM    = 500       # tray fully lowered onto floor (calibrated saha)
-ARM_PLACE_SPEED = 120       # servo speed while lowering — slow & smooth
-ARM_PLACE_S     = 2.0       # wait for the arm to reach DOWN
-ARM_RELEASE_PWM = 9999      # |pos|>1024 disables the servo (silences buzzing)
+ARM_DOWN_PWM    = 500       
+ARM_PLACE_SPEED = 120       
+ARM_PLACE_S     = 2.0       
+ARM_RELEASE_PWM = 9999      
 
-# Phase 7: lift the arm with cargo (after balls are picked up)
-P7_ARM_LIFT_S   = 1.5       # let the arm fully reach UP before driving
+PICKUP_SHAKE_CYCLES        = 6
+PICKUP_SHAKE_OMEGA_RAD_S   = 1.2     
+PICKUP_SHAKE_HALF_PERIOD_S = 0.22    
+PICKUP_SHAKE_SETTLE_S      = 0.4     
 
-# Phase 8: short reverse from the dispenser (just clear the bowl)
+P7_ARM_LIFT_S   = 1.5       
+
 F8_DIST_M       = 0.25
 F8_SPEED        = 0.10
 
-# Phase 9: yaw RIGHT 90° (toward the C-side of the field)
-Y9_RAD          = -1.57     # -90° CW (was +1.57 left — wrong direction)
+Y9_RAD          = -1.57     
 Y9_RATE         = 0.6
 
-# Phase 10: short forward step ("az bir şey gitsin") to clear the line
 F10_DIST_M      = 0.80
 F10_SPEED       = 0.12
 
-# Phase 11: yaw LEFT 90° onto the C-bound straight
-Y11_RAD         = 2.22      # +127° CCW (was 2.15 — needed a tiny bit more)
+Y11_RAD         = 2.22      
 Y11_RATE        = 0.6
 
-# Phase 12: vision-guided dock against the Zone C ArUcos.
-# Tunable parameters live in aruco_dock.py (TARGET_IDS, GRIPPER_DISTANCE, …).
 
-# Phase 13: dump the balls (handled by aruco_dock.drop_balls)
-
-LINE_VALID_THRESHOLD = 500  # peak sensor value to call the line "seen"
+LINE_VALID_THRESHOLD = 500  
 RC_RESEND_S          = 0.05
 
-# ---------------------------------------------------------------------------
-# State updated by MQTT callbacks
-# ---------------------------------------------------------------------------
+ARM_HOLD_PERIOD_S    = 0.4
+ARM_HOLD_HEARTBEAT_N = 13
+
 class S:
-    yaw           = None    # rad, from kalman state
+    yaw           = None    
     pose_seen     = False
-    line_high     = 0       # peak of the 8 IR sensors (0..1000)
+    line_high     = 0      
     line_valid    = False
     line_seen_t   = 0.0
 
@@ -107,7 +76,6 @@ class S:
 def on_connect(client, userdata, flags, rc):
     client.subscribe("robobot/kalman/state")
     client.subscribe("robobot/drive/T0/livn")
-    # Ask Teensy to publish livn @ 100 ms.
     client.publish("robobot/cmd/T0", "sub livn 10")
 
 
@@ -148,8 +116,6 @@ def stop(c): c.publish("robobot/cmd/ti", "rc 0.000 0.000")
 
 
 def drive_for(c, v: float, w: float, duration_s: float, ramp_s: float = 0.0):
-    """Drive at (v, w) for duration_s. With ramp_s>0, smoothly ramp v at start
-    AND end so cargo doesn't slosh. Yaw rate w isn't ramped (turns are short)."""
     t_start = t.time()
     t_end = t_start + duration_s
     while True:
@@ -167,8 +133,70 @@ def drive_for(c, v: float, w: float, duration_s: float, ramp_s: float = 0.0):
     stop(c)
 
 
+class ArmHolder:
+
+    def __init__(self, client, sid: int, period_s: float = ARM_HOLD_PERIOD_S):
+        self._client = client
+        self._sid = sid
+        self._period_s = period_s
+        self._target_pwm = None      
+        self._target_speed = SERVO_SPEED_HOLD
+        self._lock = threading.Lock()
+        self._stop_evt = threading.Event()
+        self._thread = None
+
+    def hold(self, pwm: int, speed: int = SERVO_SPEED_HOLD) -> None:
+        with self._lock:
+            self._target_pwm = pwm
+            self._target_speed = speed
+        self._client.publish("robobot/cmd/T0", f"servo {self._sid} {pwm} {speed}")
+
+    def release(self) -> None:
+        with self._lock:
+            self._target_pwm = None
+        self._client.publish("robobot/cmd/T0",
+                             f"servo {self._sid} {ARM_RELEASE_PWM} {SERVO_SPEED_HOLD}")
+
+    def start(self) -> None:
+        if self._thread is not None:
+            return
+        self._stop_evt.clear()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_evt.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
+
+    def _loop(self) -> None:
+        tick = 0
+        while not self._stop_evt.is_set():
+            with self._lock:
+                pwm = self._target_pwm
+                speed = self._target_speed
+            if pwm is not None:
+                effective_pwm = pwm if (tick % 2 == 0) else pwm + 1
+                self._client.publish("robobot/cmd/T0",
+                                     f"servo {self._sid} {effective_pwm} {speed}")
+                tick += 1
+                if tick % ARM_HOLD_HEARTBEAT_N == 0:
+                    print(f"[arm-hold] tick {tick}  pwm≈{pwm}  speed={speed}  "
+                          f"(toggling ±1 to defeat duplicate filtering)")
+            t.sleep(self._period_s)
+
+
+def shake_in_place(c, omega: float, half_period_s: float, cycles: int):
+    for _ in range(cycles):
+        c.publish("robobot/cmd/ti", f"rc 0.000 {omega:.3f}")
+        t.sleep(half_period_s)
+        c.publish("robobot/cmd/ti", f"rc 0.000 {-omega:.3f}")
+        t.sleep(half_period_s)
+    stop(c)
+
+
 def yaw_to_delta(c, delta_rad: float, rate: float):
-    """Turn by delta_rad. Uses kalman yaw if available; else falls back to time."""
     direction = 1.0 if delta_rad >= 0 else -1.0
     target_w  = direction * abs(rate)
 
@@ -183,7 +211,6 @@ def yaw_to_delta(c, delta_rad: float, rate: float):
             t.sleep(RC_RESEND_S)
             if S.yaw is not None:
                 d = S.yaw - prev
-                # unwrap ±π
                 if d > 3.14159: d -= 6.28318
                 if d < -3.14159: d += 6.28318
                 accumulated += d
@@ -243,7 +270,9 @@ def main() -> None:
     print(f"  4. yaw       {Y2_RAD:+.2f} rad  ({Y2_RAD*57.3:+.0f}°) @ {Y2_RATE} rad/s")
     print(f"  5. gentle approach {F5_DIST_M:.2f} m @ {F5_SPEED:.2f} m/s "
           f"({F5_DIST_M/F5_SPEED:.1f} s, ramp {F5_RAMP_S}s)")
-    print(f"  6. lower tray onto floor (servo {SERVO_ARM}={ARM_DOWN_PWM} @ {ARM_PLACE_SPEED}), then release")
+    print(f"  6. arm DOWN (servo {SERVO_ARM}={ARM_DOWN_PWM} @ {ARM_PLACE_SPEED}) "
+          f"+ STRONG shake ({PICKUP_SHAKE_CYCLES}× ±{PICKUP_SHAKE_OMEGA_RAD_S} rad/s) "
+          f"to dump bowl, then release")
     print(f"  7. arm UP with cargo (servo {SERVO_ARM}={ARM_UP_PWM})  [after balls picked up]")
     print(f"  8. short reverse  {F8_DIST_M:.2f} m @ {F8_SPEED:.2f} m/s")
     print(f"  9. yaw {Y9_RAD:+.2f} rad ({Y9_RAD*57.3:+.0f}°) — right")
@@ -253,23 +282,23 @@ def main() -> None:
     print(f" 13. dump balls (arm DOWN, then release)")
     print(f"  Each phase asks before running.  Ctrl+C = e-stop.\n")
 
+    arm_holder = ArmHolder(client, SERVO_ARM)
+    arm_holder.start()
+
     try:
-        # Hold the arm/tray raised the whole time so cargo doesn't drop on bumps.
-        print(f"[arm] holding tray UP (servo {SERVO_ARM}={ARM_UP_PWM}, speed {SERVO_SPEED_HOLD})")
-        client.publish("robobot/cmd/T0", f"servo {SERVO_ARM} {ARM_UP_PWM} {SERVO_SPEED_HOLD}")
+        print(f"[arm] holding tray UP (servo {SERVO_ARM}={ARM_UP_PWM}, speed "
+              f"{SERVO_SPEED_HOLD}, refresh every {ARM_HOLD_PERIOD_S}s)")
+        arm_holder.hold(ARM_UP_PWM)
         t.sleep(ARM_PRESET_S)
 
-        # Phase 1 — ramp accel/decel so the bowl doesn't slosh out
         if start_phase <= 1 and confirm("[1/13] forward off ramp?"):
             drive_for(client, F1_SPEED, 0.0, F1_DIST_M / F1_SPEED, ramp_s=0.5)
             t.sleep(0.3)
 
-        # Phase 2
         if start_phase <= 2 and confirm("[2/13] yaw left?"):
             yaw_to_delta(client, Y1_RAD, Y1_RATE)
             t.sleep(0.3)
 
-        # Phase 3 — creep while watching line
         if start_phase <= 3 and confirm("[3/13] creep until line detected?"):
             t0 = t.time()
             duration_cap = F3_MAX_DIST_M / F3_SPEED
@@ -307,42 +336,50 @@ def main() -> None:
             drive_for(client, F5_SPEED, 0.0, F5_DIST_M / F5_SPEED, ramp_s=F5_RAMP_S)
             t.sleep(0.3)
 
-        # Phase 6 — lower tray, place bowl on floor, release servo
-        if start_phase <= 6 and confirm("[6/13] place bowl on floor (arm down)?"):
+        # Phase 6 — arm down over bowl, close slider, SHAKE HARD to tip the
+        # bowl, release servo to silence buzzing.
+        if start_phase <= 6 and confirm("[6/13] arm down + shake to dump bowl?"):
             print(f"      arm DOWN (servo {SERVO_ARM}={ARM_DOWN_PWM} @ {ARM_PLACE_SPEED})")
-            client.publish("robobot/cmd/T0", f"servo {SERVO_ARM} {ARM_DOWN_PWM} {ARM_PLACE_SPEED}")
+            arm_holder.hold(ARM_DOWN_PWM, ARM_PLACE_SPEED)
             t.sleep(ARM_PLACE_S)
-            print(f"      release servo (pwm {ARM_RELEASE_PWM}) — silences buzzing")
-            client.publish("robobot/cmd/T0", f"servo {SERVO_ARM} {ARM_RELEASE_PWM} {ARM_PLACE_SPEED}")
+
+            print("      >>> MANUAL: confirm slider gate is CLOSED <<<")
             t.sleep(0.3)
 
-        # Phase 7 — arm UP with cargo (after balls have been picked up)
+            print(f"      STRONG shake  ({PICKUP_SHAKE_CYCLES}× @ "
+                  f"±{PICKUP_SHAKE_OMEGA_RAD_S} rad/s, "
+                  f"{PICKUP_SHAKE_HALF_PERIOD_S*1000:.0f} ms each side)")
+            shake_in_place(client,
+                           PICKUP_SHAKE_OMEGA_RAD_S,
+                           PICKUP_SHAKE_HALF_PERIOD_S,
+                           PICKUP_SHAKE_CYCLES)
+            t.sleep(PICKUP_SHAKE_SETTLE_S)
+
+            print(f"      release servo briefly (pwm {ARM_RELEASE_PWM}) — cools motor")
+            arm_holder.release()
+            t.sleep(0.3)
+
         if start_phase <= 7 and confirm("[7/13] arm UP with cargo (lock balls inside)?"):
             print(f"      arm UP (servo {SERVO_ARM}={ARM_UP_PWM} @ {SERVO_SPEED_HOLD})")
-            client.publish("robobot/cmd/T0", f"servo {SERVO_ARM} {ARM_UP_PWM} {SERVO_SPEED_HOLD}")
+            arm_holder.hold(ARM_UP_PWM)
             t.sleep(P7_ARM_LIFT_S)
 
-        # Phase 8 — short reverse from dispenser
         if start_phase <= 8 and confirm("[8/13] short reverse from dispenser?"):
             drive_for(client, -F8_SPEED, 0.0, F8_DIST_M / F8_SPEED, ramp_s=0.4)
             t.sleep(0.3)
 
-        # Phase 9 — yaw RIGHT (toward C-side of the field)
         if start_phase <= 9 and confirm("[9/13] yaw RIGHT?"):
             yaw_to_delta(client, Y9_RAD, Y9_RATE)
             t.sleep(0.3)
 
-        # Phase 10 — short forward to clear the line
         if start_phase <= 10 and confirm("[10/13] short forward?"):
             drive_for(client, F10_SPEED, 0.0, F10_DIST_M / F10_SPEED, ramp_s=0.4)
             t.sleep(0.3)
 
-        # Phase 11 — yaw LEFT onto the C-bound straight
         if start_phase <= 11 and confirm("[11/13] yaw LEFT onto C straight?"):
             yaw_to_delta(client, Y11_RAD, Y11_RATE)
             t.sleep(0.3)
 
-        # Phase 12 — vision-guided dock to Zone C ArUcos (closed-loop)
         if start_phase <= 12 and confirm("[12/13] ArUco dock to Zone C?"):
             from control.tasks.aruco_dock import run_dock
             ok = run_dock(client, ip)
@@ -350,8 +387,8 @@ def main() -> None:
                 print("      ! dock failed — markers not visible. Aim and retry.")
             t.sleep(0.3)
 
-        # Phase 13 — dump the balls
         if start_phase <= 13 and confirm("[13/13] dump balls (arm down)?"):
+            arm_holder.stop()
             from control.tasks.aruco_dock import drop_balls
             drop_balls(client)
 
@@ -361,6 +398,7 @@ def main() -> None:
         print("\n[ramp] ^C — emergency stop.")
         stop(client)
     finally:
+        arm_holder.stop()
         stop(client)
         t.sleep(0.2)
         client.loop_stop()

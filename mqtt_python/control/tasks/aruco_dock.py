@@ -1,16 +1,3 @@
-#!/usr/bin/env python3
-"""ArUco-based closed-loop docking to a marker pair, then drop the balls.
-
-The ball-delivery final approach: instead of an open-loop drive of a fixed
-distance, this looks at the target ArUco markers (Zone C: IDs 14 and 15),
-estimates their range and bearing, drives most of the way, re-detects to
-correct any drift, and finishes a fixed gripper offset from the marker face.
-
-Designed to be called from another script (`run_dock(client, ip)`,
-`drop_balls(client)`) or run standalone for tuning:
-
-    python3 -m control.tasks.aruco_dock [robot-ip]
-"""
 from __future__ import annotations
 import math
 import os
@@ -21,9 +8,7 @@ import cv2
 import numpy as np
 from paho.mqtt import client as mqtt_client
 
-# ---------------------------------------------------------------------------
-# CONFIG — tune for the day
-# ---------------------------------------------------------------------------
+
 DEFAULT_IP        = "10.197.219.117"
 STREAM_URL_FMT    = "http://{ip}:7123/stream.mjpg"
 
@@ -33,30 +18,53 @@ CALIB_PATH        = os.path.join(
 )
 
 ARUCO_DICT        = cv2.aruco.DICT_4X4_50
-TARGET_IDS        = {14, 15}              # Zone C markers
-MARKER_SIZE_M     = 0.10                  # 10 cm physical size
+TARGET_IDS        = {14, 15}              
+PRIMARY_ID        = 15                   
+                                         
+                                          
+                                        
+MARKER_SIZE_M     = 0.10                  
 
-GRIPPER_DISTANCE  = 0.30                  # final stop distance to marker face
-SAFETY_BUFFER     = 0.20                  # leave this much for the correction pass
+GRIPPER_DISTANCE  = 0.70                  
+                                          
+                                          
+                                         
+                                          
+                                         
+SAFETY_BUFFER     = 0.20                 
 
 DRIVE_SPEED       = 0.15                  # m/s
 TURN_RATE         = 0.6                   # rad/s
 RC_RESEND_S       = 0.05
 
 DETECT_TIMEOUT_S  = 6.0
-MIN_DETECTIONS    = 3                     # consecutive stable frames before locking
+MIN_DETECTIONS    = 3                     
 
-# Drop sequence (servo IDs match ramp_to_bowl_line.py)
+DOCK_MAX_V        = 0.15
+DOCK_MAX_W        = 0.6
+DOCK_KV           = 0.6                  
+DOCK_KW           = 1.6                   
+DOCK_RANGE_TOL_M  = 0.025                 
+DOCK_BEAR_TOL_RAD = math.radians(2.0)     
+DOCK_TIMEOUT_S    = 25.0
+LOST_FRAMES_BAIL  = 25                    
+DOCK_DEBUG_PERIOD = 0.4                   
+
 SERVO_ARM         = 1
-ARM_DOWN_PWM      = 500
+ARM_UP_PWM        = -800                  
+ARM_DOWN_PWM      = 500                   
+ARM_DROP_PWM      = 200                   
+                                         
 ARM_PLACE_SPEED   = 120
-ARM_RELEASE_PWM   = 9999                  # |pos|>1024 disables the servo
-DUMP_HOLD_S       = 1.5
+ARM_DROP_HOLD_S   = 1.0                   
 
+SHAKE_CYCLES        = 4
+SHAKE_OMEGA_RAD_S   = 0.6
+SHAKE_HALF_PERIOD_S = 0.18
+SHAKE_PAUSE_S       = 0.6                 
 
-# ---------------------------------------------------------------------------
-# Camera + detector setup
-# ---------------------------------------------------------------------------
+ARM_LIFT_S          = 1.5                 
+
 def load_camera_params(path: str):
     if not os.path.isfile(path):
         print(f"  ! calibration file not found: {path}")
@@ -112,23 +120,17 @@ def detect_target(cap, detector, camera_matrix, dist_coeffs):
 
 
 def target_geometry(tvecs: dict):
-    """Centroid of detected markers → (distance_m, bearing_rad).
-
-    Bearing: 0 = straight ahead (camera +Z), positive = target on right.
-    """
     if not tvecs:
         return None
-    points = np.stack(list(tvecs.values()))
-    centroid = points.mean(axis=0)
-    x_cam, _, z_cam = centroid
+    if PRIMARY_ID in tvecs:
+        chosen_id = PRIMARY_ID
+    else:
+        chosen_id = next(iter(tvecs))      
+    x_cam, _, z_cam = tvecs[chosen_id]
     distance = float(math.hypot(x_cam, z_cam))
     bearing  = float(math.atan2(x_cam, z_cam))
-    return distance, bearing
+    return distance, bearing, int(chosen_id)
 
-
-# ---------------------------------------------------------------------------
-# Robot motion (raw MQTT, no uservice)
-# ---------------------------------------------------------------------------
 def make_mqtt(ip: str) -> mqtt_client.Client:
     if hasattr(mqtt_client, "CallbackAPIVersion"):
         c = mqtt_client.Client(
@@ -173,12 +175,7 @@ def servo(client, sid: int, pos: int, speed: int = ARM_PLACE_SPEED):
     client.publish("robobot/cmd/T0", f"servo {sid} {pos} {speed}")
 
 
-# ---------------------------------------------------------------------------
-# Detection helpers
-# ---------------------------------------------------------------------------
 def lock_target(cap, detector, K, D, label: str):
-    """Spend up to DETECT_TIMEOUT_S looking for TARGET_IDS. Need
-    MIN_DETECTIONS consecutive frames before returning the average."""
     print(f"  [detect:{label}] looking for ArUco IDs {sorted(TARGET_IDS)} ...")
     samples = []
     last_ids = ()
@@ -196,36 +193,51 @@ def lock_target(cap, detector, K, D, label: str):
             continue
         samples.append(geom)
         last_ids = tuple(sorted(tvecs.keys()))
+        last_chosen = geom[2]
         if len(samples) >= MIN_DETECTIONS:
             recent = samples[-MIN_DETECTIONS:]
             d_avg = sum(g[0] for g in recent) / len(recent)
             b_avg = sum(g[1] for g in recent) / len(recent)
-            print(f"  [detect:{label}] LOCK  ids={list(last_ids)}  "
+            print(f"  [detect:{label}] LOCK on id={last_chosen}  "
+                  f"(visible={list(last_ids)})  "
                   f"distance={d_avg:.2f} m  bearing={math.degrees(b_avg):+.1f}°")
             return d_avg, b_avg
     print(f"  [detect:{label}] timed out — no stable detection")
     return None
 
+def _shake_tray(client) -> None:
+    """Yaw left/right a few times so any balls stuck in the tray roll out."""
+    for _ in range(SHAKE_CYCLES):
+        client.publish("robobot/cmd/ti", f"rc 0.000 {SHAKE_OMEGA_RAD_S:.3f}")
+        t.sleep(SHAKE_HALF_PERIOD_S)
+        client.publish("robobot/cmd/ti", f"rc 0.000 {-SHAKE_OMEGA_RAD_S:.3f}")
+        t.sleep(SHAKE_HALF_PERIOD_S)
+    stop(client)
+    t.sleep(0.2)
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+
 def drop_balls(client) -> None:
-    """Lower the tray to drop the cargo, then release the servo."""
-    print(f"  [drop] arm DOWN (pwm {ARM_DOWN_PWM} @ {ARM_PLACE_SPEED})")
-    servo(client, SERVO_ARM, ARM_DOWN_PWM, ARM_PLACE_SPEED)
-    t.sleep(DUMP_HOLD_S)
-    print(f"  [drop] release servo (pwm {ARM_RELEASE_PWM})")
-    servo(client, SERVO_ARM, ARM_RELEASE_PWM, ARM_PLACE_SPEED)
-    t.sleep(0.3)
+    print(f"  [drop] arm to drop height  (pwm {ARM_DROP_PWM} @ {ARM_PLACE_SPEED})")
+    servo(client, SERVO_ARM, ARM_DROP_PWM, ARM_PLACE_SPEED)
+    t.sleep(ARM_DROP_HOLD_S)
+    print("  [drop] >>> MANUAL: open hazne slider by hand, then wait <<<")
+    t.sleep(SHAKE_PAUSE_S)
+
+    print("  [drop] shake #1")
+    _shake_tray(client)
+    t.sleep(SHAKE_PAUSE_S)
+
+    print("  [drop] shake #2")
+    _shake_tray(client)
+    t.sleep(SHAKE_PAUSE_S)
+
+    print(f"  [drop] arm UP  (pwm {ARM_UP_PWM} @ {ARM_PLACE_SPEED})")
+    servo(client, SERVO_ARM, ARM_UP_PWM, ARM_PLACE_SPEED)
+    t.sleep(ARM_LIFT_S)
+    print("  [drop] mission complete.")
 
 
 def run_dock(client, ip: str) -> bool:
-    """Closed-loop docking against TARGET_IDS using the robot's MJPEG stream.
-
-    Stops GRIPPER_DISTANCE from the marker face. Does NOT drop the balls
-    (call drop_balls() separately). Returns True on success.
-    """
     K, D = load_camera_params(CALIB_PATH)
     if K is None:
         return False
@@ -238,57 +250,76 @@ def run_dock(client, ip: str) -> bool:
         print(f"  ! cannot open stream {stream_url}")
         return False
 
+    print(f"  [dock] target  range={GRIPPER_DISTANCE:.2f} m  "
+          f"prefer_id={PRIMARY_ID}  tol={DOCK_RANGE_TOL_M*100:.1f} cm / "
+          f"{math.degrees(DOCK_BEAR_TOL_RAD):.1f}°")
+
+    t_start = t.time()
+    lost_frames = 0
+    last_debug = 0.0
+    last_geom = None
+
     try:
-        first = lock_target(cap, detector, K, D, "first")
-        if first is None:
-            print("  [dock] aborting — no markers visible at start")
-            return False
-        d1, b1 = first
+        while True:
+            if t.time() - t_start > DOCK_TIMEOUT_S:
+                print(f"  [dock] TIMEOUT after {DOCK_TIMEOUT_S:.0f}s — last "
+                      f"geom={last_geom}")
+                stop(client)
+                return False
 
-        if abs(b1) > math.radians(2.0):
-            print(f"  [dock] yaw to face target  delta={math.degrees(-b1):+.1f}°")
-            turn_by(client, -b1)
-            t.sleep(0.5)
+            _, tvecs = detect_target(cap, detector, K, D)
+            geom = target_geometry(tvecs) if tvecs else None
 
-        drive1_m = max(0.0, d1 - GRIPPER_DISTANCE - SAFETY_BUFFER)
-        if drive1_m > 0.05:
-            duration = drive1_m / DRIVE_SPEED
-            print(f"  [dock] coarse drive  dist={drive1_m:.2f} m  "
-                  f"({duration:.1f} s @ {DRIVE_SPEED:.2f} m/s)")
-            drive_for(client, DRIVE_SPEED, 0.0, duration, ramp_s=0.5)
-        else:
-            print(f"  [dock] already close enough for correction (d1={d1:.2f})")
+            if geom is None:
+                lost_frames += 1
+                if lost_frames > LOST_FRAMES_BAIL:
+                    print(f"  [dock] markers lost for {lost_frames} frames; "
+                          f"giving up. last={last_geom}")
+                    stop(client)
+                    return False
+                client.publish("robobot/cmd/ti", "rc 0.000 0.000")
+                t.sleep(0.05)
+                continue
 
-        t.sleep(0.5)
+            lost_frames = 0
+            last_geom = geom
+            rng, bearing, chosen = geom
+            range_err = rng - GRIPPER_DISTANCE  
 
-        second = lock_target(cap, detector, K, D, "second")
-        if second is None:
-            print("  [dock] WARNING — lost markers on second look; continuing blind")
-            d2, b2 = d1 - drive1_m, 0.0
-        else:
-            d2, b2 = second
+            if abs(range_err) < DOCK_RANGE_TOL_M and abs(bearing) < DOCK_BEAR_TOL_RAD:
+                stop(client)
+                print(f"  [dock] DOCKED  id={chosen}  range={rng:.2f} m  "
+                      f"bearing={math.degrees(bearing):+.1f}°")
+                return True
 
-        if abs(b2) > math.radians(2.0):
-            print(f"  [dock] correction yaw  delta={math.degrees(-b2):+.1f}°")
-            turn_by(client, -b2)
-            t.sleep(0.3)
+            if range_err <= 0.0:
+                v = 0.0
+            else:
+                v = min(DOCK_MAX_V, DOCK_KV * range_err)
 
-        drive2_m = max(0.0, d2 - GRIPPER_DISTANCE)
-        if drive2_m > 0.02:
-            duration = drive2_m / DRIVE_SPEED
-            print(f"  [dock] final drive  dist={drive2_m:.2f} m  "
-                  f"({duration:.1f} s @ {DRIVE_SPEED:.2f} m/s)")
-            drive_for(client, DRIVE_SPEED, 0.0, duration, ramp_s=0.4)
-        t.sleep(0.5)
-        return True
+            w = max(-DOCK_MAX_W, min(DOCK_MAX_W, DOCK_KW * bearing))
+
+            if abs(bearing) > math.radians(20.0):
+                v = 0.0
+            elif abs(bearing) > math.radians(10.0):
+                v *= 0.4
+
+            client.publish("robobot/cmd/ti", f"rc {v:.3f} {w:.3f}")
+
+            now = t.time()
+            if now - last_debug > DOCK_DEBUG_PERIOD:
+                last_debug = now
+                print(f"  [dock] id={chosen}  rng={rng:.2f}m  "
+                      f"bear={math.degrees(bearing):+5.1f}°  "
+                      f"v={v:.2f}  w={w:+.2f}")
+
+            t.sleep(0.05)
 
     finally:
         cap.release()
+        stop(client)
 
 
-# ---------------------------------------------------------------------------
-# Standalone entry point
-# ---------------------------------------------------------------------------
 def main() -> None:
     ip = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_IP
     print(f"[dock] connecting to robot {ip}")
