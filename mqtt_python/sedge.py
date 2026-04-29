@@ -46,11 +46,11 @@ class SEdge:
     yMinSpan    = 4            # Y-crossing: minimum span between leftmost and rightmost active sensor
     yMidIndices = (3, 4)       # centre sensor indices; if any are inactive while above conditions hold → Y
     low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
-    # Active line-follow tuning. Defaults are P-only; Ki and Kd are available
-    # for small experiments at the 50 ms controller cadence.
+    # Active line-follow tuning. These defaults are intentionally kept close
+    # to the values tested on the robot.
     lineKp = 0.4
     lineKi = 0.0
-    lineKd = 0.0
+    lineKd = 0.3
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
     lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
     lineMinTurnError = 1.10     # if abs(error) is this large, enforce a minimum turn
@@ -84,9 +84,11 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.4, lineKi=0.0, lineKd=0.0, lineVelocity=0.30),
-        "slow":   dict(lineKp=0.4, lineKi=0.0, lineKd=0.0, lineVelocity=0.30),
+        "normal": dict(lineKp=0.4, lineKi=0.0, lineKd=0.3, lineVelocity=0.30),
+        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.2, lineVelocity=0.15),
     }
+    lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
+    lineReacquireSettleParams = "slow"
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
     recoveryVelocity = 0.0   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
@@ -105,12 +107,12 @@ class SEdge:
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
         'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'i', 'd', 'u',
-        'y', 'recStraight', 'rc'
+        'y', 'settle', 'recStraight', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
     #   livn, avg, high, valid, validCnt, center, state, aboveCnt,
-    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, recStraight, rc, lastLineSide
+    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, settle, recStraight, rc, lastLineSide
     #   e = error (ref - center); u = p+i+d; y = clamped turn rate.
     # ============= end tuning & print options =============
 
@@ -169,6 +171,10 @@ class SEdge:
     lineY = 0.0  # control output (rad/s), clamped and smoothed
     lineLastControlTime = 0.0
     lineLostStartTime = 0.0
+    lineRequestedParams = "normal"
+    lineReacquireSettleUntil = 0.0
+    lineSettleActive = False
+    lineWasValid = False
     lastValidLineCenter = 0.0
     recoveryStraightActive = False
     lineDerivativeGuardActive = False
@@ -492,6 +498,7 @@ class SEdge:
         velocity = self.defaultLineVelocity
       self.velocity = velocity
       self.refPosition = refPosition
+      self.lineRequestedParams = params
       # Any non-trivial speed (forward or reverse) enables line control.
       # 0 keeps the existing "off" behavior used throughout missions.
       self.lineCtrl = abs(velocity) > 0.001
@@ -501,7 +508,15 @@ class SEdge:
         self.lineIntegral = 0.0
         self.lineE_prev = None
         self.lineLostStartTime = 0.0
+        self.lineReacquireSettleUntil = 0.0
+        self.lineSettleActive = False
+        self.lineWasValid = False
         self.recoveryStraightActive = False
+      else:
+        # Treat each mission handoff/restart as a fresh acquire, so the robot
+        # settles gently after maneuvers like the roundabout.
+        self.lineWasValid = False
+        self.lineReacquireSettleUntil = 0.0
       self.lineLastControlTime = 0.0
       if params in self.PARAM_SETS:
         for k, v in self.PARAM_SETS[params].items():
@@ -532,7 +547,26 @@ class SEdge:
       self.lineLastControlTime = now
 
       Tsec = control_period if previous_control_time <= 0.0 else max(0.001, now - previous_control_time)
-      pTerm = self.lineKp * e
+
+      if self.lineValid and not self.lineWasValid:
+        self.lineReacquireSettleUntil = now + self.lineReacquireSettleTime
+        self.lineIntegral = 0.0
+        self.lineE_prev = None
+
+      settle_params = getattr(self, 'lineReacquireSettleParams', 'slow')
+      self.lineSettleActive = (
+        self.lineValid
+        and self.lineReacquireSettleUntil > 0.0
+        and now < self.lineReacquireSettleUntil
+        and settle_params in self.PARAM_SETS
+      )
+      active_params = settle_params if self.lineSettleActive else getattr(self, 'lineRequestedParams', 'normal')
+      active_profile = self.PARAM_SETS.get(active_params, {})
+      lineKp = active_profile.get("lineKp", self.lineKp)
+      lineKi = active_profile.get("lineKi", self.lineKi)
+      lineKd = active_profile.get("lineKd", self.lineKd)
+
+      pTerm = lineKp * e
       if self.lineValid:
         self.lineIntegral += e * Tsec
         if self.lineIntegral > self.lineIntegralLimit:
@@ -542,12 +576,12 @@ class SEdge:
       else:
         self.lineIntegral = 0.0
 
-      iTerm = self.lineKi * self.lineIntegral
+      iTerm = lineKi * self.lineIntegral
       if self.lineValid and self.lineE_prev is not None:
         dTerm = (e - self.lineE_prev) / Tsec
       else:
         dTerm = 0.0
-      dContribution = self.lineKd * dTerm
+      dContribution = lineKd * dTerm
       self.u = pTerm + iTerm + dContribution
       self.lineY = self.u
       if self.lineY > self.lineYMax:
@@ -591,6 +625,9 @@ class SEdge:
         self.lineY = sent_turn
       else:
         sent_velocity = self.velocity
+        if self.lineSettleActive and "lineVelocity" in active_profile:
+          speed_sign = 1.0 if self.velocity >= 0.0 else -1.0
+          sent_velocity = speed_sign * min(abs(self.velocity), abs(active_profile["lineVelocity"]))
         sent_turn = self.lineY
 
       if sent_velocity < 0.0:
@@ -636,6 +673,8 @@ class SEdge:
           parts.append(f"u={self.u:6.3f}")
         if 'y' in enabled:
           parts.append(f"y={self.lineY:6.3f}")
+        if 'settle' in enabled:
+          parts.append(f"settle={str(self.lineSettleActive):5}")
         if 'recStraight' in enabled:
           parts.append(f"recStraight={str(self.recoveryStraightActive):5}")
         if 'rc' in enabled:
@@ -644,6 +683,7 @@ class SEdge:
           parts.append(f"lastSide={self.lastLineSide:+d}")
         if parts:
           print("% line: " + " ".join(parts))
+      self.lineWasValid = self.lineValid
       return  # Legacy PID/filter implementation below is intentionally bypassed.
       # some parameters depend on sample time, adjust
       # print(f"LineCtrl:: sample time {self.edge_nInterval}")
