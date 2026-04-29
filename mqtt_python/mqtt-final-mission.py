@@ -235,7 +235,7 @@ ROUNDABOUT_ENTRY = SimpleNamespace(
 
 ROUNDABOUT_ARC = SimpleNamespace(
     diameter_m    = 0.73,
-    total_degrees = 430.0,
+    total_degrees = 440.0,
     speed         = 0.20,
     direction     = "left",
 )

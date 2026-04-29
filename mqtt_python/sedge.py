@@ -73,13 +73,21 @@ class SEdge:
     lineDerivativeBeta = 0.0
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
+    # PARAM_SETS = {
+    #     "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.3,
+    #                    lineIntegralLimit=2.0, lineOutputAlpha=0.5,
+    #                    lineDerivativeBeta=0.5, lineVelocity=0.30),
+    #     "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.2, #0.4, 0.1
+    #                    lineIntegralLimit=2.0, lineOutputAlpha=0.5,
+    #                    lineDerivativeBeta=0.2, lineVelocity=0.15),
+    # }
     PARAM_SETS = {
-        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.3,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.5,
-                       lineDerivativeBeta=0.5, lineVelocity=0.30),
-        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.2, #0.4, 0.1
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.5,
-                       lineDerivativeBeta=0.2, lineVelocity=0.15),
+    "normal": dict(lineKp=0.55, lineKi=0.05, lineKd=0.4,
+                    lineIntegralLimit=2.0, lineOutputAlpha=0.4,
+                    lineDerivativeBeta=0.4, lineVelocity=0.30),
+    "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.2,
+                    lineIntegralLimit=2.0, lineOutputAlpha=0.5,
+                    lineDerivativeBeta=0.2, lineVelocity=0.15),
     }
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
@@ -90,7 +98,7 @@ class SEdge:
     lineTauP = 0.25
     # --- Follow-line block print (gated by --test/--silent). Print + flog next to each other: ---
     print_follow_line_block = True  # set True to re-enable; False = no print in hot path (test responsiveness)
-    follow_line_print_every_n = 5   # diagnostics: denser prints for line-loss debugging
+    follow_line_print_every_n = 1   # diagnostics: denser prints for line-loss debugging
     flog_write_every_n = 1         # flog.write() every Nth livn update (appends line/sensor log line to file)
     
     print_follow_line_fields = (
@@ -430,7 +438,7 @@ class SEdge:
       self.lineValid = self.high >= self.lineValidThreshold
       # weighted center of mass (analog): sub-sensor resolution, smooth for PID
       # weight_i = intensity above background; position in -3.5..3.5
-      floor = min(self.edge_n)
+      floor = self.lineValidThreshold
       sumW = 0.0
       sumPosW = 0.0
       for i in range(8):
