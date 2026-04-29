@@ -8,7 +8,7 @@
 #   2. A SUBMISSIONS registry + --submission <name> flag for jumping straight
 #      to a given mission segment without editing the file.
 #   3. --kp / --kd / --ki / --alpha / --beta flags that override both
-#      controller profiles, plus --dlimit / --min-turn-* rescue tuning.
+#      controller profiles, plus rescue/guard tuning flags.
 #      "normal" and "slow" line-follow PID sets at runtime.
 #
 # Run examples:
@@ -965,7 +965,7 @@ def run_teleop_in_process():
 
 
 ################################################################
-# CONTROLLER OVERRIDES (--kp/--kd/--ki/--alpha/--beta/--dlimit/--min-turn-*)
+# CONTROLLER OVERRIDES (--kp/--kd/--ki/--alpha/--beta and safety tuning)
 ################################################################
 
 def apply_pid_overrides():
@@ -986,6 +986,8 @@ def apply_pid_overrides():
         ("lineDerivativeTermLimit", "dlimit"),
         ("lineMinTurnError", "min_turn_error"),
         ("lineMinTurnRate", "min_turn_rate"),
+        ("lineNoReverseError", "no_reverse_error"),
+        ("lineTurnSlewRate", "slew_rate"),
     ):
         val = getattr(service.args, attr, None)
         if val is not None:
@@ -994,7 +996,8 @@ def apply_pid_overrides():
         overrides["lineOutputAlpha"] = max(0.0, min(1.0, overrides["lineOutputAlpha"]))
     if "lineDerivativeBeta" in overrides:
         overrides["lineDerivativeBeta"] = max(0.0, min(1.0, overrides["lineDerivativeBeta"]))
-    for key in ("lineDerivativeTermLimit", "lineMinTurnError", "lineMinTurnRate"):
+    for key in ("lineDerivativeTermLimit", "lineMinTurnError", "lineMinTurnRate",
+                "lineNoReverseError", "lineTurnSlewRate"):
         if key in overrides:
             overrides[key] = max(0.0, overrides[key])
     if not overrides:
@@ -1528,6 +1531,14 @@ if __name__ == "__main__":
         service.parser.add_argument(
             "--min-turn-rate", type=float, default=None,
             help="Override minimum abs(turn rate) while the visible line is far off-center.",
+        )
+        service.parser.add_argument(
+            "--no-reverse-error", type=float, default=None,
+            help="Above this abs(error), D may damp but not reverse the PI steering direction. 0 disables.",
+        )
+        service.parser.add_argument(
+            "--slew-rate", type=float, default=None,
+            help="Override max change in commanded turn rate, in rad/s per second. 0 disables.",
         )
         # Note: -t/--test is registered by uservice; in this mission it ALSO
         # enables the SPACE-to-teleop / q-to-quit hotkey listener. Without

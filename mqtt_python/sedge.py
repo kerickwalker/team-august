@@ -54,6 +54,8 @@ class SEdge:
     lineDerivativeTermLimit = 0.45  # max absolute D contribution to turn-rate output
     lineMinTurnError = 0.75     # if abs(error) is this large, enforce a minimum turn
     lineMinTurnRate = 0.55      # minimum abs(turn rate) while the visible line is far off-center
+    lineNoReverseError = 0.25   # above this abs(error), D may damp but not reverse PI steering
+    lineTurnSlewRate = 8.0      # max change in commanded turn rate (rad/s per second); 0 disables
     # Sample period used by the PID (s). T0/livn is published every ~10 ms
     # ("sub livn 3"), so the controller assumes a fixed dt to keep Kd and Ki
     # tuning independent of MQTT arrival jitter / EWMA warm-up. The measured
@@ -81,11 +83,13 @@ class SEdge:
                        lineIntegralLimit=2.0, lineOutputAlpha=0.5,
                        lineDerivativeBeta=0.5, lineDerivativeTermLimit=0.45,
                        lineMinTurnError=0.75, lineMinTurnRate=0.55,
+                       lineNoReverseError=0.25, lineTurnSlewRate=8.0,
                        lineVelocity=0.30),
         "slow":   dict(lineKp=0.25, lineKi=0.0, lineKd=0.08,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.5,
                        lineDerivativeBeta=0.5, lineDerivativeTermLimit=0.30,
                        lineMinTurnError=0.75, lineMinTurnRate=0.40,
+                       lineNoReverseError=0.25, lineTurnSlewRate=6.0,
                        lineVelocity=0.15),
     }
     # Recovery when line lost (A1/A4: turn toward last line side)
@@ -103,11 +107,11 @@ class SEdge:
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
         'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'd', 'u',
-        'minTurn', 'y', 'rc'
+        'dGuard', 'minTurn', 'slew', 'y', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
-    #   livn, avg, high, valid, validCnt, posL, posR, center, cross, state, aboveCnt, crossingCnt, leftMost, rightMost, e, p, i, d, dTerm, integral, u, minTurn, y, rc, lastLineSide
+    #   livn, avg, high, valid, validCnt, posL, posR, center, cross, state, aboveCnt, crossingCnt, leftMost, rightMost, e, p, i, d, dTerm, integral, u, dGuard, minTurn, slew, y, rc, lastLineSide
     #   livn = normalized sensor values [8]; avg = 8-sensor avg 
     #   high = peak; valid = line valid; validCnt = 0..20
     #   posL, posR = line position -3.5..3.5 left/right edge (sensors 1..8); controller uses center for error
@@ -118,7 +122,9 @@ class SEdge:
     #           with beta=0, e_filt equals e each sample (same as classic (e-e_prev)/dt).
     #           unclamped d = Kd*dTerm
     #   integral = accumulated error·s before Ki; 
-    #   u = PID before clamp; minTurn = True when the far-off-center minimum turn rescue overrides y; y = turn rate sent in rc
+    #   u = PID before clamp; dGuard = True when D was prevented from reversing PI steering
+    #   minTurn = True when the far-off-center minimum turn rescue requested y
+    #   slew = True when turn-rate change was limited; y = turn rate sent in rc
     #   rc = command sent
     #   lastLineSide = -1/0/+1 (line was left/unknown/right when last valid); recovery turns this way
     #   state = lineState ("no_line"|"line"|"crossing"); aboveCnt = sensorsAboveCount (0..8)
@@ -179,7 +185,9 @@ class SEdge:
     lineE1 = 0.0
     lineY1 = 0.0
     lineY = 0.0  # control output (rad/s), clamped and smoothed
+    lineDerivativeGuardActive = False
     lineMinTurnActive = False
+    lineTurnSlewActive = False
     # memory for recovery (A4: remember last side)
     lastLineSide = 0   # -1 = line was left, +1 = line was right, 0 = unknown; recovery turns this way
     # management
@@ -569,6 +577,7 @@ class SEdge:
       # PID output (u = P + I + D), clamp, then low-pass smooth.
       pTerm = self.lineKp * e
       iTerm = self.lineKi * self.lineIntegral
+      piTerm = pTerm + iTerm
       dContribution = self.lineKd * dTerm
       dLimit = abs(getattr(self, 'lineDerivativeTermLimit', 0.0))
       if dLimit > 0.0:
@@ -576,14 +585,21 @@ class SEdge:
           dContribution = dLimit
         elif dContribution < -dLimit:
           dContribution = -dLimit
-      self.u = pTerm + iTerm + dContribution
+      self.lineDerivativeGuardActive = False
+      no_reverse_error = abs(getattr(self, 'lineNoReverseError', 0.0))
+      d_guarded = dContribution
+      if (self.lineValid and no_reverse_error > 0.0 and abs(e) >= no_reverse_error
+          and piTerm != 0.0 and piTerm * (piTerm + dContribution) < 0.0):
+        d_guarded = 0.0
+        self.lineDerivativeGuardActive = True
+      self.u = piTerm + d_guarded
       raw_y = self.u
       if raw_y > self.lineYMax:
         raw_y = self.lineYMax
       elif raw_y < self.lineYMin:
         raw_y = self.lineYMin
       # low-pass filter: blend new clamped output with previous output
-      self.lineY = self.lineOutputAlpha * raw_y + (1.0 - self.lineOutputAlpha) * self.lineY1
+      desired_y = self.lineOutputAlpha * raw_y + (1.0 - self.lineOutputAlpha) * self.lineY1
       # If the line is still visible but far from the center, do not allow a
       # derivative spike or output smoothing to nearly cancel the steering command.
       self.lineMinTurnActive = False
@@ -591,9 +607,21 @@ class SEdge:
       min_turn_rate = abs(getattr(self, 'lineMinTurnRate', 0.0))
       if self.lineValid and min_turn_error > 0.0 and min_turn_rate > 0.0 and abs(e) >= min_turn_error:
         error_sign = 1.0 if e > 0.0 else -1.0 if e < 0.0 else 0.0
-        if error_sign != 0.0 and abs(self.lineY) < min_turn_rate:
-          self.lineY = error_sign * min_turn_rate
+        if error_sign != 0.0 and abs(desired_y) < min_turn_rate:
+          desired_y = error_sign * min_turn_rate
           self.lineMinTurnActive = True
+      self.lineTurnSlewActive = False
+      slew_rate = abs(getattr(self, 'lineTurnSlewRate', 0.0))
+      if self.lineValid and slew_rate > 0.0:
+        max_step = slew_rate * Tsec
+        delta_y = desired_y - self.lineY1
+        if delta_y > max_step:
+          desired_y = self.lineY1 + max_step
+          self.lineTurnSlewActive = True
+        elif delta_y < -max_step:
+          desired_y = self.lineY1 - max_step
+          self.lineTurnSlewActive = True
+      self.lineY = desired_y
       self.lineE1 = self.u
       self.lineY1 = self.lineY
       # remember for recovery: which side the line was on when last valid
@@ -656,7 +684,7 @@ class SEdge:
           parts.append(f"leftMost={self.leftmostAboveIndex if self.leftmostAboveIndex is not None else '-'}")
         if 'rightMost' in enabled:
           parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'minTurn', 'y', 'rc', 'lastLineSide')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'dGuard', 'minTurn', 'slew', 'y', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
           parts.append(f"e={e:6.3f}")
@@ -665,15 +693,19 @@ class SEdge:
         if 'i' in enabled:
           parts.append(f"i={iTerm:6.3f}")
         if 'd' in enabled:
-          parts.append(f"d={dContribution:6.3f}")
+          parts.append(f"d={d_guarded:6.3f}")
         if 'dTerm' in enabled:
           parts.append(f"dTerm={dTerm:6.3f}")
         if 'integral' in enabled:
           parts.append(f"integral={self.lineIntegral:6.3f}")
         if 'u' in enabled:
           parts.append(f"u={self.u:6.3f}")
+        if 'dGuard' in enabled:
+          parts.append(f"dGuard={str(self.lineDerivativeGuardActive):5}")
         if 'minTurn' in enabled:
           parts.append(f"minTurn={str(self.lineMinTurnActive):5}")
+        if 'slew' in enabled:
+          parts.append(f"slew={str(self.lineTurnSlewActive):5}")
         if 'y' in enabled:
           parts.append(f"y={self.lineY:6.3f}")
         if 'rc' in enabled:
