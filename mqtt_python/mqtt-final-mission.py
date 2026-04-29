@@ -8,6 +8,7 @@
 #   2. A SUBMISSIONS registry + --submission <name> flag for jumping straight
 #      to a given mission segment without editing the file.
 #   3. --kp / --kd / --ki / --alpha / --beta flags that override both
+#      controller profiles, plus --dlimit / --min-turn-* rescue tuning.
 #      "normal" and "slow" line-follow PID sets at runtime.
 #
 # Run examples:
@@ -964,7 +965,7 @@ def run_teleop_in_process():
 
 
 ################################################################
-# CONTROLLER OVERRIDES (--kp/--kd/--ki/--alpha/--beta)
+# CONTROLLER OVERRIDES (--kp/--kd/--ki/--alpha/--beta/--dlimit/--min-turn-*)
 ################################################################
 
 def apply_pid_overrides():
@@ -982,6 +983,9 @@ def apply_pid_overrides():
         ("lineKi", "ki"),
         ("lineOutputAlpha", "alpha"),
         ("lineDerivativeBeta", "beta"),
+        ("lineDerivativeTermLimit", "dlimit"),
+        ("lineMinTurnError", "min_turn_error"),
+        ("lineMinTurnRate", "min_turn_rate"),
     ):
         val = getattr(service.args, attr, None)
         if val is not None:
@@ -990,6 +994,9 @@ def apply_pid_overrides():
         overrides["lineOutputAlpha"] = max(0.0, min(1.0, overrides["lineOutputAlpha"]))
     if "lineDerivativeBeta" in overrides:
         overrides["lineDerivativeBeta"] = max(0.0, min(1.0, overrides["lineDerivativeBeta"]))
+    for key in ("lineDerivativeTermLimit", "lineMinTurnError", "lineMinTurnRate"):
+        if key in overrides:
+            overrides[key] = max(0.0, overrides[key])
     if not overrides:
         return
     for params_name in ("normal", "slow"):
@@ -1509,6 +1516,18 @@ if __name__ == "__main__":
             help=("Override D-path EWMA on tracking error (0..1). "
                   "Smooths e before (e_filt-e_filt_prev)/dt; P and I still use raw e. Applies to normal+slow. "
                   "See mqtt_python/PID_explanation.md."),
+        )
+        service.parser.add_argument(
+            "--dlimit", type=float, default=None,
+            help="Override max absolute D contribution to turn rate. 0 disables the clamp.",
+        )
+        service.parser.add_argument(
+            "--min-turn-error", type=float, default=None,
+            help="Override abs(error) where visible-line rescue minimum turn starts.",
+        )
+        service.parser.add_argument(
+            "--min-turn-rate", type=float, default=None,
+            help="Override minimum abs(turn rate) while the visible line is far off-center.",
         )
         # Note: -t/--test is registered by uservice; in this mission it ALSO
         # enables the SPACE-to-teleop / q-to-quit hotkey listener. Without

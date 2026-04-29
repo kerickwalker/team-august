@@ -49,8 +49,11 @@ class SEdge:
     # PID gains (turn rate rad/s; integral in error·s, derivative in error/s)
     lineKp = 0.4  # was 0.8 — reduced to soften proportional jerk
     lineKi = 0.0
-    lineKd = 0.1  # was 0.05 — slightly more damping
+    lineKd = 0.1  # derivative damping; keep modest because livn arrives every ~10 ms
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
+    lineDerivativeTermLimit = 0.45  # max absolute D contribution to turn-rate output
+    lineMinTurnError = 0.75     # if abs(error) is this large, enforce a minimum turn
+    lineMinTurnRate = 0.55      # minimum abs(turn rate) while the visible line is far off-center
     # Sample period used by the PID (s). T0/livn is published every ~10 ms
     # ("sub livn 3"), so the controller assumes a fixed dt to keep Kd and Ki
     # tuning independent of MQTT arrival jitter / EWMA warm-up. The measured
@@ -74,12 +77,16 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.3,
+        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.1,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.5,
-                       lineDerivativeBeta=0.5, lineVelocity=0.30),
-        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.2, #0.4, 0.1
+                       lineDerivativeBeta=0.5, lineDerivativeTermLimit=0.45,
+                       lineMinTurnError=0.75, lineMinTurnRate=0.55,
+                       lineVelocity=0.30),
+        "slow":   dict(lineKp=0.25, lineKi=0.0, lineKd=0.08,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.5,
-                       lineDerivativeBeta=0.2, lineVelocity=0.15),
+                       lineDerivativeBeta=0.5, lineDerivativeTermLimit=0.30,
+                       lineMinTurnError=0.75, lineMinTurnRate=0.40,
+                       lineVelocity=0.15),
     }
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
@@ -95,7 +102,7 @@ class SEdge:
     
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
-        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'y'
+        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'd', 'u', 'y', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
@@ -105,10 +112,10 @@ class SEdge:
     #   posL, posR = line position -3.5..3.5 left/right edge (sensors 1..8); controller uses center for error
     #   center = weighted center (-3.5..3.5); cross = crossing detected 
     #   e = error (ref - center)
-    #   p, i, d = P, I, D terms (rad/s);
+    #   p, i, d = P, I, D terms (rad/s; d is after derivative contribution clamp);
     #   dTerm = (e_filt - e_filt_prev)/dt in error/s when using lineDerivativeBeta;
     #           with beta=0, e_filt equals e each sample (same as classic (e-e_prev)/dt).
-    #           d = Kd*dTerm
+    #           unclamped d = Kd*dTerm
     #   integral = accumulated error·s before Ki; 
     #   u = PID before clamp; y = turn rate sent in rc
     #   rc = command sent
@@ -509,7 +516,7 @@ class SEdge:
       # use weighted center of mass (analog) for error; keep previous when sum(weight)==0
       lineCenter = self.lineCenterWeighted
       e = self.refPosition - lineCenter
-      # line center to the right -> positive e -> robot too far left -> negative turn corrects
+      # line center to the right -> negative e -> negative turn corrects when driving forward
       # Fixed sample period: makes Kd and Ki immune to MQTT arrival jitter and the
       # EWMA warm-up on edge_nInterval. The measured interval is checked once for
       # gross drift from nominal so a firmware cadence change can't silently rescale D/I.
@@ -560,7 +567,14 @@ class SEdge:
       # PID output (u = P + I + D), clamp, then low-pass smooth.
       pTerm = self.lineKp * e
       iTerm = self.lineKi * self.lineIntegral
-      self.u = pTerm + iTerm + self.lineKd * dTerm
+      dContribution = self.lineKd * dTerm
+      dLimit = abs(getattr(self, 'lineDerivativeTermLimit', 0.0))
+      if dLimit > 0.0:
+        if dContribution > dLimit:
+          dContribution = dLimit
+        elif dContribution < -dLimit:
+          dContribution = -dLimit
+      self.u = pTerm + iTerm + dContribution
       raw_y = self.u
       if raw_y > self.lineYMax:
         raw_y = self.lineYMax
@@ -568,14 +582,22 @@ class SEdge:
         raw_y = self.lineYMin
       # low-pass filter: blend new clamped output with previous output
       self.lineY = self.lineOutputAlpha * raw_y + (1.0 - self.lineOutputAlpha) * self.lineY1
+      # If the line is still visible but far from the center, do not allow a
+      # derivative spike or output smoothing to nearly cancel the steering command.
+      min_turn_error = abs(getattr(self, 'lineMinTurnError', 0.0))
+      min_turn_rate = abs(getattr(self, 'lineMinTurnRate', 0.0))
+      if self.lineValid and min_turn_error > 0.0 and min_turn_rate > 0.0 and abs(e) >= min_turn_error:
+        error_sign = 1.0 if e > 0.0 else -1.0 if e < 0.0 else 0.0
+        if error_sign != 0.0 and abs(self.lineY) < min_turn_rate:
+          self.lineY = error_sign * min_turn_rate
       self.lineE1 = self.u
       self.lineY1 = self.lineY
       # remember for recovery: which side the line was on when last valid
       if self.lineValid:
         if e > 0:
-          self.lastLineSide = 1   # line was to the right (robot left of line)
+          self.lastLineSide = 1   # line was left; positive turn searches/corrects left
         elif e < 0:
-          self.lastLineSide = -1  # line was to the left
+          self.lastLineSide = -1  # line was right; negative turn searches/corrects right
         # e == 0: keep previous lastLineSide
       # Recovery: when line lost, turn toward last line side (optional forward creep)
       if not self.lineValid and self.lineCtrl:
@@ -639,7 +661,7 @@ class SEdge:
         if 'i' in enabled:
           parts.append(f"i={iTerm:6.3f}")
         if 'd' in enabled:
-          parts.append(f"d={self.lineKd*dTerm:6.3f}")
+          parts.append(f"d={dContribution:6.3f}")
         if 'dTerm' in enabled:
           parts.append(f"dTerm={dTerm:6.3f}")
         if 'integral' in enabled:
