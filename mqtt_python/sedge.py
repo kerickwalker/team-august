@@ -31,7 +31,7 @@ from ulog import flog
 class SEdge:
     # ============= TUNING & PRINT OPTIONS (edit these) =============
     # Forward speed when following line (m/s). Mission scripts pass this to lineControl(); change here to tune.
-    defaultLineVelocity = 0.22  # m/s (e.g. 0.15 = slower, 0.25 = faster)
+    defaultLineVelocity = 0.30  # m/s
     # Line detection (livn 0–1000 scale)
     lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
     crossingThreshold = 700    # legacy: was used for average-based crossing; crossing now uses crossingMinSensors
@@ -46,8 +46,9 @@ class SEdge:
     yMinSpan    = 4            # Y-crossing: minimum span between leftmost and rightmost active sensor
     yMidIndices = (3, 4)       # centre sensor indices; if any are inactive while above conditions hold → Y
     low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
-    # PID gains (turn rate rad/s; integral in error·s, derivative in error/s)
-    lineKp = 0.4  # was 0.8 — reduced to soften proportional jerk
+    # Active line-follow tuning: lineKp only. The old PID/filter fields below
+    # are left for CLI compatibility but are not used by the P-only controller.
+    lineKp = 0.4
     lineKi = 0.0
     lineKd = 0.1  # derivative damping; keep modest because livn arrives every ~10 ms
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
@@ -59,6 +60,7 @@ class SEdge:
     lineTurnLimit = 0.90        # normal line-following abs(turn rate) cap, below recovery turn cap
     lineVelocityMin = 0.10      # slow to at least this speed when line error is large
     lineSlowdownError = 1.00    # abs(error) where adaptive slowdown reaches lineVelocityMin
+    lineControlPeriod = 0.050   # P-only motor command update period (50 ms)
     # Sample period used by the PID (s). T0/livn is published every ~10 ms
     # ("sub livn 3"), so the controller assumes a fixed dt to keep Kd and Ki
     # tuning independent of MQTT arrival jitter / EWMA warm-up. The measured
@@ -68,8 +70,8 @@ class SEdge:
     # Output saturation (turn rate rad/s)
     # Keep ≤ speed / (half_track_width) so inner wheel never reverses.
     # At 0.25 m/s, ~0.13 m track: max safe ≈ 1.9 rad/s → use 1.5 for margin.
-    lineYMax = 3.0
-    lineYMin = -3.0
+    lineYMax = 1.0
+    lineYMin = -1.0
     # Low-pass smoothing on the turn-rate output (0 = no filter, 1 = frozen)
     # Absorbs sensor noise between 30 ms livn updates without adding much lag.
     lineOutputAlpha = 0.25  # new = alpha*raw + (1-alpha)*prev; lower = smoother
@@ -82,20 +84,8 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.32, lineKi=0.0, lineKd=0.10,
-                       lineIntegralLimit=1.0, lineOutputAlpha=0.25,
-                       lineDerivativeBeta=0.85, lineDerivativeTermLimit=0.25,
-                       lineMinTurnError=1.10, lineMinTurnRate=0.25,
-                       lineNoReverseError=0.25, lineTurnSlewRate=4.0,
-                       lineTurnLimit=0.90, lineVelocityMin=0.10,
-                       lineSlowdownError=1.00, lineVelocity=0.22),
-        "slow":   dict(lineKp=0.22, lineKi=0.0, lineKd=0.06,
-                       lineIntegralLimit=1.0, lineOutputAlpha=0.25,
-                       lineDerivativeBeta=0.85, lineDerivativeTermLimit=0.18,
-                       lineMinTurnError=1.10, lineMinTurnRate=0.20,
-                       lineNoReverseError=0.25, lineTurnSlewRate=3.0,
-                       lineTurnLimit=0.70, lineVelocityMin=0.07,
-                       lineSlowdownError=1.00, lineVelocity=0.12),
+        "normal": dict(lineKp=0.4, lineVelocity=0.30),
+        "slow":   dict(lineKp=0.4, lineVelocity=0.30),
     }
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
@@ -111,8 +101,7 @@ class SEdge:
     
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
-        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'd', 'u',
-        'dGuard', 'minTurn', 'slew', 'y', 'vAdj', 'rc'
+        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'y', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
@@ -191,6 +180,7 @@ class SEdge:
     lineE1 = 0.0
     lineY1 = 0.0
     lineY = 0.0  # control output (rad/s), clamped and smoothed
+    lineLastControlTime = 0.0
     lineDerivativeGuardActive = False
     lineMinTurnActive = False
     lineTurnSlewActive = False
@@ -515,6 +505,10 @@ class SEdge:
       # Any non-trivial speed (forward or reverse) enables line control.
       # 0 keeps the existing "off" behavior used throughout missions.
       self.lineCtrl = abs(velocity) > 0.001
+      if not self.lineCtrl:
+        self.lineY = 0.0
+        self.lineY1 = 0.0
+      self.lineLastControlTime = 0.0
       if params in self.PARAM_SETS:
         for k, v in self.PARAM_SETS[params].items():
           setattr(self, k, v)
@@ -525,6 +519,95 @@ class SEdge:
 
     def followLine(self):
       from uservice import service
+      # P-only line follower. Sensor updates can arrive faster, but motor
+      # commands are deliberately sent at a fixed, slower cadence.
+      lineCenter = self.lineCenterWeighted
+      e = self.refPosition - lineCenter
+      self.lineE_prev = e
+
+      if not self.lineCtrl:
+        return
+
+      now = t.time()
+      control_period = max(0.0, getattr(self, 'lineControlPeriod', 0.050))
+      if (self.lineLastControlTime > 0.0
+          and control_period > 0.0
+          and now - self.lineLastControlTime < control_period):
+        return
+      self.lineLastControlTime = now
+
+      pTerm = self.lineKp * e
+      self.u = pTerm
+      self.lineY = pTerm
+      if self.lineY > self.lineYMax:
+        self.lineY = self.lineYMax
+      elif self.lineY < self.lineYMin:
+        self.lineY = self.lineYMin
+      self.lineY1 = self.lineY
+      self.lineE1 = self.u
+
+      if self.lineValid:
+        if e > 0:
+          self.lastLineSide = 1
+        elif e < 0:
+          self.lastLineSide = -1
+
+      if not self.lineValid:
+        sent_velocity = self.recoveryVelocity
+        sent_turn = self.recoveryTurnRate * (self.lastLineSide if self.lastLineSide != 0 else 1)
+        if sent_turn > self.lineYMax:
+          sent_turn = self.lineYMax
+        elif sent_turn < self.lineYMin:
+          sent_turn = self.lineYMin
+        self.lineY = sent_turn
+      else:
+        sent_velocity = self.velocity
+        sent_turn = self.lineY
+
+      if sent_velocity < 0.0:
+        sent_turn = -sent_turn
+      par = f"rc {sent_velocity:.3f} {sent_turn:.3f} {now}"
+      service.send("robobot/cmd/ti", par)
+
+      if self.print_follow_line_block and (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)):
+        enabled = set(self.print_follow_line_fields)
+        parts = []
+        if 'livn' in enabled:
+          norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
+          parts.append(f"livn [{norm}]")
+        if 'high' in enabled:
+          parts.append(f"high={self.high:4d}")
+        if 'valid' in enabled:
+          parts.append(f"valid={str(self.lineValid):5}")
+        if 'validCnt' in enabled:
+          parts.append(f"validCnt={self.lineValidCnt:2d}")
+        if 'state' in enabled:
+          parts.append(f"state={self.lineState}")
+        if 'aboveCnt' in enabled:
+          parts.append(f"aboveCnt={self.sensorsAboveCount}")
+        if 'crossingCnt' in enabled:
+          parts.append(f"crossingCnt={self.mission_crossing_count}")
+        if 'leftMost' in enabled:
+          parts.append(f"leftMost={self.leftmostAboveIndex if self.leftmostAboveIndex is not None else '-'}")
+        if 'rightMost' in enabled:
+          parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
+        if 'center' in enabled:
+          parts.append(f"center={lineCenter:5.2f}")
+        if any(k in enabled for k in ('e', 'p', 'y', 'rc', 'lastLineSide')):
+          parts.append("|")
+        if 'e' in enabled:
+          parts.append(f"e={e:6.3f}")
+        if 'p' in enabled:
+          parts.append(f"p={pTerm:6.3f}")
+        if 'y' in enabled:
+          parts.append(f"y={self.lineY:6.3f}")
+        if 'rc' in enabled:
+          parts.append(f"-> rc {sent_velocity:.3f} {sent_turn:.3f}")
+        if 'lastLineSide' in enabled:
+          parts.append(f"lastSide={self.lastLineSide:+d}")
+        if parts:
+          print("% line: " + " ".join(parts))
+      return  # Legacy PID/filter implementation below is intentionally bypassed.
       # some parameters depend on sample time, adjust
       # print(f"LineCtrl:: sample time {self.edge_nInterval}")
       if abs(self.edge_nInterval - self.edgeIntervalSetup) > 2.0: # ms
