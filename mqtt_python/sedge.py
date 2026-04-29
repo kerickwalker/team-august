@@ -107,12 +107,12 @@ class SEdge:
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
         'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'i', 'd', 'u',
-        'y', 'settle', 'recStraight', 'rc'
+        'y', 'dGuard', 'settle', 'recStraight', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
     #   livn, avg, high, valid, validCnt, center, state, aboveCnt,
-    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, settle, recStraight, rc, lastLineSide
+    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, settle, recStraight, rc, lastLineSide
     #   e = error (ref - center); u = p+i+d; y = clamped turn rate.
     # ============= end tuning & print options =============
 
@@ -582,7 +582,26 @@ class SEdge:
       else:
         dTerm = 0.0
       dContribution = lineKd * dTerm
-      self.u = pTerm + iTerm + dContribution
+      self.lineDerivativeGuardActive = False
+      d_limit = getattr(self, 'lineDerivativeTermLimit', 0.0)
+      if d_limit > 0.0:
+        if dContribution > d_limit:
+          dContribution = d_limit
+          self.lineDerivativeGuardActive = True
+        elif dContribution < -d_limit:
+          dContribution = -d_limit
+          self.lineDerivativeGuardActive = True
+
+      piTerm = pTerm + iTerm
+      self.u = piTerm + dContribution
+      # D should damp the steering, not reverse it while the line is clearly
+      # off-center. This avoids the back-and-forth kicks visible in the logs.
+      no_reverse_error = getattr(self, 'lineNoReverseError', 0.0)
+      if (self.lineValid and abs(e) >= no_reverse_error
+          and piTerm != 0.0 and self.u * piTerm < 0.0):
+        dContribution = 0.0
+        self.u = piTerm
+        self.lineDerivativeGuardActive = True
       self.lineY = self.u
       if self.lineY > self.lineYMax:
         self.lineY = self.lineYMax
@@ -659,7 +678,7 @@ class SEdge:
           parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
         if 'center' in enabled:
           parts.append(f"center={lineCenter:5.2f}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'recStraight', 'rc', 'lastLineSide')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'dGuard', 'recStraight', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
           parts.append(f"e={e:6.3f}")
@@ -673,6 +692,8 @@ class SEdge:
           parts.append(f"u={self.u:6.3f}")
         if 'y' in enabled:
           parts.append(f"y={self.lineY:6.3f}")
+        if 'dGuard' in enabled:
+          parts.append(f"dGuard={str(self.lineDerivativeGuardActive):5}")
         if 'settle' in enabled:
           parts.append(f"settle={str(self.lineSettleActive):5}")
         if 'recStraight' in enabled:
