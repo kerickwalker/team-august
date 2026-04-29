@@ -31,7 +31,7 @@ from ulog import flog
 class SEdge:
     # ============= TUNING & PRINT OPTIONS (edit these) =============
     # Forward speed when following line (m/s). Mission scripts pass this to lineControl(); change here to tune.
-    defaultLineVelocity = 0.3   # m/s (e.g. 0.15 = slower, 0.25 = faster)
+    defaultLineVelocity = 0.22  # m/s (e.g. 0.15 = slower, 0.25 = faster)
     # Line detection (livn 0–1000 scale)
     lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
     crossingThreshold = 700    # legacy: was used for average-based crossing; crossing now uses crossingMinSensors
@@ -51,11 +51,14 @@ class SEdge:
     lineKi = 0.0
     lineKd = 0.1  # derivative damping; keep modest because livn arrives every ~10 ms
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
-    lineDerivativeTermLimit = 0.45  # max absolute D contribution to turn-rate output
-    lineMinTurnError = 0.75     # if abs(error) is this large, enforce a minimum turn
-    lineMinTurnRate = 0.55      # minimum abs(turn rate) while the visible line is far off-center
+    lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
+    lineMinTurnError = 1.10     # if abs(error) is this large, enforce a minimum turn
+    lineMinTurnRate = 0.25      # minimum abs(turn rate) while the visible line is far off-center
     lineNoReverseError = 0.25   # above this abs(error), D may damp but not reverse PI steering
-    lineTurnSlewRate = 8.0      # max change in commanded turn rate (rad/s per second); 0 disables
+    lineTurnSlewRate = 4.0      # max change in commanded turn rate (rad/s per second); 0 disables
+    lineTurnLimit = 0.90        # normal line-following abs(turn rate) cap, below recovery turn cap
+    lineVelocityMin = 0.10      # slow to at least this speed when line error is large
+    lineSlowdownError = 1.00    # abs(error) where adaptive slowdown reaches lineVelocityMin
     # Sample period used by the PID (s). T0/livn is published every ~10 ms
     # ("sub livn 3"), so the controller assumes a fixed dt to keep Kd and Ki
     # tuning independent of MQTT arrival jitter / EWMA warm-up. The measured
@@ -69,7 +72,7 @@ class SEdge:
     lineYMin = -3.0
     # Low-pass smoothing on the turn-rate output (0 = no filter, 1 = frozen)
     # Absorbs sensor noise between 30 ms livn updates without adding much lag.
-    lineOutputAlpha = 0.4   # new = alpha*raw + (1-alpha)*prev; lower = smoother
+    lineOutputAlpha = 0.25  # new = alpha*raw + (1-alpha)*prev; lower = smoother
     # EWMA on tracking error for the D-term only (does not smooth P or I).
     # e_filt = beta * e_filt + (1 - beta) * e ; beta in [0, 1]. beta=0 → e_filt = e
     # each step (classic derivative on raw error). beta>0 low-pass filters e before
@@ -79,18 +82,20 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.1,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.5,
-                       lineDerivativeBeta=0.5, lineDerivativeTermLimit=0.45,
-                       lineMinTurnError=0.75, lineMinTurnRate=0.55,
-                       lineNoReverseError=0.25, lineTurnSlewRate=8.0,
-                       lineVelocity=0.30),
-        "slow":   dict(lineKp=0.25, lineKi=0.0, lineKd=0.08,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.5,
-                       lineDerivativeBeta=0.5, lineDerivativeTermLimit=0.30,
-                       lineMinTurnError=0.75, lineMinTurnRate=0.40,
-                       lineNoReverseError=0.25, lineTurnSlewRate=6.0,
-                       lineVelocity=0.15),
+        "normal": dict(lineKp=0.32, lineKi=0.0, lineKd=0.10,
+                       lineIntegralLimit=1.0, lineOutputAlpha=0.25,
+                       lineDerivativeBeta=0.85, lineDerivativeTermLimit=0.25,
+                       lineMinTurnError=1.10, lineMinTurnRate=0.25,
+                       lineNoReverseError=0.25, lineTurnSlewRate=4.0,
+                       lineTurnLimit=0.90, lineVelocityMin=0.10,
+                       lineSlowdownError=1.00, lineVelocity=0.22),
+        "slow":   dict(lineKp=0.22, lineKi=0.0, lineKd=0.06,
+                       lineIntegralLimit=1.0, lineOutputAlpha=0.25,
+                       lineDerivativeBeta=0.85, lineDerivativeTermLimit=0.18,
+                       lineMinTurnError=1.10, lineMinTurnRate=0.20,
+                       lineNoReverseError=0.25, lineTurnSlewRate=3.0,
+                       lineTurnLimit=0.70, lineVelocityMin=0.07,
+                       lineSlowdownError=1.00, lineVelocity=0.12),
     }
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
@@ -107,11 +112,11 @@ class SEdge:
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
         'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'd', 'u',
-        'dGuard', 'minTurn', 'slew', 'y', 'rc'
+        'dGuard', 'minTurn', 'slew', 'y', 'vAdj', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
-    #   livn, avg, high, valid, validCnt, posL, posR, center, cross, state, aboveCnt, crossingCnt, leftMost, rightMost, e, p, i, d, dTerm, integral, u, dGuard, minTurn, slew, y, rc, lastLineSide
+    #   livn, avg, high, valid, validCnt, posL, posR, center, cross, state, aboveCnt, crossingCnt, leftMost, rightMost, e, p, i, d, dTerm, integral, u, dGuard, minTurn, slew, y, vAdj, rc, lastLineSide
     #   livn = normalized sensor values [8]; avg = 8-sensor avg 
     #   high = peak; valid = line valid; validCnt = 0..20
     #   posL, posR = line position -3.5..3.5 left/right edge (sensors 1..8); controller uses center for error
@@ -125,6 +130,7 @@ class SEdge:
     #   u = PID before clamp; dGuard = True when D was prevented from reversing PI steering
     #   minTurn = True when the far-off-center minimum turn rescue requested y
     #   slew = True when turn-rate change was limited; y = turn rate sent in rc
+    #   vAdj = True when adaptive slowdown reduced forward speed
     #   rc = command sent
     #   lastLineSide = -1/0/+1 (line was left/unknown/right when last valid); recovery turns this way
     #   state = lineState ("no_line"|"line"|"crossing"); aboveCnt = sensorsAboveCount (0..8)
@@ -188,6 +194,7 @@ class SEdge:
     lineDerivativeGuardActive = False
     lineMinTurnActive = False
     lineTurnSlewActive = False
+    lineVelocityAdjusted = False
     # memory for recovery (A4: remember last side)
     lastLineSide = 0   # -1 = line was left, +1 = line was right, 0 = unknown; recovery turns this way
     # management
@@ -598,6 +605,12 @@ class SEdge:
         raw_y = self.lineYMax
       elif raw_y < self.lineYMin:
         raw_y = self.lineYMin
+      turn_limit = abs(getattr(self, 'lineTurnLimit', 0.0))
+      if self.lineValid and turn_limit > 0.0:
+        if raw_y > turn_limit:
+          raw_y = turn_limit
+        elif raw_y < -turn_limit:
+          raw_y = -turn_limit
       # low-pass filter: blend new clamped output with previous output
       desired_y = self.lineOutputAlpha * raw_y + (1.0 - self.lineOutputAlpha) * self.lineY1
       # If the line is still visible but far from the center, do not allow a
@@ -621,6 +634,11 @@ class SEdge:
         elif delta_y < -max_step:
           desired_y = self.lineY1 - max_step
           self.lineTurnSlewActive = True
+      if self.lineValid and turn_limit > 0.0:
+        if desired_y > turn_limit:
+          desired_y = turn_limit
+        elif desired_y < -turn_limit:
+          desired_y = -turn_limit
       self.lineY = desired_y
       self.lineE1 = self.u
       self.lineY1 = self.lineY
@@ -632,6 +650,7 @@ class SEdge:
           self.lastLineSide = -1  # line was right; negative turn searches/corrects right
         # e == 0: keep previous lastLineSide
       # Recovery: when line lost, turn toward last line side (optional forward creep)
+      self.lineVelocityAdjusted = False
       if not self.lineValid and self.lineCtrl:
         recovery_turn = self.recoveryTurnRate * (self.lastLineSide if self.lastLineSide != 0 else 1)
         if recovery_turn > self.lineYMax:
@@ -644,6 +663,16 @@ class SEdge:
       else:
         sent_velocity = self.velocity
         sent_turn = self.lineY
+        if self.lineValid and self.lineCtrl and abs(sent_velocity) > 0.001:
+          slowdown_error = abs(getattr(self, 'lineSlowdownError', 0.0))
+          min_velocity = abs(getattr(self, 'lineVelocityMin', abs(sent_velocity)))
+          base_velocity = abs(sent_velocity)
+          if slowdown_error > 0.0 and min_velocity < base_velocity:
+            slowdown = min(1.0, abs(e) / slowdown_error)
+            target_velocity = base_velocity - (base_velocity - min_velocity) * slowdown
+            if target_velocity < base_velocity - 0.001:
+              self.lineVelocityAdjusted = True
+            sent_velocity = (1.0 if sent_velocity > 0.0 else -1.0) * target_velocity
       # Reverse line-following: the front-mounted sensor leads when going
       # forward, but trails when going backward — so the same error must
       # produce the opposite ω to keep the sensor over the line.
@@ -684,7 +713,7 @@ class SEdge:
           parts.append(f"leftMost={self.leftmostAboveIndex if self.leftmostAboveIndex is not None else '-'}")
         if 'rightMost' in enabled:
           parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'dGuard', 'minTurn', 'slew', 'y', 'rc', 'lastLineSide')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'dTerm', 'integral', 'u', 'dGuard', 'minTurn', 'slew', 'y', 'vAdj', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
           parts.append(f"e={e:6.3f}")
@@ -708,6 +737,8 @@ class SEdge:
           parts.append(f"slew={str(self.lineTurnSlewActive):5}")
         if 'y' in enabled:
           parts.append(f"y={self.lineY:6.3f}")
+        if 'vAdj' in enabled:
+          parts.append(f"vAdj={str(self.lineVelocityAdjusted):5}")
         if 'rc' in enabled:
           parts.append(f"-> rc {sent_velocity:.3f} {sent_turn:.3f}")
         if 'lastLineSide' in enabled:

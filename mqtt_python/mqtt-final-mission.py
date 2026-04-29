@@ -988,6 +988,10 @@ def apply_pid_overrides():
         ("lineMinTurnRate", "min_turn_rate"),
         ("lineNoReverseError", "no_reverse_error"),
         ("lineTurnSlewRate", "slew_rate"),
+        ("lineTurnLimit", "turn_limit"),
+        ("lineVelocity", "line_speed"),
+        ("lineVelocityMin", "min_speed"),
+        ("lineSlowdownError", "slowdown_error"),
     ):
         val = getattr(service.args, attr, None)
         if val is not None:
@@ -997,13 +1001,17 @@ def apply_pid_overrides():
     if "lineDerivativeBeta" in overrides:
         overrides["lineDerivativeBeta"] = max(0.0, min(1.0, overrides["lineDerivativeBeta"]))
     for key in ("lineDerivativeTermLimit", "lineMinTurnError", "lineMinTurnRate",
-                "lineNoReverseError", "lineTurnSlewRate"):
+                "lineNoReverseError", "lineTurnSlewRate", "lineTurnLimit",
+                "lineVelocity", "lineVelocityMin", "lineSlowdownError"):
         if key in overrides:
             overrides[key] = max(0.0, overrides[key])
     if not overrides:
         return
     for params_name in ("normal", "slow"):
         edge.PARAM_SETS[params_name].update(overrides)
+    if "lineVelocity" in overrides:
+        LINE_SPEEDS.normal = float(edge.PARAM_SETS["normal"].get("lineVelocity", LINE_SPEEDS.normal))
+        LINE_SPEEDS.slow = float(edge.PARAM_SETS["slow"].get("lineVelocity", LINE_SPEEDS.slow))
     for k, v in overrides.items():
         setattr(edge, k, v)
     if not service.is_quiet():
@@ -1539,6 +1547,22 @@ if __name__ == "__main__":
         service.parser.add_argument(
             "--slew-rate", type=float, default=None,
             help="Override max change in commanded turn rate, in rad/s per second. 0 disables.",
+        )
+        service.parser.add_argument(
+            "--turn-limit", type=float, default=None,
+            help="Override normal line-following abs(turn rate) cap. 0 disables the extra cap.",
+        )
+        service.parser.add_argument(
+            "--line-speed", type=float, default=None,
+            help="Override line-following base speed for normal+slow profiles.",
+        )
+        service.parser.add_argument(
+            "--min-speed", type=float, default=None,
+            help="Override minimum adaptive line-following speed when abs(error) is large.",
+        )
+        service.parser.add_argument(
+            "--slowdown-error", type=float, default=None,
+            help="Override abs(error) where adaptive slowdown reaches --min-speed. 0 disables slowdown.",
         )
         # Note: -t/--test is registered by uservice; in this mission it ALSO
         # enables the SPACE-to-teleop / q-to-quit hotkey listener. Without
