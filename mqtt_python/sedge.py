@@ -181,7 +181,7 @@ class SEdge:
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
         "normal": dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.15),
-        "slow":   dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.05),
+        "slow":   dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.10),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"
