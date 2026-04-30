@@ -130,13 +130,13 @@ class SEdge:
     linePatternCrossingTable[0b01111111] = T.crossing
 
     linePatternCrossingTable[0b11111111] = T.crossing
-    # Active line-follow tuning. Start with PI-only so straight-line behavior
-    # can be tuned before adding separate turn/edge behavior.
-    lineKp = 0.25
-    lineKi = 0.005
-    lineKd = 0.0
+    # Active line-follow tuning. Keep D small and capped; binary error changes
+    # in steps, so uncapped derivative can dominate the steering.
+    lineKp = 0.30
+    lineKi = 0.0
+    lineKd = 0.003
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
-    lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
+    lineDerivativeTermLimit = 0.15  # max absolute D contribution to turn-rate output
     lineMinTurnError = 2.00     # enforce minimum turn only when the line is near the outer sensors
     lineMinTurnRate = 0.55      # minimum abs(turn rate) while the visible line is far off-center
     lineRecentValidCnt = 5      # below this confidence, recovery may start
@@ -168,6 +168,9 @@ class SEdge:
     lineDerivativeBeta = 0.0
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
+    PARAM_SETS = {
+        "normal": dict(lineKp=0.30, lineKi=0.0, lineKd=0.003, lineVelocity=0.20),
+        "slow":   dict(lineKp=0.30, lineKi=0.0, lineKd=0.003, lineVelocity=0.20),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"
@@ -191,7 +194,7 @@ class SEdge:
     
     print_follow_line_fields = (
         'pattern', 'high', 'validCnt', 'state', 'crossType',
-        'center', 'wCenter', 'e', 'y', 'minTurn', 'recMode', 'rc'
+        'center', 'e', 'p', 'd', 'y', 'dGuard', 'minTurn', 'recMode', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
