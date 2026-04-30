@@ -136,7 +136,7 @@ class SEdge:
     lineKi = 0.0
     lineKd = 0.003
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
-    lineDerivativeTermLimit = 0.15  # max absolute D contribution to turn-rate output
+    lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
     lineMinTurnError = 2.00     # enforce minimum turn only when the line is near the outer sensors
     lineMinTurnRate = 0.55      # minimum abs(turn rate) while the visible line is far off-center
     lineRecentValidCnt = 5      # below this confidence, recovery may start
@@ -169,8 +169,8 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.30, lineKi=0.0, lineKd=0.003, lineVelocity=0.20),
-        "slow":   dict(lineKp=0.30, lineKi=0.0, lineKd=0.003, lineVelocity=0.20),
+        "normal": dict(lineKp=0.25, lineKi=0.0, lineKd=0.006, lineVelocity=0.20),
+        "slow":   dict(lineKp=0.25, lineKi=0.0, lineKd=0.006, lineVelocity=0.20),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"
