@@ -137,7 +137,7 @@ class SEdge:
     lineKd = 0.0
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
     lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
-    lineMinTurnError = 1.10     # if abs(error) is this large, enforce a minimum turn
+    lineMinTurnError = 2.00     # enforce minimum turn only when the line is near the outer sensors
     lineMinTurnRate = 0.55      # minimum abs(turn rate) while the visible line is far off-center
     lineRecentValidCnt = 5      # below this confidence, recovery may start
     lineNoReverseError = 0.25   # above this abs(error), D may damp but not reverse PI steering
@@ -193,9 +193,8 @@ class SEdge:
     flog_write_every_n = 1         # flog.write() every Nth livn update (appends line/sensor log line to file)
     
     print_follow_line_fields = (
-        'livn', 'pattern', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
-        'crossType', 'crossingCnt', 'leftMost', 'rightMost', 'center', 'wCenter', 'e', 'p', 'i', 'd', 'u',
-        'y', 'dGuard', 'minTurn', 'settle', 'recMode', 'recStraight', 'rc'
+        'pattern', 'high', 'validCnt', 'state', 'crossType',
+        'center', 'wCenter', 'e', 'y', 'minTurn', 'recMode', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
