@@ -24,7 +24,6 @@ venv/
 *.log
 *.err
 log*.txt
-mqtt_python/PID_log.txt
 
 
 # Ignore all JPEG images

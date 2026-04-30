@@ -53,7 +53,7 @@ class RightL:
 class SEdge:
     # ============= TUNING & PRINT OPTIONS (edit these) =============
     # Forward speed when following line (m/s). Mission scripts pass this to lineControl(); change here to tune.
-    defaultLineVelocity = 0.30  # m/s
+    defaultLineVelocity = 0.10  # m/s
     # Line detection (livn 0–1000 scale)
     lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
     crossingThreshold = 700    # legacy: was used for average-based crossing
@@ -71,38 +71,38 @@ class SEdge:
     # Pattern-based line position. Bits are sensor 0..7 from left to right,
     # where 1 means edge_n[i] >= lineValidThreshold. Negative center = line left.
     lineUsePatternCenter = True
-    linePatternFallbackCenters = (-3.4, -2.3, -1.1, -0.25, 0.25, 1.1, 2.3, 3.4)
+    linePatternFallbackCenters = (-0.70, -0.50, -0.28, -0.10, 0.10, 0.28, 0.50, 0.70)
     linePatternCenterTable = [None] * 256
 
-    linePatternCenterTable[0b10000000] = -3.3
-    linePatternCenterTable[0b01000000] = -2.3
-    linePatternCenterTable[0b00100000] = -1.1
-    linePatternCenterTable[0b00010000] = -0.25
-    linePatternCenterTable[0b00001000] = 0.25
-    linePatternCenterTable[0b00000100] = 1.1
-    linePatternCenterTable[0b00000010] = 2.3
-    linePatternCenterTable[0b00000001] = 3.3
+    linePatternCenterTable[0b10000000] = -0.70
+    linePatternCenterTable[0b01000000] = -0.50
+    linePatternCenterTable[0b00100000] = -0.28
+    linePatternCenterTable[0b00010000] = -0.10
+    linePatternCenterTable[0b00001000] = 0.10
+    linePatternCenterTable[0b00000100] = 0.28
+    linePatternCenterTable[0b00000010] = 0.50
+    linePatternCenterTable[0b00000001] = 0.70
 
-    linePatternCenterTable[0b11000000] = -2.45
-    linePatternCenterTable[0b01100000] = -1.45
-    linePatternCenterTable[0b00110000] = -0.8
+    linePatternCenterTable[0b11000000] = -0.60
+    linePatternCenterTable[0b01100000] = -0.40
+    linePatternCenterTable[0b00110000] = -0.22
     linePatternCenterTable[0b00011000] = 0.0
-    linePatternCenterTable[0b00001100] = 0.8
-    linePatternCenterTable[0b00000110] = 1.45
-    linePatternCenterTable[0b00000011] = 2.45
+    linePatternCenterTable[0b00001100] = 0.22
+    linePatternCenterTable[0b00000110] = 0.40
+    linePatternCenterTable[0b00000011] = 0.60
 
-    linePatternCenterTable[0b11100000] = -2
-    linePatternCenterTable[0b01110000] = -1.15
-    linePatternCenterTable[0b00111000] = -0.35
-    linePatternCenterTable[0b00011100] = 0.35
-    linePatternCenterTable[0b00001110] = 1.15
-    linePatternCenterTable[0b00000111] = 2
+    linePatternCenterTable[0b11100000] = -0.50
+    linePatternCenterTable[0b01110000] = -0.30
+    linePatternCenterTable[0b00111000] = -0.10
+    linePatternCenterTable[0b00011100] = 0.10
+    linePatternCenterTable[0b00001110] = 0.30
+    linePatternCenterTable[0b00000111] = 0.50
 
-    linePatternCenterTable[0b11110000] = -2.0
-    linePatternCenterTable[0b01111000] = -0.8
+    linePatternCenterTable[0b11110000] = -0.50
+    linePatternCenterTable[0b01111000] = -0.22
     linePatternCenterTable[0b00111100] = 0.0
-    linePatternCenterTable[0b00011110] = 0.8
-    linePatternCenterTable[0b00001111] = 2.0
+    linePatternCenterTable[0b00011110] = 0.22
+    linePatternCenterTable[0b00001111] = 0.50
 
     linePatternCenterTable[0b11111111] = 0.0
     linePatternCenterTable[0b01111110] = 0.0
@@ -130,15 +130,15 @@ class SEdge:
     linePatternCrossingTable[0b01111111] = T.crossing
 
     linePatternCrossingTable[0b11111111] = T.crossing
-    # Active line-follow tuning. Keep D small and capped; binary error changes
-    # in steps, so uncapped derivative can dominate the steering.
-    lineKp = 0.30
+    # Active line-follow tuning. Baseline is intentionally P-only: with Kp=1,
+    # the binary center table directly defines the turn-rate command.
+    lineKp = 1.0
     lineKi = 0.0
-    lineKd = 0.003
+    lineKd = 0.0
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
     lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
     lineMinTurnError = 2.00     # enforce minimum turn only when the line is near the outer sensors
-    lineMinTurnRate = 0.40      # minimum abs(turn rate) while the visible line is far off-center
+    lineMinTurnRate = 0.0       # keep disabled for the P-only baseline
     lineRecentValidCnt = 5      # below this confidence, recovery may start
     lineNoReverseError = 0.25   # above this abs(error), D may damp but not reverse PI steering
     lineTurnSlewRate = 4.0      # max change in commanded turn rate (rad/s per second); 0 disables
@@ -169,8 +169,8 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.25, lineKi=0.0, lineKd=0.003, lineVelocity=0.20),
-        "slow":   dict(lineKp=0.25, lineKi=0.0, lineKd=0.003, lineVelocity=0.20),
+        "normal": dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.10),
+        "slow":   dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.10),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"

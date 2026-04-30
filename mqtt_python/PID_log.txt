@@ -1,0 +1,982 @@
+
+================================================================================
+PID test run: 2026-04-30 06:19:49
+command args: --submission line_follow --test
+submission: line_follow
+kp=None kd=None ki=None dlimit=None line_speed=None
+================================================================================
+% PID test log: writing terminal output to /home/local/svn/robobot/mqtt_python/PID_log.txt
+% line: pattern=11000000 high= 816 validCnt=18 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 801 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 814 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=10000000 high= 789 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.160 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 785 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 786 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 761 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 715 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 676 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 665 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 653 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 666 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 577 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 625 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=00000000 high= 459 validCnt=19 state=no_line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 610 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 608 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 653 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 649 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 651 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 722 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 700 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 739 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 755 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 790 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 814 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=11000000 high= 836 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d=-0.154 y= 0.826 dGuard=False minTurn=False recMode=none -> rc 0.200 0.826
+% line: pattern=11000000 high= 833 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 859 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 851 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 858 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 830 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 808 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 831 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11100000 high= 850 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d=-0.086 y= 0.714 dGuard=False minTurn=False recMode=none -> rc 0.200 0.714
+% line: pattern=11100000 high= 875 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 878 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 868 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 809 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=01100000 high= 804 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d=-0.102 y= 0.478 dGuard=False minTurn=False recMode=none -> rc 0.200 0.478
+% line: pattern=01100000 high= 850 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01110000 high= 875 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d=-0.055 y= 0.405 dGuard=False minTurn=False recMode=none -> rc 0.200 0.405
+% line: pattern=00110000 high= 841 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d=-0.065 y= 0.255 dGuard=False minTurn=False recMode=none -> rc 0.200 0.255
+% line: pattern=00110000 high= 806 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00111000 high= 870 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d=-0.082 y= 0.058 dGuard=False minTurn=False recMode=none -> rc 0.200 0.058
+% line: pattern=00111000 high= 862 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 865 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00011000 high= 808 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.065 y=-0.065 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.065
+% line: pattern=00011000 high= 863 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 632 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00001110 high= 849 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.227 y=-0.687 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.687
+% line: pattern=00001110 high= 812 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000110 high= 801 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.054 y=-0.634 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.634
+% line: pattern=00000111 high= 786 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d=-0.099 y=-0.899 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.899
+% line: pattern=00000111 high= 791 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 840 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 807 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 864 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 814 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000011 high= 799 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d=-0.082 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000011 high= 788 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 772 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 768 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 764 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 791 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 749 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 731 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 740 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 767 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 779 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 846 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 780 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000111 high= 795 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.081 y=-0.719 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.719
+% line: pattern=00000111 high= 767 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 833 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000110 high= 774 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.107 y=-0.473 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.473
+% line: pattern=00000010 high= 572 validCnt=20 state=line crossType=none center= 2.30 | e=-2.300 p=-0.920 d=-0.065 y=-0.985 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.985
+% line: pattern=00001110 high= 836 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.229 y=-0.231 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.231
+% line: pattern=00001110 high= 816 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 843 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 821 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 798 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001100 high= 822 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.063 y=-0.257 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.257
+% line: pattern=00011100 high= 884 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.084 y=-0.056 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.056
+% line: pattern=00011000 high= 853 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.069 y= 0.069 dGuard=False minTurn=False recMode=none -> rc 0.200 0.069
+% line: pattern=00111000 high= 855 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.068 y= 0.208 dGuard=False minTurn=False recMode=none -> rc 0.200 0.208
+% line: pattern=00111000 high= 874 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00110000 high= 823 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.086 y= 0.406 dGuard=False minTurn=False recMode=none -> rc 0.200 0.406
+% line: pattern=01110000 high= 862 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.069 y= 0.529 dGuard=False minTurn=False recMode=none -> rc 0.200 0.529
+% line: pattern=01110000 high= 883 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=01110000 high= 915 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=11110000 high= 889 validCnt=20 state=crossing crossType=LeftL center=-2.00 | e= 2.000 p= 0.800 d= 0.155 y= 0.955 dGuard=False minTurn=False recMode=none -> rc 0.200 0.955
+% line: pattern=11100000 high= 792 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 913 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 886 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 902 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 898 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 862 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 859 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11000000 high= 845 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.082 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=11000000 high= 814 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 853 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 852 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 843 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 852 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 855 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 914 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 887 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 693 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 902 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 889 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 879 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 887 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 855 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 869 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 825 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 855 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 850 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11100000 high= 916 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d=-0.089 y= 0.711 dGuard=False minTurn=False recMode=none -> rc 0.200 0.711
+% line: pattern=11100000 high= 890 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 898 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 899 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 875 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 858 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 829 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=01100000 high= 793 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d=-0.102 y= 0.478 dGuard=False minTurn=False recMode=none -> rc 0.200 0.478
+% line: pattern=01100000 high= 797 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 835 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01110000 high= 863 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d=-0.057 y= 0.403 dGuard=False minTurn=False recMode=none -> rc 0.200 0.403
+% line: pattern=01110000 high= 851 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=00110000 high= 837 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d=-0.064 y= 0.256 dGuard=False minTurn=False recMode=none -> rc 0.200 0.256
+% line: pattern=00110000 high= 790 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 815 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00111000 high= 879 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d=-0.085 y= 0.055 dGuard=False minTurn=False recMode=none -> rc 0.200 0.055
+% line: pattern=00111000 high= 897 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 859 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00011000 high= 834 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.066 y=-0.066 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.066
+% line: pattern=00011000 high= 781 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011100 high= 884 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.066 y=-0.206 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.206
+% line: pattern=00011100 high= 845 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011100 high= 845 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00001100 high= 803 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d=-0.084 y=-0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.404
+% line: pattern=00001110 high= 838 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.065 y=-0.525 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.525
+% line: pattern=00001110 high= 704 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 831 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000110 high= 822 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.059 y=-0.639 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.639
+% line: pattern=00000110 high= 781 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 800 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000111 high= 832 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d=-0.102 y=-0.902 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.902
+% line: pattern=00000111 high= 853 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 846 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 858 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 847 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 866 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 831 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 844 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 832 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 802 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000011 high= 823 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d=-0.083 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000011 high= 760 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 778 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 781 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 785 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 770 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 789 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 785 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 785 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 800 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 810 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000111 high= 811 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.083 y=-0.717 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.717
+% line: pattern=00000111 high= 778 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 809 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 761 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 774 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000110 high= 741 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.109 y=-0.471 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.471
+% line: pattern=00000110 high= 753 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 717 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 739 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 631 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00001110 high= 850 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.059 y=-0.401 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.401
+% line: pattern=00001110 high= 828 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001100 high= 775 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.062 y=-0.258 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.258
+% line: pattern=00001110 high= 841 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.070 y=-0.530 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.530
+% line: pattern=00001100 high= 732 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.070 y=-0.250 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.250
+% line: pattern=00001100 high= 778 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 721 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 684 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 705 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 773 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 787 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 843 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00011100 high= 837 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.083 y=-0.057 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.057
+% line: pattern=00011000 high= 845 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.070 y= 0.070 dGuard=False minTurn=False recMode=none -> rc 0.200 0.070
+% line: pattern=00011000 high= 831 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 832 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 789 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 738 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 835 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 826 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00111000 high= 873 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.063 y= 0.203 dGuard=False minTurn=False recMode=none -> rc 0.200 0.203
+% line: pattern=00111000 high= 852 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 858 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 842 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 841 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 841 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 883 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00011000 high= 801 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.065 y=-0.065 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.065
+% line: pattern=00111000 high= 831 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.064 y= 0.204 dGuard=False minTurn=False recMode=none -> rc 0.200 0.204
+% line: pattern=00111000 high= 834 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 845 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 879 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00110000 high= 814 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.082 y= 0.402 dGuard=False minTurn=False recMode=none -> rc 0.200 0.402
+% line: pattern=00111000 high= 862 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d=-0.081 y= 0.059 dGuard=False minTurn=False recMode=none -> rc 0.200 0.059
+% line: pattern=00111000 high= 850 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00010000 high= 653 validCnt=20 state=line crossType=none center=-0.25 | e= 0.250 p= 0.100 d=-0.007 y= 0.093 dGuard=False minTurn=False recMode=none -> rc 0.200 0.093
+% line: pattern=00111000 high= 882 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.019 y= 0.159 dGuard=False minTurn=False recMode=none -> rc 0.200 0.159
+% line: pattern=00111000 high= 857 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00011000 high= 826 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.066 y=-0.066 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.066
+% line: pattern=00111000 high= 858 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.056 y= 0.196 dGuard=False minTurn=False recMode=none -> rc 0.200 0.196
+% line: pattern=00011000 high= 850 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.069 y=-0.069 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.069
+% line: pattern=00011000 high= 844 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 825 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 817 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 810 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 780 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 751 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 771 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 788 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 823 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 874 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 845 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011100 high= 905 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.068 y=-0.208 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.208
+% line: pattern=00011100 high= 833 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011100 high= 859 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00001100 high= 813 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d=-0.085 y=-0.405 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.405
+% line: pattern=00001100 high= 782 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 751 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 750 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001110 high= 815 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.066 y=-0.526 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.526
+% line: pattern=00001110 high= 836 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 852 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 837 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000110 high= 829 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.055 y=-0.635 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.635
+% line: pattern=00000110 high= 772 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 786 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 698 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 781 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 766 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000111 high= 783 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d=-0.104 y=-0.904 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.904
+% line: pattern=00000111 high= 813 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000010 high= 658 validCnt=20 state=line crossType=none center= 2.30 | e=-2.300 p=-0.920 d=-0.023 y=-0.943 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.943
+% line: pattern=00000111 high= 807 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.058 y=-0.742 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.742
+% line: pattern=00000111 high= 894 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 830 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 871 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 836 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 847 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 814 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 832 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000011 high= 827 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d=-0.088 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000011 high= 807 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 764 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 739 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 741 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 717 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 786 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 752 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000111 high= 806 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.083 y=-0.717 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.717
+% line: pattern=00000111 high= 785 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 807 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 792 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 800 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000110 high= 791 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.104 y=-0.476 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.476
+% line: pattern=00000110 high= 753 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 730 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 752 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 762 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 797 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00001110 high= 868 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.056 y=-0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.404
+% line: pattern=00000110 high= 780 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.053 y=-0.633 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.633
+% line: pattern=00001110 high= 861 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.057 y=-0.403 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.403
+% line: pattern=00001100 high= 778 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.064 y=-0.256 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.256
+% line: pattern=00001100 high= 797 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 779 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 743 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 562 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 754 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 810 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00011100 high= 826 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.084 y=-0.056 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.056
+% line: pattern=00011100 high= 851 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011000 high= 802 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.067 y= 0.067 dGuard=False minTurn=False recMode=none -> rc 0.200 0.067
+% line: pattern=00011000 high= 834 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 807 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 722 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 689 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 701 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 702 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 756 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 825 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 795 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 825 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 831 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00111000 high= 829 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.066 y= 0.206 dGuard=False minTurn=False recMode=none -> rc 0.200 0.206
+% line: pattern=00111000 high= 823 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00110000 high= 818 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.089 y= 0.409 dGuard=False minTurn=False recMode=none -> rc 0.200 0.409
+% line: pattern=00110000 high= 800 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 789 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 770 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 776 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 809 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 697 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 736 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 741 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 740 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 730 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 725 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 714 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 738 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 758 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 780 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00010000 high= 654 validCnt=20 state=line crossType=none center=-0.25 | e= 0.250 p= 0.100 d=-0.032 y= 0.068 dGuard=False minTurn=False recMode=none -> rc 0.200 0.068
+% line: pattern=00011000 high= 797 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.049 y=-0.049 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.049
+% line: pattern=00011000 high= 833 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 792 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 791 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 753 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 726 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 723 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 751 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 765 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 794 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 794 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 782 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011100 high= 811 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.065 y=-0.205 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.205
+% line: pattern=00001100 high= 786 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d=-0.081 y=-0.401 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.401
+% line: pattern=00001100 high= 783 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 746 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 721 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 734 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001110 high= 796 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.067 y=-0.527 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.527
+% line: pattern=00001100 high= 754 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.064 y=-0.256 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.256
+% line: pattern=00001110 high= 807 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.065 y=-0.525 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.525
+% line: pattern=00001110 high= 803 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000110 high= 781 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.055 y=-0.635 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.635
+% line: pattern=00001110 high= 875 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.055 y=-0.405 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.405
+% line: pattern=00000110 high= 726 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.057 y=-0.637 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.637
+% line: pattern=00000110 high= 838 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 719 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 766 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 772 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 769 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 765 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 762 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 750 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 788 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000100 high= 575 validCnt=20 state=line crossType=none center= 1.10 | e=-1.100 p=-0.440 d= 0.021 y=-0.419 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.419
+% line: pattern=00000110 high= 797 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.065 y=-0.645 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.645
+% line: pattern=00000110 high= 886 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 816 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 839 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 844 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00001110 high= 832 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.056 y=-0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.404
+% line: pattern=00001110 high= 827 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 819 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001100 high= 813 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.061 y=-0.259 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.259
+% line: pattern=00001100 high= 820 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 797 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 729 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 730 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 722 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 795 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 781 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 822 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 828 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00011100 high= 861 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.084 y=-0.056 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.056
+% line: pattern=00011100 high= 864 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011000 high= 848 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.064 y= 0.064 dGuard=False minTurn=False recMode=none -> rc 0.200 0.064
+% line: pattern=00011000 high= 819 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 788 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 785 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 809 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 842 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00111000 high= 882 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.064 y= 0.204 dGuard=False minTurn=False recMode=none -> rc 0.200 0.204
+% line: pattern=00111000 high= 955 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00110000 high= 801 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.080 y= 0.400 dGuard=False minTurn=False recMode=none -> rc 0.200 0.400
+% line: pattern=00110000 high= 786 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 753 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 815 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 839 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=01110000 high= 884 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.064 y= 0.524 dGuard=False minTurn=False recMode=none -> rc 0.200 0.524
+% line: pattern=01110000 high= 907 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=00100000 high= 694 validCnt=20 state=line crossType=none center=-1.10 | e= 1.100 p= 0.440 d=-0.004 y= 0.436 dGuard=False minTurn=False recMode=none -> rc 0.200 0.436
+% line: pattern=01100000 high= 862 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.068 y= 0.648 dGuard=False minTurn=False recMode=none -> rc 0.200 0.648
+% line: pattern=01100000 high= 850 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 822 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 792 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 799 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 783 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 765 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 793 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 828 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 750 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=11100000 high= 844 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.104 y= 0.904 dGuard=False minTurn=False recMode=none -> rc 0.200 0.904
+% line: pattern=01100000 high= 779 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d=-0.101 y= 0.479 dGuard=False minTurn=False recMode=none -> rc 0.200 0.479
+% line: pattern=01100000 high= 779 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 787 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 786 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 780 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 788 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 759 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 784 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 777 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 790 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 802 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 783 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 853 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 816 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 851 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 877 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01110000 high= 874 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d=-0.059 y= 0.401 dGuard=False minTurn=False recMode=none -> rc 0.200 0.401
+% line: pattern=01110000 high= 861 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=00110000 high= 837 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d=-0.065 y= 0.255 dGuard=False minTurn=False recMode=none -> rc 0.200 0.255
+% line: pattern=00110000 high= 801 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 781 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 773 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 752 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 616 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00111000 high= 873 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d=-0.086 y= 0.054 dGuard=False minTurn=False recMode=none -> rc 0.200 0.054
+% line: pattern=00111000 high= 862 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00011000 high= 833 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.066 y=-0.066 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.066
+% line: pattern=00011000 high= 791 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 734 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 764 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 773 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011100 high= 796 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.064 y=-0.204 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.204
+% line: pattern=00001100 high= 810 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d=-0.084 y=-0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.404
+% line: pattern=00001100 high= 787 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 782 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 710 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 795 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001110 high= 789 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.063 y=-0.523 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.523
+% line: pattern=00001110 high= 812 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 802 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000110 high= 816 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.057 y=-0.637 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.637
+% line: pattern=00001110 high= 795 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.060 y=-0.400 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.400
+% line: pattern=00000110 high= 804 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.057 y=-0.637 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.637
+% line: pattern=00000110 high= 786 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 774 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 767 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 755 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 742 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 706 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 739 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 700 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 696 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 726 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 740 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 689 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 710 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 710 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 738 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 543 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 742 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 725 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 785 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 809 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 836 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 820 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00001110 high= 835 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.057 y=-0.403 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.403
+% line: pattern=00001110 high= 840 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 819 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001100 high= 809 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.065 y=-0.255 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.255
+% line: pattern=00001100 high= 778 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 735 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 769 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 677 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 775 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 780 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 841 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 823 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00011100 high= 864 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.082 y=-0.058 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.058
+% line: pattern=00011100 high= 858 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011000 high= 850 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.064 y= 0.064 dGuard=False minTurn=False recMode=none -> rc 0.200 0.064
+% line: pattern=00011000 high= 824 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 788 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 770 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 831 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00111000 high= 879 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.064 y= 0.204 dGuard=False minTurn=False recMode=none -> rc 0.200 0.204
+% line: pattern=00111000 high= 810 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 841 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00110000 high= 794 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.081 y= 0.401 dGuard=False minTurn=False recMode=none -> rc 0.200 0.401
+% line: pattern=00110000 high= 758 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 796 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 839 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 853 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=01110000 high= 856 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.065 y= 0.525 dGuard=False minTurn=False recMode=none -> rc 0.200 0.525
+% line: pattern=01100000 high= 736 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.016 y= 0.596 dGuard=False minTurn=False recMode=none -> rc 0.200 0.596
+% line: pattern=01100000 high= 840 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 839 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 805 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 808 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 773 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 774 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 757 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 744 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 808 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 709 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 791 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 734 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 761 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 765 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 750 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 761 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 750 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 767 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 781 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 776 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 784 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 834 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 773 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 888 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 802 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 871 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 820 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01110000 high= 853 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d=-0.057 y= 0.403 dGuard=False minTurn=False recMode=none -> rc 0.200 0.403
+% line: pattern=00110000 high= 826 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d=-0.069 y= 0.251 dGuard=False minTurn=False recMode=none -> rc 0.200 0.251
+% line: pattern=00110000 high= 814 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 783 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 741 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 746 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 779 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 825 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00010000 high= 611 validCnt=20 state=line crossType=none center=-0.25 | e= 0.250 p= 0.100 d=-0.043 y= 0.057 dGuard=False minTurn=False recMode=none -> rc 0.200 0.057
+% line: pattern=00111000 high= 862 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.018 y= 0.158 dGuard=False minTurn=False recMode=none -> rc 0.200 0.158
+% line: pattern=00011000 high= 832 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.064 y=-0.064 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.064
+% line: pattern=00011000 high= 805 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 774 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 785 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 821 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011100 high= 910 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.065 y=-0.205 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.205
+% line: pattern=00011100 high= 841 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011100 high= 837 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00001100 high= 824 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d=-0.084 y=-0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.404
+% line: pattern=00001100 high= 765 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 790 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001110 high= 825 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.070 y=-0.530 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.530
+% line: pattern=00001110 high= 822 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 832 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 822 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 828 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000110 high= 800 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.054 y=-0.634 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.634
+% line: pattern=00000110 high= 790 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 841 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 749 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 760 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 742 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 724 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 723 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 736 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 762 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 765 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 759 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 768 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 765 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 756 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 744 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 757 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 590 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 727 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 739 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 744 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 786 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 779 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 817 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00001110 high= 882 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.055 y=-0.405 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.405
+% line: pattern=00000110 high= 758 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.054 y=-0.634 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.634
+% line: pattern=00001110 high= 839 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.055 y=-0.405 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.405
+% line: pattern=00001110 high= 784 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001100 high= 803 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.065 y=-0.255 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.255
+% line: pattern=00001100 high= 772 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 736 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 709 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 718 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 758 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 781 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 811 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00011100 high= 845 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.084 y=-0.056 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.056
+% line: pattern=00011100 high= 842 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011000 high= 768 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.067 y= 0.067 dGuard=False minTurn=False recMode=none -> rc 0.200 0.067
+% line: pattern=00011100 high= 909 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.070 y=-0.210 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.210
+% line: pattern=00011000 high= 751 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.065 y= 0.065 dGuard=False minTurn=False recMode=none -> rc 0.200 0.065
+% line: pattern=00011000 high= 779 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 787 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 853 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00111000 high= 837 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.064 y= 0.204 dGuard=False minTurn=False recMode=none -> rc 0.200 0.204
+% line: pattern=00110000 high= 810 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.081 y= 0.401 dGuard=False minTurn=False recMode=none -> rc 0.200 0.401
+% line: pattern=00110000 high= 781 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 762 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 806 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 837 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=01110000 high= 849 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.061 y= 0.521 dGuard=False minTurn=False recMode=none -> rc 0.200 0.521
+% line: pattern=01110000 high= 843 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=01100000 high= 699 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.017 y= 0.597 dGuard=False minTurn=False recMode=none -> rc 0.200 0.597
+% line: pattern=01100000 high= 808 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 779 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 760 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 748 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 776 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 788 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=11100000 high= 799 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.100 y= 0.900 dGuard=False minTurn=False recMode=none -> rc 0.200 0.900
+% line: pattern=11100000 high= 824 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 876 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 814 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 906 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 856 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 836 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 831 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 822 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 826 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 809 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=01100000 high= 811 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d=-0.091 y= 0.489 dGuard=False minTurn=False recMode=none -> rc 0.200 0.489
+% line: pattern=01100000 high= 777 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 789 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 700 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 814 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 730 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 830 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 821 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 823 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 818 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01110000 high= 844 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d=-0.057 y= 0.403 dGuard=False minTurn=False recMode=none -> rc 0.200 0.403
+% line: pattern=00110000 high= 819 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d=-0.069 y= 0.251 dGuard=False minTurn=False recMode=none -> rc 0.200 0.251
+% line: pattern=00110000 high= 790 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 776 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 734 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 738 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00110000 high= 817 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00111000 high= 852 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d=-0.081 y= 0.059 dGuard=False minTurn=False recMode=none -> rc 0.200 0.059
+% line: pattern=00010000 high= 644 validCnt=20 state=line crossType=none center=-0.25 | e= 0.250 p= 0.100 d=-0.008 y= 0.092 dGuard=False minTurn=False recMode=none -> rc 0.200 0.092
+% line: pattern=00011000 high= 822 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.047 y=-0.047 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.047
+% line: pattern=00011000 high= 782 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 768 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 822 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 854 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011100 high= 862 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.065 y=-0.205 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.205
+% line: pattern=00011100 high= 919 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00001100 high= 789 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d=-0.089 y=-0.409 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.409
+% line: pattern=00001100 high= 759 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001110 high= 813 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.066 y=-0.526 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.526
+% line: pattern=00001110 high= 843 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 853 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 843 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 911 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000110 high= 800 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.056 y=-0.636 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.636
+% line: pattern=00000110 high= 801 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 756 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 743 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 754 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 750 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000111 high= 785 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d=-0.097 y=-0.897 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.897
+% line: pattern=00000110 high= 804 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.103 y=-0.477 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.477
+% line: pattern=00000111 high= 793 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d=-0.104 y=-0.904 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.904
+% line: pattern=00000111 high= 806 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 845 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000110 high= 744 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.104 y=-0.476 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.476
+% line: pattern=00000111 high= 838 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d=-0.101 y=-0.901 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.901
+% line: pattern=00000111 high= 798 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 822 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000110 high= 787 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.102 y=-0.478 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.478
+% line: pattern=00000110 high= 754 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 749 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 721 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 704 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 541 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00001110 high= 797 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.056 y=-0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.404
+% line: pattern=00001110 high= 813 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001100 high= 788 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.063 y=-0.257 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.257
+% line: pattern=00001100 high= 723 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 751 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 763 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00011100 high= 825 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.082 y=-0.058 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.058
+% line: pattern=00011100 high= 864 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011000 high= 859 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.064 y= 0.064 dGuard=False minTurn=False recMode=none -> rc 0.200 0.064
+% line: pattern=00011000 high= 821 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 801 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00111000 high= 813 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.065 y= 0.205 dGuard=False minTurn=False recMode=none -> rc 0.200 0.205
+% line: pattern=00111000 high= 833 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 802 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=01110000 high= 831 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.147 y= 0.607 dGuard=False minTurn=False recMode=none -> rc 0.200 0.607
+% line: pattern=01110000 high= 841 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=01110000 high= 845 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=11110000 high= 898 validCnt=20 state=crossing crossType=LeftL center=-2.00 | e= 2.000 p= 0.800 d= 0.163 y= 0.963 dGuard=False minTurn=False recMode=none -> rc 0.200 0.963
+% line: pattern=11100000 high= 807 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 880 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 837 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 837 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 814 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11000000 high= 838 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.083 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=11000000 high= 864 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 915 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 841 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 848 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 856 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 814 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 865 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 794 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 810 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=10000000 high= 773 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.158 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 591 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 757 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 762 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 730 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 760 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 832 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 736 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 814 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 794 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=11000000 high= 812 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d=-0.162 y= 0.818 dGuard=False minTurn=False recMode=none -> rc 0.200 0.818
+% line: pattern=11000000 high= 833 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 846 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 864 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 852 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 859 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 893 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 871 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 877 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 865 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 883 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 930 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 838 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 867 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 836 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11100000 high= 860 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d=-0.082 y= 0.718 dGuard=False minTurn=False recMode=none -> rc 0.200 0.718
+% line: pattern=11100000 high= 869 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 879 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 885 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 867 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 844 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 808 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=01100000 high= 795 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d=-0.108 y= 0.472 dGuard=False minTurn=False recMode=none -> rc 0.200 0.472
+% line: pattern=01100000 high= 828 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01110000 high= 873 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d=-0.056 y= 0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 0.404
+% line: pattern=01110000 high= 848 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=00110000 high= 740 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d=-0.020 y= 0.300 dGuard=False minTurn=False recMode=none -> rc 0.200 0.300
+% line: pattern=00110000 high= 819 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.000 y= 0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 0.320
+% line: pattern=00111000 high= 859 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d=-0.080 y= 0.060 dGuard=False minTurn=False recMode=none -> rc 0.200 0.060
+% line: pattern=00111000 high= 851 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 846 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00011000 high= 835 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.064 y=-0.064 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.064
+% line: pattern=00011000 high= 829 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 800 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 813 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011100 high= 856 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.063 y=-0.203 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.203
+% line: pattern=00011100 high= 830 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011100 high= 816 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00001100 high= 769 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d=-0.083 y=-0.403 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.403
+% line: pattern=00001100 high= 764 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 799 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001110 high= 799 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.067 y=-0.527 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.527
+% line: pattern=00001110 high= 802 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 794 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 836 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000110 high= 776 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.056 y=-0.636 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.636
+% line: pattern=00001110 high= 864 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.055 y=-0.405 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.405
+% line: pattern=00000110 high= 794 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d=-0.055 y=-0.635 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.635
+% line: pattern=00000110 high= 793 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 778 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 779 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 785 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 746 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 780 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 775 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 763 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 774 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 763 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 727 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000110 high= 751 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00000100 high= 730 validCnt=20 state=line crossType=none center= 1.10 | e=-1.100 p=-0.440 d= 0.068 y=-0.372 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.372
+% line: pattern=00001110 high= 807 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.009 y=-0.469 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.469
+% line: pattern=00000100 high= 600 validCnt=20 state=line crossType=none center= 1.10 | e=-1.100 p=-0.440 d= 0.004 y=-0.436 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.436
+% line: pattern=00001100 high= 742 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.054 y=-0.266 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.266
+% line: pattern=00001100 high= 721 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 681 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 719 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 792 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 767 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00001100 high= 835 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00011100 high= 836 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.082 y=-0.058 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.058
+% line: pattern=00011100 high= 848 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011000 high= 830 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.067 y= 0.067 dGuard=False minTurn=False recMode=none -> rc 0.200 0.067
+% line: pattern=00011000 high= 842 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00011000 high= 786 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d= 0.000 y= 0.000 dGuard=False minTurn=False recMode=none -> rc 0.200 0.000
+% line: pattern=00111000 high= 840 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.064 y= 0.204 dGuard=False minTurn=False recMode=none -> rc 0.200 0.204
+% line: pattern=00111000 high= 852 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 844 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00110000 high= 777 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d= 0.084 y= 0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 0.404
+% line: pattern=01110000 high= 845 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.066 y= 0.526 dGuard=False minTurn=False recMode=none -> rc 0.200 0.526
+% line: pattern=01110000 high= 878 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=01110000 high= 863 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=01110000 high= 915 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.000 y= 0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 0.460
+% line: pattern=01100000 high= 844 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.055 y= 0.635 dGuard=False minTurn=False recMode=none -> rc 0.200 0.635
+% line: pattern=11100000 high= 847 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.100 y= 0.900 dGuard=False minTurn=False recMode=none -> rc 0.200 0.900
+% line: pattern=11100000 high= 884 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 906 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 902 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 918 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 871 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 901 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11000000 high= 899 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.084 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=11000000 high= 901 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 969 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 863 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 899 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 854 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=10000000 high= 696 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.050 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 763 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 750 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 759 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 731 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 735 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 718 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 739 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 711 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 695 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 687 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 702 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 724 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 715 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 735 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 762 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 773 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 805 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 816 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=11000000 high= 840 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d=-0.167 y= 0.813 dGuard=False minTurn=False recMode=none -> rc 0.200 0.813
+% line: pattern=11000000 high= 844 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 876 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 877 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 916 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 904 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 887 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 860 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 837 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 832 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11100000 high= 879 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d=-0.081 y= 0.719 dGuard=False minTurn=False recMode=none -> rc 0.200 0.719
+% line: pattern=11100000 high= 870 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 889 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 852 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 813 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=01100000 high= 807 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d=-0.107 y= 0.473 dGuard=False minTurn=False recMode=none -> rc 0.200 0.473
+% line: pattern=01100000 high= 844 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=00100000 high= 657 validCnt=20 state=line crossType=none center=-1.10 | e= 1.100 p= 0.440 d=-0.026 y= 0.414 dGuard=False minTurn=False recMode=none -> rc 0.200 0.414
+% line: pattern=00111000 high= 852 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d=-0.138 y= 0.002 dGuard=False minTurn=False recMode=none -> rc 0.200 0.002
+% line: pattern=00111000 high= 888 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 917 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00111000 high= 865 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00011000 high= 842 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.065 y=-0.065 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.065
+% line: pattern=00011100 high= 883 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d=-0.064 y=-0.204 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.204
+% line: pattern=00011100 high= 912 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011110 high= 867 validCnt=20 state=crossing crossType=T center= 0.80 | e=-0.800 p=-0.320 d=-0.084 y=-0.404 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.404
+% line: pattern=00001110 high= 874 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d=-0.064 y=-0.524 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.524
+% line: pattern=00001110 high= 866 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 835 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00000111 high= 837 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d=-0.156 y=-0.956 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.956
+% line: pattern=00000111 high= 833 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 877 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 852 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 830 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000011 high= 775 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d=-0.079 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000011 high= 779 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 766 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 786 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 771 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 759 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 765 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000001 high= 722 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d=-0.160 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 740 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 669 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 779 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 676 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 716 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 706 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 708 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 680 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 714 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 708 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000001 high= 553 validCnt=20 state=line crossType=none center= 3.30 | e=-3.300 p=-1.320 d= 0.000 y=-1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 -1.000
+% line: pattern=00000011 high= 767 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.163 y=-0.817 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.817
+% line: pattern=00000011 high= 771 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 751 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 776 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 855 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 714 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 800 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 755 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 776 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 760 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 799 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000011 high= 825 validCnt=20 state=line crossType=none center= 2.45 | e=-2.450 p=-0.980 d= 0.000 y=-0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.980
+% line: pattern=00000111 high= 822 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.087 y=-0.713 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.713
+% line: pattern=00000111 high= 815 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000111 high= 833 validCnt=20 state=line crossType=none center= 2.00 | e=-2.000 p=-0.800 d= 0.000 y=-0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.800
+% line: pattern=00000110 high= 788 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.099 y=-0.481 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.481
+% line: pattern=00000110 high= 764 validCnt=20 state=line crossType=none center= 1.45 | e=-1.450 p=-0.580 d= 0.000 y=-0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.580
+% line: pattern=00001110 high= 844 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.054 y=-0.406 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.406
+% line: pattern=00001110 high= 820 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001110 high= 830 validCnt=20 state=line crossType=none center= 1.15 | e=-1.150 p=-0.460 d= 0.000 y=-0.460 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.460
+% line: pattern=00001100 high= 767 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.066 y=-0.254 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.254
+% line: pattern=00001100 high= 812 validCnt=20 state=line crossType=none center= 0.80 | e=-0.800 p=-0.320 d= 0.000 y=-0.320 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.320
+% line: pattern=00011100 high= 862 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.084 y=-0.056 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.056
+% line: pattern=00011100 high= 896 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00011100 high= 874 validCnt=20 state=line crossType=none center= 0.35 | e=-0.350 p=-0.140 d= 0.000 y=-0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.140
+% line: pattern=00111000 high= 879 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.130 y= 0.270 dGuard=False minTurn=False recMode=none -> rc 0.200 0.270
+% line: pattern=00111000 high= 880 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=01111000 high= 883 validCnt=20 state=crossing crossType=T center=-0.80 | e= 0.800 p= 0.320 d= 0.086 y= 0.406 dGuard=False minTurn=False recMode=none -> rc 0.200 0.406
+% line: pattern=01110000 high= 898 validCnt=20 state=line crossType=none center=-1.15 | e= 1.150 p= 0.460 d= 0.063 y= 0.523 dGuard=False minTurn=False recMode=none -> rc 0.200 0.523
+% line: pattern=11110000 high= 921 validCnt=20 state=crossing crossType=LeftL center=-2.00 | e= 2.000 p= 0.800 d= 0.163 y= 0.963 dGuard=False minTurn=False recMode=none -> rc 0.200 0.963
+% line: pattern=11110000 high= 914 validCnt=20 state=crossing crossType=LeftL center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 914 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 950 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 903 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 931 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11000000 high= 641 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.034 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=11000000 high= 824 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=10000000 high= 690 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.153 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 683 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 602 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 540 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=00000000 high= 479 validCnt=16 state=no_line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=00000000 high= 444 validCnt= 7 state=no_line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=00000000 high= 401 validCnt= 0 state=no_line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=turn -> rc 0.000 1.000
+% line: pattern=00000000 high= 353 validCnt= 0 state=no_line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=turn -> rc 0.000 1.000
+% line: pattern=00000000 high= 344 validCnt= 0 state=no_line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=turn -> rc 0.000 1.000
+% line: pattern=00000000 high= 353 validCnt= 0 state=no_line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=turn -> rc 0.000 1.000
+% line: pattern=00000000 high= 434 validCnt= 0 state=no_line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=turn -> rc 0.000 1.000
+% line: pattern=10000000 high= 702 validCnt=10 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 718 validCnt=19 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 759 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 776 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 759 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 815 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 785 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 802 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 818 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=10000000 high= 832 validCnt=20 state=line crossType=none center=-3.30 | e= 3.300 p= 1.320 d= 0.000 y= 1.000 dGuard=False minTurn=False recMode=none -> rc 0.200 1.000
+% line: pattern=11000000 high= 863 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d=-0.156 y= 0.824 dGuard=False minTurn=False recMode=none -> rc 0.200 0.824
+% line: pattern=11000000 high= 867 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 889 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 889 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 695 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 875 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 842 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 847 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 837 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11000000 high= 853 validCnt=20 state=line crossType=none center=-2.45 | e= 2.450 p= 0.980 d= 0.000 y= 0.980 dGuard=False minTurn=False recMode=none -> rc 0.200 0.980
+% line: pattern=11100000 high= 904 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d=-0.083 y= 0.717 dGuard=False minTurn=False recMode=none -> rc 0.200 0.717
+% line: pattern=11100000 high= 895 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 881 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 875 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 850 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=11100000 high= 824 validCnt=20 state=line crossType=none center=-2.00 | e= 2.000 p= 0.800 d= 0.000 y= 0.800 dGuard=False minTurn=False recMode=none -> rc 0.200 0.800
+% line: pattern=01100000 high= 804 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d=-0.103 y= 0.477 dGuard=False minTurn=False recMode=none -> rc 0.200 0.477
+% line: pattern=01100000 high= 752 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 788 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 836 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+% line: pattern=01100000 high= 833 validCnt=20 state=line crossType=none center=-1.45 | e= 1.450 p= 0.580 d= 0.000 y= 0.580 dGuard=False minTurn=False recMode=none -> rc 0.200 0.580
+
+% q → stopping mission
+% line: pattern=00110000 high= 819 validCnt=20 state=line crossType=none center=-0.80 | e= 0.800 p= 0.320 d=-0.128 y= 0.192 dGuard=False minTurn=False recMode=none -> rc 0.200 0.192
+% line: pattern=00111000 high= 838 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d=-0.088 y= 0.052 dGuard=False minTurn=False recMode=none -> rc 0.200 0.052
+% line: pattern=00111000 high= 840 validCnt=20 state=line crossType=none center=-0.35 | e= 0.350 p= 0.140 d= 0.000 y= 0.140 dGuard=False minTurn=False recMode=none -> rc 0.200 0.140
+% line: pattern=00011000 high= 819 validCnt=20 state=line crossType=none center= 0.00 | e= 0.000 p= 0.000 d=-0.063 y=-0.063 dGuard=False minTurn=False recMode=none -> rc 0.200 -0.063
+% stopping teensy_interface (pid 18868)
+% PID test log: saved to /home/local/svn/robobot/mqtt_python/PID_log.txt
+PID test run ended: 2026-04-30 06:20:18
