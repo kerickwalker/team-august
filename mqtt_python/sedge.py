@@ -55,7 +55,7 @@ class SEdge:
     # Forward speed when following line (m/s). Mission scripts pass this to lineControl(); change here to tune.
     defaultLineVelocity = 0.10  # m/s
     # Line detection (livn 0–1000 scale)
-    lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
+    lineValidThreshold = 450   # each sensor above this → "on line"; line valid when peak >= this
     crossingThreshold = 700    # legacy: was used for average-based crossing
     crossingMinSensors = 4     # legacy/reference; common 4+ crossing patterns are explicit below
     # Y-crossing detection: a crossing can also be declared with FEWER active sensors
@@ -181,7 +181,7 @@ class SEdge:
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
         "normal": dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.15),
-        "slow":   dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.15),
+        "slow":   dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.05),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"
