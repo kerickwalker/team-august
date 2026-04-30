@@ -28,6 +28,20 @@ from threading import Thread
 import cv2 as cv
 from ulog import flog
 
+
+def _build_crossing_pattern_table(crossing_min_sensors, y_min_sensors, y_min_span, y_mid_indices):
+    table = ["none"] * 256
+    for pattern in range(256):
+        active = [i for i in range(8) if pattern & (1 << (7 - i))]
+        if len(active) >= crossing_min_sensors:
+            table[pattern] = "wide"
+        elif len(active) >= y_min_sensors and (active[-1] - active[0]) >= y_min_span:
+            center_gap = any(not (pattern & (1 << (7 - i))) for i in y_mid_indices)
+            if center_gap:
+                table[pattern] = "split"
+    return table
+
+
 class SEdge:
     # ============= TUNING & PRINT OPTIONS (edit these) =============
     # Forward speed when following line (m/s). Mission scripts pass this to lineControl(); change here to tune.
@@ -79,6 +93,11 @@ class SEdge:
     linePatternCenterTable[0b00001111] = 2.0
     linePatternCenterTable[0b11111111] = 0.0
     linePatternCenterTable[0b01111110] = 0.0
+    # Binary crossing classification. The table preserves the old behavior:
+    # "wide" = 4+ sensors on, "split" = old wide-span/center-gap Y heuristic.
+    lineCrossingPatternTable = _build_crossing_pattern_table(
+        crossingMinSensors, yMinSensors, yMinSpan, yMidIndices
+    )
     # Active line-follow tuning. Start with PI-only so straight-line behavior
     # can be tuned before adding separate turn/edge behavior.
     lineKp = 0.25
@@ -143,13 +162,13 @@ class SEdge:
     
     print_follow_line_fields = (
         'livn', 'pattern', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
-        'crossingCnt', 'leftMost', 'rightMost', 'center', 'wCenter', 'e', 'p', 'i', 'd', 'u',
+        'crossType', 'crossingCnt', 'leftMost', 'rightMost', 'center', 'wCenter', 'e', 'p', 'i', 'd', 'u',
         'y', 'dGuard', 'minTurn', 'settle', 'recMode', 'recStraight', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
     #   livn, pattern, avg, high, valid, validCnt, center, wCenter, state, aboveCnt,
-    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, minTurn, settle, recMode, recStraight, rc, lastLineSide
+    #   crossType, crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, minTurn, settle, recMode, recStraight, rc, lastLineSide
     #   e = error (ref - center); u = p+i+d; y = clamped turn rate.
     # ============= end tuning & print options =============
 
@@ -186,6 +205,7 @@ class SEdge:
     leftmostAboveIndex = None           # first sensor index 0..7 above threshold, or None
     rightmostAboveIndex = None          # last sensor index 0..7 above threshold, or None
     linePattern = 0                     # 8-bit sensor mask; bit 7 = sensor 0, bit 0 = sensor 7
+    crossingType = "none"               # "none" | "wide" | "split", looked up from linePattern
     lineState = "no_line"               # "no_line" | "line" | "crossing" (set from sensorsAboveCount vs crossingMinSensors)
     mission_crossing_count = 0          # set by mission (driveToLine) so print can show crossing counter
     #
@@ -466,16 +486,9 @@ class SEdge:
           if self.leftmostAboveIndex is None:
             self.leftmostAboveIndex = i
           self.rightmostAboveIndex = i
-      # Crossing detection: T-pattern (many sensors across) OR Y-pattern (wide footprint with centre gap)
-      T_pattern = self.sensorsAboveCount >= self.crossingMinSensors
-      Y_pattern = False
-      if (self.sensorsAboveCount >= self.yMinSensors
-          and self.leftmostAboveIndex is not None
-          and self.rightmostAboveIndex is not None
-          and (self.rightmostAboveIndex - self.leftmostAboveIndex) >= self.yMinSpan):
-        # Centre gap = any of the middle sensors is below threshold
-        Y_pattern = any(not self.sensorAboveThreshold[i] for i in self.yMidIndices)
-      self.crossingLine = T_pattern or Y_pattern
+      # Crossing detection is table-driven from the binary threshold pattern.
+      self.crossingType = self.lineCrossingPatternTable[self.linePattern]
+      self.crossingLine = self.crossingType != "none"
       # Named state for status prints / overlays
       if self.sensorsAboveCount == 0:
         self.lineState = "no_line"
@@ -793,6 +806,8 @@ class SEdge:
           parts.append(f"state={self.lineState}")
         if 'aboveCnt' in enabled:
           parts.append(f"aboveCnt={self.sensorsAboveCount}")
+        if 'crossType' in enabled:
+          parts.append(f"crossType={self.crossingType}")
         if 'crossingCnt' in enabled:
           parts.append(f"crossingCnt={self.mission_crossing_count}")
         if 'leftMost' in enabled:
@@ -1017,6 +1032,8 @@ class SEdge:
           parts.append(f"state={self.lineState}")
         if 'aboveCnt' in enabled:
           parts.append(f"aboveCnt={self.sensorsAboveCount}")
+        if 'crossType' in enabled:
+          parts.append(f"crossType={self.crossingType}")
         if 'crossingCnt' in enabled:
           parts.append(f"crossingCnt={self.mission_crossing_count}")
         if 'leftMost' in enabled:
