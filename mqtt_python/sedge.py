@@ -92,6 +92,9 @@ class SEdge:
     # Recovery when line lost (A1/A4: turn toward last line side)
     recoveryTurnRate = 1.0   # rad/s when turning to find line during recovery
     recoveryVelocity = 0.0   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
+    recoveryTurnTime = 0.50       # seconds to turn in place before trying a forward step
+    recoveryForwardDistance = 0.10 # meters to move forward while searching after turn phase
+    recoveryForwardVelocity = 0.10 # m/s during forward search step
     recoveryStraightCenter = 0.8      # if last valid center was this close, assume straight-line dropout
     recoveryStraightTime = 0.35       # seconds to creep straight before falling back to turn recovery
     recoveryStraightVelocity = 0.08   # m/s during straight-line dropout recovery
@@ -107,12 +110,12 @@ class SEdge:
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
         'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'i', 'd', 'u',
-        'y', 'dGuard', 'settle', 'recStraight', 'rc'
+        'y', 'dGuard', 'settle', 'recMode', 'recStraight', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
     #   livn, avg, high, valid, validCnt, center, state, aboveCnt,
-    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, settle, recStraight, rc, lastLineSide
+    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, settle, recMode, recStraight, rc, lastLineSide
     #   e = error (ref - center); u = p+i+d; y = clamped turn rate.
     # ============= end tuning & print options =============
 
@@ -177,6 +180,10 @@ class SEdge:
     lineSuppressInitialSettle = False
     lineWasValid = False
     lastValidLineCenter = 0.0
+    recoveryMode = "none"
+    recoveryPhaseStartTime = 0.0
+    recoveryForwardStartTrip = None
+    recoveryForwardStartTime = 0.0
     recoveryStraightActive = False
     lineDerivativeGuardActive = False
     lineMinTurnActive = False
@@ -513,6 +520,10 @@ class SEdge:
         self.lineSettleActive = False
         self.lineSuppressInitialSettle = False
         self.lineWasValid = False
+        self.recoveryMode = "none"
+        self.recoveryPhaseStartTime = 0.0
+        self.recoveryForwardStartTrip = None
+        self.recoveryForwardStartTime = 0.0
         self.recoveryStraightActive = False
       else:
         # Start in the requested profile. Slow settle is only for later
@@ -620,6 +631,10 @@ class SEdge:
       if self.lineValid:
         self.lineE_prev = e
         self.lineLostStartTime = 0.0
+        self.recoveryMode = "none"
+        self.recoveryPhaseStartTime = 0.0
+        self.recoveryForwardStartTrip = None
+        self.recoveryForwardStartTime = 0.0
         self.lastValidLineCenter = lineCenter
         self.recoveryStraightActive = False
         if e > 0:
@@ -632,14 +647,48 @@ class SEdge:
       if not self.lineValid:
         if self.lineLostStartTime <= 0.0:
           self.lineLostStartTime = now
-        lost_time = now - self.lineLostStartTime
-        straight_drop = (abs(self.lastValidLineCenter) <= self.recoveryStraightCenter
-                         and lost_time <= self.recoveryStraightTime)
-        if straight_drop:
+          self.recoveryMode = "turn"
+          self.recoveryPhaseStartTime = now
+          self.recoveryForwardStartTrip = None
+          self.recoveryForwardStartTime = 0.0
+        if self.recoveryMode in ("none", ""):
+          self.recoveryMode = "turn"
+          self.recoveryPhaseStartTime = now
+
+        if self.recoveryMode == "turn":
+          phase_time = now - self.recoveryPhaseStartTime
+          if phase_time >= self.recoveryTurnTime:
+            self.recoveryMode = "forward"
+            self.recoveryPhaseStartTime = now
+            self.recoveryForwardStartTime = now
+            try:
+              from spose import pose
+              self.recoveryForwardStartTrip = pose.tripA
+            except Exception:
+              self.recoveryForwardStartTrip = None
+
+        if self.recoveryMode == "forward":
+          forward_done = False
+          try:
+            from spose import pose
+            if self.recoveryForwardStartTrip is None:
+              self.recoveryForwardStartTrip = pose.tripA
+            forward_done = abs(pose.tripA - self.recoveryForwardStartTrip) >= self.recoveryForwardDistance
+          except Exception:
+            forward_time = now - self.recoveryForwardStartTime
+            forward_done = forward_time * max(abs(self.recoveryForwardVelocity), 0.001) >= self.recoveryForwardDistance
+
+          if forward_done:
+            self.recoveryMode = "turn"
+            self.recoveryPhaseStartTime = now
+            self.recoveryForwardStartTrip = None
+            self.recoveryForwardStartTime = 0.0
+
+        if self.recoveryMode == "forward":
           speed_sign = 1.0 if self.velocity >= 0.0 else -1.0
-          sent_velocity = speed_sign * min(abs(self.velocity), self.recoveryStraightVelocity)
+          sent_velocity = speed_sign * self.recoveryForwardVelocity
           sent_turn = 0.0
-          self.recoveryStraightActive = True
+          self.recoveryStraightActive = False
         else:
           sent_velocity = self.recoveryVelocity
           sent_turn = self.recoveryTurnRate * (self.lastLineSide if self.lastLineSide != 0 else 1)
@@ -685,7 +734,7 @@ class SEdge:
           parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
         if 'center' in enabled:
           parts.append(f"center={lineCenter:5.2f}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'dGuard', 'recStraight', 'rc', 'lastLineSide')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'dGuard', 'recMode', 'recStraight', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
           parts.append(f"e={e:6.3f}")
@@ -703,6 +752,8 @@ class SEdge:
           parts.append(f"dGuard={str(self.lineDerivativeGuardActive):5}")
         if 'settle' in enabled:
           parts.append(f"settle={str(self.lineSettleActive):5}")
+        if 'recMode' in enabled:
+          parts.append(f"recMode={self.recoveryMode}")
         if 'recStraight' in enabled:
           parts.append(f"recStraight={str(self.recoveryStraightActive):5}")
         if 'rc' in enabled:
