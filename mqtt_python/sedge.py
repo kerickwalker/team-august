@@ -74,38 +74,33 @@ class SEdge:
     linePatternFallbackCenters = (-0.70, -0.50, -0.28, -0.10, 0.10, 0.28, 0.50, 0.70)
     linePatternCenterTable = [None] * 256
 
-    linePatternCenterTable[0b10000000] = -0.70
-    linePatternCenterTable[0b01000000] = -0.50
-    linePatternCenterTable[0b00100000] = -0.28
-    linePatternCenterTable[0b00010000] = -0.10
+    linePatternCenterTable[0b00011000] = 0.0
     linePatternCenterTable[0b00001000] = 0.10
+    linePatternCenterTable[0b00011100] = 0.10
+    linePatternCenterTable[0b00001100] = 0.22
     linePatternCenterTable[0b00000100] = 0.28
+    linePatternCenterTable[0b00001110] = 0.30
+    linePatternCenterTable[0b00000110] = 0.40
     linePatternCenterTable[0b00000010] = 0.50
+    linePatternCenterTable[0b00000111] = 0.50
+    linePatternCenterTable[0b00000011] = 0.60
     linePatternCenterTable[0b00000001] = 0.70
 
     linePatternCenterTable[0b11000000] = -0.60
     linePatternCenterTable[0b01100000] = -0.40
     linePatternCenterTable[0b00110000] = -0.22
-    linePatternCenterTable[0b00011000] = 0.0
-    linePatternCenterTable[0b00001100] = 0.22
-    linePatternCenterTable[0b00000110] = 0.40
-    linePatternCenterTable[0b00000011] = 0.60
-
     linePatternCenterTable[0b11100000] = -0.50
     linePatternCenterTable[0b01110000] = -0.30
     linePatternCenterTable[0b00111000] = -0.10
-    linePatternCenterTable[0b00011100] = 0.10
-    linePatternCenterTable[0b00001110] = 0.30
-    linePatternCenterTable[0b00000111] = 0.50
 
-    linePatternCenterTable[0b11110000] = -0.50
-    linePatternCenterTable[0b01111000] = -0.22
-    linePatternCenterTable[0b00111100] = 0.0
-    linePatternCenterTable[0b00011110] = 0.22
-    linePatternCenterTable[0b00001111] = 0.50
+    #linePatternCenterTable[0b11110000] = 0.0
+    #linePatternCenterTable[0b01111000] = 0.0
+    #linePatternCenterTable[0b00111100] = 0.0
+    #linePatternCenterTable[0b00011110] = 0.0
+    #linePatternCenterTable[0b00001111] = 0.0
 
-    linePatternCenterTable[0b11111111] = 0.0
-    linePatternCenterTable[0b01111110] = 0.0
+    #linePatternCenterTable[0b11111111] = 0.0
+    #linePatternCenterTable[0b01111110] = 0.0
 
     # Binary crossing classification. All markers are currently treated as a
     # general crossing, but the type is logged for later mission-specific use.
@@ -169,8 +164,8 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.10),
-        "slow":   dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.10),
+        "normal": dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.15),
+        "slow":   dict(lineKp=1.0, lineKi=0.0, lineKd=0.0, lineVelocity=0.15),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"
