@@ -62,6 +62,7 @@ from uteensy import start_teensy_interface, stop_teensy_interface
 DEFAULT_RECORD_STREAM_URL = "http://localhost:7123/stream.mjpg"
 DEFAULT_RECORD_OUT_DIR    = Path(__file__).resolve().parent.parent / "cv_runs"
 DEFAULT_RECORD_FPS        = 20.0
+DEFAULT_PID_LOG_PATH      = Path(__file__).resolve().parent / "PID_log.txt"
 
 _telemetry = {"state": "init", "crossing": 0}
 _telemetry_lock = threading.Lock()
@@ -89,6 +90,75 @@ def set_telemetry(**kwargs):
 def _read_telemetry():
     with _telemetry_lock:
         return dict(_telemetry)
+
+
+class _TeeStream:
+    """Mirror writes to the original terminal stream and the PID log file."""
+
+    def __init__(self, primary, log_file):
+        self.primary = primary
+        self.log_file = log_file
+
+    def write(self, data):
+        self.primary.write(data)
+        self.log_file.write(data)
+        return len(data)
+
+    def flush(self):
+        self.primary.flush()
+        self.log_file.flush()
+
+    def isatty(self):
+        return hasattr(self.primary, "isatty") and self.primary.isatty()
+
+    @property
+    def encoding(self):
+        return getattr(self.primary, "encoding", "utf-8")
+
+
+class PIDRunLogger:
+    """Save each --test terminal print stream to PID_log.txt for tuning review."""
+
+    def __init__(self, path=DEFAULT_PID_LOG_PATH):
+        self.path = Path(path)
+        self._file = None
+        self._stdout = None
+        self._stderr = None
+
+    def start(self, args):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._stdout = sys.stdout
+        self._stderr = sys.stderr
+        self._file = self.path.open("w", encoding="utf-8", buffering=1)
+        header = (
+            "\n"
+            + "=" * 80 + "\n"
+            + f"PID test run: {datetime.now():%Y-%m-%d %H:%M:%S}\n"
+            + "command args: " + " ".join(sys.argv[1:]) + "\n"
+            + f"submission: {getattr(args, 'submission', 'full')}\n"
+            + f"kp={getattr(args, 'kp', None)} kd={getattr(args, 'kd', None)} "
+              f"ki={getattr(args, 'ki', None)} dlimit={getattr(args, 'dlimit', None)} "
+              f"line_speed={getattr(args, 'line_speed', None)}\n"
+            + "=" * 80 + "\n"
+        )
+        self._file.write(header)
+        sys.stdout = _TeeStream(self._stdout, self._file)
+        sys.stderr = _TeeStream(self._stderr, self._file)
+        print(f"% PID test log: writing terminal output to {self.path}")
+        return self
+
+    def stop(self):
+        if self._file is None:
+            return
+        try:
+            print(f"% PID test log: saved to {self.path}")
+        finally:
+            sys.stdout = self._stdout
+            sys.stderr = self._stderr
+            self._file.write(f"PID test run ended: {datetime.now():%Y-%m-%d %H:%M:%S}\n")
+            self._file.flush()
+            self._file.close()
+            self._file = None
 
 
 class MissionRecorder:
@@ -1650,6 +1720,7 @@ if __name__ == "__main__":
         service.setup('localhost')
 
         recorder = None
+        pid_logger = None
         if service.connected:
             service.args.now = True
             test_mode = bool(getattr(service.args, "test", False))
@@ -1657,6 +1728,8 @@ if __name__ == "__main__":
             # are silent and tuning/test runs print useful diagnostics.
             if not (getattr(service.args, "verbose", False) or test_mode):
                 service.args.silent = True
+            if test_mode:
+                pid_logger = PIDRunLogger().start(service.args)
 
             apply_pid_overrides()
 
@@ -1708,5 +1781,7 @@ if __name__ == "__main__":
                 run_teleop_in_process()
         service.terminate()
         stop_teensy_interface()
+        if pid_logger is not None:
+            pid_logger.stop()
     if not service.is_quiet():
         print("% Main Terminated")
