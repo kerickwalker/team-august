@@ -56,8 +56,8 @@ def print_params():
     print(f"%   align_threshold  = {collect.align_threshold}")
     print(f"%   drive_speed      = {collect.drive_speed}")
     print(f"%   turn_gain        = {collect.turn_gain}")
-    print(f"%   pos_open         = {collect.pos_open}")
-    print(f"%   pos_closed       = {collect.pos_closed}")
+    print(f"%   arm_up         = {collect.arm_up}")
+    print(f"%   arm_down       = {collect.arm_down}")
     print(f"%   servo_speed      = {collect.servo_speed}")
 
 

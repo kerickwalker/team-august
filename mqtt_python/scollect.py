@@ -20,9 +20,9 @@ class SCollect:
 
     # --- Servo parameters ---
     servo_id    = 1
-    pos_open    = -900   # arm up — ready to scoop
-    pos_closed  = 400   # arm down — ball captured in cage
-    servo_speed = 100    # positions per second (0 = full speed)
+    arm_up    = -900
+    arm_down  = 400
+    servo_speed = 900    # positions per second (0 = full speed)
 
     # --- Gate parameters ---
     gate_id     = 3
@@ -69,7 +69,7 @@ class SCollect:
             if state == 0:
                 # Arm up and gate open, ready to scoop
                 self._gate(self.gate_open)
-                self._servo(self.pos_open)
+                self._servo(self.arm_up)
                 print("% SCollect:: state 0 — gate open, arm up, starting search")
                 state = 1
 
@@ -177,17 +177,17 @@ class SCollect:
 
             elif state == 5:
                 # Lower arm to capture ball
-                self._servo(self.pos_closed)
-                print("% SCollect:: state 5 — arm closed, ball captured")
+                self._servo(self.arm_down)
+                print("% SCollect:: state 5 — arm down")
                 t.sleep(1.0)   # wait for arm to fully reach down position
                 state = 6
 
             elif state == 6:
                 # Close gate to retain ball, then raise arm so camera can see hole
                 self._gate(self.gate_closed)
-                print("% SCollect:: state 6 — gate closed")
+                print("% SCollect:: state 6 — gate closed, ball captured")
                 t.sleep(1.0)
-                self._servo(self.pos_open)
+                self._servo(self.arm_up)
                 print("% SCollect:: state 6 — arm raised, ready to guide")
                 t.sleep(0.5)
                 return True
