@@ -26,12 +26,12 @@ from uteensy import start_teensy_interface, stop_teensy_interface
 # MQTT broker on the same machine as this script (typical on-robot setup)
 MQTT_HOST = "localhost"
 
-# Same defaults as scollect.SCollect
+# Safer defaults for bench testing (reduce slam risk)
 SERVO_ID = 1
 SERVO_MIRROR_ID = 2
 POS_OPEN = -475
-POS_CLOSED = 480
-SERVO_SPEED = 100
+POS_CLOSED = 260
+SERVO_SPEED = 70
 
 # Third servo (gripper / extra): tune --servo3-min / --servo3-max on your hardware
 SERVO3_ID = 3
@@ -39,25 +39,25 @@ SERVO3_MIN_DEFAULT = -500
 SERVO3_MAX_DEFAULT = 500
 
 
-def servo_move(position):
-    service.send("robobot/cmd/T0", f"servo {SERVO_ID} {position} {SERVO_SPEED}")
-    service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {-position} {SERVO_SPEED}")
+def servo_move(position, speed):
+    service.send("robobot/cmd/T0", f"servo {SERVO_ID} {position} {speed}")
+    service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {-position} {speed}")
 
 
-def run_cycle(pause_s, hold_down_s):
+def run_cycle(pause_s, hold_down_s, open_pos, closed_pos, speed):
     edge.lineControl(0)
     service.send("robobot/cmd/ti", "rc 0 0")
-    print(f"% Arm UP    (servo {SERVO_ID} {POS_OPEN} {SERVO_SPEED}, "
-          f"servo {SERVO_MIRROR_ID} {-POS_OPEN} {SERVO_SPEED})")
-    servo_move(POS_OPEN)
+    print(f"% Arm UP    (servo {SERVO_ID} {open_pos} {speed}, "
+          f"servo {SERVO_MIRROR_ID} {-open_pos} {speed})")
+    servo_move(open_pos, speed)
     time.sleep(pause_s)
-    print(f"% Arm DOWN  (servo {SERVO_ID} {POS_CLOSED} {SERVO_SPEED}, "
-          f"servo {SERVO_MIRROR_ID} {-POS_CLOSED} {SERVO_SPEED}) — holding {hold_down_s:.1f}s")
-    servo_move(POS_CLOSED)
+    print(f"% Arm DOWN  (servo {SERVO_ID} {closed_pos} {speed}, "
+          f"servo {SERVO_MIRROR_ID} {-closed_pos} {speed}) — holding {hold_down_s:.1f}s")
+    servo_move(closed_pos, speed)
     time.sleep(hold_down_s)
-    print(f"% Arm UP    (servo {SERVO_ID} {POS_OPEN} {SERVO_SPEED}, "
-          f"servo {SERVO_MIRROR_ID} {-POS_OPEN} {SERVO_SPEED}) — final park")
-    servo_move(POS_OPEN)
+    print(f"% Arm UP    (servo {SERVO_ID} {open_pos} {speed}, "
+          f"servo {SERVO_MIRROR_ID} {-open_pos} {speed}) — final park")
+    servo_move(open_pos, speed)
     time.sleep(pause_s)
 
 
@@ -100,6 +100,27 @@ def main():
         "--verbose",
         action="store_true",
         help="Print MQTT diagnostics (disable silent mode)",
+    )
+    parser.add_argument(
+        "--open-pos",
+        type=int,
+        default=POS_OPEN,
+        metavar="POS",
+        help=f"Servo 1 open/up position (default: {POS_OPEN})",
+    )
+    parser.add_argument(
+        "--closed-pos",
+        type=int,
+        default=POS_CLOSED,
+        metavar="POS",
+        help=f"Servo 1 closed/down position (default: {POS_CLOSED}, safer than old 480)",
+    )
+    parser.add_argument(
+        "--arm-speed",
+        type=int,
+        default=SERVO_SPEED,
+        metavar="S",
+        help=f"Servo speed for servos 1/2 (default: {SERVO_SPEED}, safer than old 100)",
     )
     parser.add_argument(
         "--servo3",
@@ -156,6 +177,16 @@ def main():
     if not cli.verbose:
         service.args.silent = True
 
+    if cli.closed_pos > 320:
+        print(f"% Refusing closed-pos={cli.closed_pos}: too aggressive for safe test (max 320).")
+        print("% Use <= 320 for testing to avoid arm slam.")
+        stop_teensy_interface()
+        sys.exit(2)
+    if cli.arm_speed > 120:
+        print(f"% Refusing arm-speed={cli.arm_speed}: too aggressive for safe test (max 120).")
+        stop_teensy_interface()
+        sys.exit(2)
+
     try:
         if cli.servo3:
             run_servo3_cycle(
@@ -165,7 +196,13 @@ def main():
                 cli.servo3_speed,
             )
         else:
-            run_cycle(cli.pause, cli.hold_down)
+            run_cycle(
+                cli.pause,
+                cli.hold_down,
+                cli.open_pos,
+                cli.closed_pos,
+                cli.arm_speed,
+            )
     except KeyboardInterrupt:
         print("\n% Ctrl+C — stopping")
         service.stop = True
@@ -180,7 +217,7 @@ def main():
             if cli.servo3:
                 servo3_move(cli.servo3_min, cli.servo3_speed)
             else:
-                servo_move(POS_OPEN)
+                servo_move(cli.open_pos, cli.arm_speed)
             edge.lineControl(0)
         except Exception:
             pass
