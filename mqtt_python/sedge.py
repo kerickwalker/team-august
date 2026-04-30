@@ -174,6 +174,7 @@ class SEdge:
     lineRequestedParams = "normal"
     lineReacquireSettleUntil = 0.0
     lineSettleActive = False
+    lineSuppressInitialSettle = False
     lineWasValid = False
     lastValidLineCenter = 0.0
     recoveryStraightActive = False
@@ -510,13 +511,15 @@ class SEdge:
         self.lineLostStartTime = 0.0
         self.lineReacquireSettleUntil = 0.0
         self.lineSettleActive = False
+        self.lineSuppressInitialSettle = False
         self.lineWasValid = False
         self.recoveryStraightActive = False
       else:
-        # Treat each mission handoff/restart as a fresh acquire, so the robot
-        # settles gently after maneuvers like the roundabout.
+        # Start in the requested profile. Slow settle is only for later
+        # line-loss -> reacquire events while line following is already active.
         self.lineWasValid = False
         self.lineReacquireSettleUntil = 0.0
+        self.lineSuppressInitialSettle = True
       self.lineLastControlTime = 0.0
       if params in self.PARAM_SETS:
         for k, v in self.PARAM_SETS[params].items():
@@ -549,7 +552,11 @@ class SEdge:
       Tsec = control_period if previous_control_time <= 0.0 else max(0.001, now - previous_control_time)
 
       if self.lineValid and not self.lineWasValid:
-        self.lineReacquireSettleUntil = now + self.lineReacquireSettleTime
+        if self.lineSuppressInitialSettle:
+          self.lineReacquireSettleUntil = 0.0
+          self.lineSuppressInitialSettle = False
+        else:
+          self.lineReacquireSettleUntil = now + self.lineReacquireSettleTime
         self.lineIntegral = 0.0
         self.lineE_prev = None
 
