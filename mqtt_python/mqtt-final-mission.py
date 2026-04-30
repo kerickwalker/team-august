@@ -75,11 +75,19 @@ _telemetry_lock = threading.Lock()
 # checked `not service.stop` to decide whether to keep running should now use
 # `not _aborted()` so it also exits on a mission-level abort.
 _mission_abort_evt = threading.Event()
+_auto_teleop_handoff = False
 
 
 def _aborted():
     """True if a hard service stop OR a mission-level abort has been signalled."""
     return service.stop or _mission_abort_evt.is_set()
+
+
+def _request_test_teleop_handoff():
+    """End the mission like SPACE was pressed, but from mission logic."""
+    global _auto_teleop_handoff
+    _auto_teleop_handoff = True
+    _mission_abort_evt.set()
 
 
 def set_telemetry(**kwargs):
@@ -559,10 +567,12 @@ SUBMISSIONS = {
     # Runs until stop button or Ctrl-C. Use this for PID tuning.
     "line_follow":     dict(start_state=0,
                             pure_follow_params="normal",
-                            pure_follow_after_seek=True),
+                            pure_follow_after_seek=True,
+                            full_line_turn_stop=True),
     "slow_line":       dict(start_state=0,
                             pure_follow_params="slow",
-                            pure_follow_after_seek=True),
+                            pure_follow_after_seek=True,
+                            full_line_turn_stop=True),
     "seesaw":          dict(start_state=0,
                             pure_follow_params="slow",
                             pure_follow_after_seek=True,
@@ -1201,6 +1211,7 @@ def driveMission(submission="full"):
     arm_raise_stages    = sub.get("arm_raise_stages", None)
     stop_on_line_loss   = bool(sub.get("stop_on_line_loss", False))
     line_loss_forward_s = float(sub.get("line_loss_forward_s", 0.0))
+    full_line_turn_stop = bool(sub.get("full_line_turn_stop", False))
     line_end_lost_count = 0
     pure_follow_lost_count = 0
     pure_follow_stop_pending = False
@@ -1498,6 +1509,21 @@ def driveMission(submission="full"):
         # Loop exits only on _aborted() (stop button / Ctrl-C / mission abort).
         elif state == 30:
             edge.mission_crossing_count = 0
+            if full_line_turn_stop and getattr(edge, "linePattern", 0) == 0b11111111:
+                edge.lineControl(0)
+                service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                if not service.is_quiet():
+                    print("% state 30: pattern 11111111 detected -> 180deg turn and stop")
+                if bool(getattr(service.args, "test", False)):
+                    _request_test_teleop_handoff()
+                    continue
+                safeHandoffTurn180(direction="left",
+                                   turn_rate=1.0,
+                                   hard_time_cap_s=4.5,
+                                   overshoot_factor=1.25)
+                state = 2
+                continue
+
             # Pure follow mode: optionally run staged arm raise after a delay.
             if (arm_raise_after_s is not None and not arm_raised_after_delay
                     and arm_raise_stage_idx < 0
@@ -1749,6 +1775,7 @@ if __name__ == "__main__":
                 ).start()
 
             key_listener = MissionKeyListener().start() if test_mode else None
+            _auto_teleop_handoff = False
             try:
                 loop(submission=submission)
             except KeyboardInterrupt:
@@ -1765,7 +1792,12 @@ if __name__ == "__main__":
             # service.stop — so the MQTT loop + alive heartbeat threads stay
             # alive and pose feedback keeps flowing. We just clear the abort
             # event before performing the post-mission turn.
-            if key_listener is not None and key_listener.switch_to_teleop:
+            teleop_requested = (
+                key_listener is not None
+                and (key_listener.switch_to_teleop or _auto_teleop_handoff)
+            )
+            if teleop_requested:
+                _auto_teleop_handoff = False
                 _mission_abort_evt.clear()
                 # Drain any keys typed during the handoff so they don't leak
                 # into teleop and trigger unintended pulses.

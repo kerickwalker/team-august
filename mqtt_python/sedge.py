@@ -71,36 +71,40 @@ class SEdge:
     # Pattern-based line position. Bits are sensor 0..7 from left to right,
     # where 1 means edge_n[i] >= lineValidThreshold. Negative center = line left.
     lineUsePatternCenter = True
+    lineUsePatternFallback = False
     linePatternFallbackCenters = (-0.70, -0.50, -0.28, -0.10, 0.10, 0.28, 0.50, 0.70)
     linePatternCenterTable = [None] * 256
 
     linePatternCenterTable[0b00011000] = 0.0
-    linePatternCenterTable[0b00001000] = 0.10
-    linePatternCenterTable[0b00011100] = 0.10
-    linePatternCenterTable[0b00001100] = 0.22
-    linePatternCenterTable[0b00000100] = 0.28
-    linePatternCenterTable[0b00001110] = 0.30
-    linePatternCenterTable[0b00000110] = 0.40
-    linePatternCenterTable[0b00000010] = 0.50
-    linePatternCenterTable[0b00000111] = 0.50
-    linePatternCenterTable[0b00000011] = 0.60
-    linePatternCenterTable[0b00000001] = 0.70
 
-    linePatternCenterTable[0b11000000] = -0.60
-    linePatternCenterTable[0b01100000] = -0.40
-    linePatternCenterTable[0b00110000] = -0.22
-    linePatternCenterTable[0b11100000] = -0.50
-    linePatternCenterTable[0b01110000] = -0.30
-    linePatternCenterTable[0b00111000] = -0.10
+    linePatternRightCenters = (
+        (0b00001000, 0.10),
+        (0b00011100, 0.10),
+        (0b00001100, 0.22),
+        (0b00000100, 0.28),
+        (0b00001110, 0.30),
+        (0b00000110, 0.40),
+        (0b00000010, 0.50),
+        (0b00000111, 0.50),
+        (0b00000011, 0.60),
+        (0b00000001, 0.70),
+    )
 
-    #linePatternCenterTable[0b11110000] = 0.0
-    #linePatternCenterTable[0b01111000] = 0.0
-    #linePatternCenterTable[0b00111100] = 0.0
-    #linePatternCenterTable[0b00011110] = 0.0
-    #linePatternCenterTable[0b00001111] = 0.0
+    for _pattern, _center in linePatternRightCenters:
+        linePatternCenterTable[_pattern] = _center
+        _mirrored = int(f"{_pattern:08b}"[::-1], 2)
+        linePatternCenterTable[_mirrored] = -_center
 
-    #linePatternCenterTable[0b11111111] = 0.0
-    #linePatternCenterTable[0b01111110] = 0.0
+    # Crossing-like patterns intentionally have no line-follow turn command
+    # for now. They are still classified below for later crossing behavior.
+    # linePatternCenterTable[0b11110000] = 0.0
+    # linePatternCenterTable[0b01111000] = 0.0
+    # linePatternCenterTable[0b00111100] = 0.0
+    # linePatternCenterTable[0b00011110] = 0.0
+    # linePatternCenterTable[0b00001111] = 0.0
+
+    # linePatternCenterTable[0b11111111] = 0.0
+    # linePatternCenterTable[0b01111110] = 0.0
 
     # Binary crossing classification. All markers are currently treated as a
     # general crossing, but the type is logged for later mission-specific use.
@@ -218,6 +222,7 @@ class SEdge:
     posRight = 0.0
     lineCenterWeighted = 0.0  # weighted center of mass from analog values, -3.5..3.5
     lineCenterPattern = 0.0   # threshold-pattern center from linePatternCenterTable
+    linePatternCenterSupported = False  # True only when the current pattern has an explicit/fallback center
     refPosition = 0.0  # setpoint: 0 = line center under sensor
     lineValid = False
     lineValidCnt = 0 # a value up to 20 for most confident line detect
@@ -583,10 +588,16 @@ class SEdge:
     def lineCenterFromPattern(self):
       center = self.linePatternCenterTable[self.linePattern]
       if center is not None:
+        self.linePatternCenterSupported = True
         return center
+      if not self.lineUsePatternFallback:
+        self.linePatternCenterSupported = False
+        return self.lastValidLineCenter
       active = [i for i, is_on in enumerate(self.sensorAboveThreshold) if is_on]
       if not active:
+        self.linePatternCenterSupported = False
         return self.lineCenterWeighted
+      self.linePatternCenterSupported = True
       return sum(self.linePatternFallbackCenters[i] for i in active) / len(active)
 
     ##########################################################
@@ -652,6 +663,12 @@ class SEdge:
       Tsec = control_period if previous_control_time <= 0.0 else max(0.001, now - previous_control_time)
       rawLineValid = self.lineValid
       trackingLineValid = rawLineValid or self.lineValidCnt >= self.lineRecentValidCnt
+      if (self.lineUsePatternCenter and rawLineValid
+          and not self.linePatternCenterSupported):
+        # Ignore unsupported binary patterns instead of treating them as
+        # centered. This avoids a hidden "drive straight" command for patterns
+        # reserved for crossing behavior.
+        return
       # A single weak sample can dip below threshold while the line is still
       # under the sensor. Hold the last good center until confidence decays.
       weightedCenter = self.lineCenterWeighted
