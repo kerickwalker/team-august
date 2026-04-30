@@ -10,7 +10,7 @@ venv/
 # Build output directories
 # Ignore only log folders/files inside build, but include all other build contents
 **/build/log*/
-**/build/out_console.txt
+**/out_console.txt
 
 # Common compiled artifacts
 *.elf
@@ -24,6 +24,7 @@ venv/
 *.log
 *.err
 log*.txt
+**/PID_log.txt
 
 
 # Ignore all JPEG images
