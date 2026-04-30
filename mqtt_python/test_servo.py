@@ -10,6 +10,8 @@
 #   python3 test_servo.py
 #   python3 test_servo.py --pause 2 --hold-down 6 --verbose
 #   python3 test_servo.py --servo12-min -475 --servo12-max 260 --arm-speed 70
+#   python3 test_servo.py --servo1 --servo12-min -100 --servo12-max 100
+#   python3 test_servo.py --servo2 --servo12-min -100 --servo12-max 100
 #   python3 test_servo.py --servo3 --servo3-min -400 --servo3-max 400
 
 import argparse
@@ -25,7 +27,7 @@ except ImportError:
 # MQTT broker on the same machine as this script (typical on-robot setup)
 MQTT_HOST = "localhost"
 
-# Safer defaults for bench testing (reduce slam risk)
+# Defaults for calibration/testing
 SERVO_ID = 1
 SERVO_MIRROR_ID = 2
 POS_OPEN = -475
@@ -38,25 +40,33 @@ SERVO3_MIN_DEFAULT = -500
 SERVO3_MAX_DEFAULT = 500
 
 
-def servo_move(position, speed):
-    service.send("robobot/cmd/T0", f"servo {SERVO_ID} {position} {speed}")
-    service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {-position} {speed}")
+def servo_move(position, speed, servo_mode):
+    if servo_mode in ("both", "servo1"):
+        service.send("robobot/cmd/T0", f"servo {SERVO_ID} {position} {speed}")
+    if servo_mode in ("both", "servo2"):
+        service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {-position} {speed}")
 
 
-def run_cycle(pause_s, hold_down_s, open_pos, closed_pos, speed):
+def arm_move_label(position, speed, servo_mode):
+    if servo_mode == "servo1":
+        return f"servo {SERVO_ID} {position} {speed}"
+    if servo_mode == "servo2":
+        return f"servo {SERVO_MIRROR_ID} {-position} {speed}"
+    return (f"servo {SERVO_ID} {position} {speed}, "
+            f"servo {SERVO_MIRROR_ID} {-position} {speed}")
+
+
+def run_cycle(pause_s, hold_down_s, open_pos, closed_pos, speed, servo_mode):
     edge.lineControl(0)
     service.send("robobot/cmd/ti", "rc 0 0")
-    print(f"% Arm UP    (servo {SERVO_ID} {open_pos} {speed}, "
-          f"servo {SERVO_MIRROR_ID} {-open_pos} {speed})")
-    servo_move(open_pos, speed)
+    print(f"% Arm UP    ({arm_move_label(open_pos, speed, servo_mode)})")
+    servo_move(open_pos, speed, servo_mode)
     time.sleep(pause_s)
-    print(f"% Arm DOWN  (servo {SERVO_ID} {closed_pos} {speed}, "
-          f"servo {SERVO_MIRROR_ID} {-closed_pos} {speed}) - holding {hold_down_s:.1f}s")
-    servo_move(closed_pos, speed)
+    print(f"% Arm DOWN  ({arm_move_label(closed_pos, speed, servo_mode)}) - holding {hold_down_s:.1f}s")
+    servo_move(closed_pos, speed, servo_mode)
     time.sleep(hold_down_s)
-    print(f"% Arm UP    (servo {SERVO_ID} {open_pos} {speed}, "
-          f"servo {SERVO_MIRROR_ID} {-open_pos} {speed}) - final park")
-    servo_move(open_pos, speed)
+    print(f"% Arm UP    ({arm_move_label(open_pos, speed, servo_mode)}) - final park")
+    servo_move(open_pos, speed, servo_mode)
     time.sleep(pause_s)
 
 
@@ -101,6 +111,17 @@ def main():
         "--verbose",
         action="store_true",
         help="Print MQTT diagnostics (disable silent mode)",
+    )
+    servo_mode = parser.add_mutually_exclusive_group()
+    servo_mode.add_argument(
+        "--servo1",
+        action="store_true",
+        help="Only cycle servo 1 during the arm test",
+    )
+    servo_mode.add_argument(
+        "--servo2",
+        action="store_true",
+        help="Only cycle servo 2 during the arm test; positions are mirrored like the paired test",
     )
     parser.add_argument(
         "--servo12-min",
@@ -186,15 +207,11 @@ def main():
     if not cli.verbose:
         service.args.silent = True
 
-    if cli.servo12_max > 320:
-        print(f"% Refusing servo12-max={cli.servo12_max}: too aggressive for safe test (max 320).")
-        print("% Use <= 320 for testing to avoid arm slam.")
-        stop_teensy_interface()
-        sys.exit(2)
-    if cli.arm_speed > 120:
-        print(f"% Refusing arm-speed={cli.arm_speed}: too aggressive for safe test (max 120).")
-        stop_teensy_interface()
-        sys.exit(2)
+    servo_mode = "both"
+    if cli.servo1:
+        servo_mode = "servo1"
+    elif cli.servo2:
+        servo_mode = "servo2"
 
     try:
         run_cycle(
@@ -203,6 +220,7 @@ def main():
             cli.servo12_min,
             cli.servo12_max,
             cli.arm_speed,
+            servo_mode,
         )
         if cli.servo3:
             run_servo3_cycle(
@@ -219,7 +237,7 @@ def main():
         try:
             service.send("robobot/cmd/ti", "rc 0 0")
             time.sleep(0.05)
-            servo_move(cli.servo12_min, cli.arm_speed)
+            servo_move(cli.servo12_min, cli.arm_speed, servo_mode)
             if cli.servo3:
                 servo3_move(cli.servo3_min, cli.servo3_speed)
             edge.lineControl(0)
