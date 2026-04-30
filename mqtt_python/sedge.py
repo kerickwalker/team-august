@@ -138,13 +138,25 @@ class SEdge:
     lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
     lineMinTurnError = 2.00     # enforce minimum turn only when the line is near the outer sensors
     lineMinTurnRate = 0.0       # keep disabled for the P-only baseline
-    lineRecentValidCnt = 5      # below this confidence, recovery may start
+    lineRecentValidCnt = 18     # below this confidence, recovery may start
     lineNoReverseError = 0.25   # above this abs(error), D may damp but not reverse PI steering
     lineTurnSlewRate = 4.0      # max change in commanded turn rate (rad/s per second); 0 disables
     lineTurnLimit = 0.90        # normal line-following abs(turn rate) cap, below recovery turn cap
     lineVelocityMin = 0.10      # slow to at least this speed when line error is large
     lineSlowdownError = 1.00    # abs(error) where adaptive slowdown reaches lineVelocityMin
     lineControlPeriod = 0.025   # motor command update period (25 ms)
+    # Simple gain-scheduled line modes:
+    # normal: follow the center table at commanded speed.
+    # edge: if the line sits on outer sensors, creep while turning so the robot
+    #       does not keep driving a wide arc away from the line.
+    # blind: if the current sample is very dark/weak, stop forward motion and
+    #        turn toward the last known line side instead of trusting stale data.
+    lineEdgeCenter = 0.85       # abs(center) at/above this is an outer-edge line
+    lineEdgeMinCount = 3        # require this many edge samples before edge mode
+    lineEdgeVelocity = 0.05     # m/s while the line is on outer sensors
+    lineEdgeMinTurnRate = 0.75  # rad/s minimum turn while in edge mode
+    lineBlindHighThreshold = 250 # below this peak livn, do not drive forward on stale center
+    lineBlindVelocity = 0.0     # m/s while current sample is hard no-line / blind
     # Sample period used by the PID (s). T0/livn is published every ~10 ms
     # ("sub livn 3"), so the controller assumes a fixed dt to keep Kd and Ki
     # tuning independent of MQTT arrival jitter / EWMA warm-up. The measured
@@ -193,13 +205,13 @@ class SEdge:
     
     print_follow_line_fields = (
         'livn', 'pattern', 'high', 'validCnt', 'state', 'crossType',
-        'center', 'e', 'p', 'd', 'y', 'dGuard', 'minTurn', 'recMode', 'rc'
+        'center', 'e', 'p', 'd', 'y', 'dGuard', 'minTurn', 'lineMode', 'edgeCnt', 'recMode', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
     #   livn, pattern, avg, high, valid, validCnt, center, wCenter, state, aboveCnt,
-    #   crossType, crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, minTurn, settle, recMode, recStraight, rc, lastLineSide
-    #   e = error (ref - center); u = p+i+d; y = clamped turn rate.
+    #   crossType, crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, minTurn, settle, lineMode, edgeCnt, blind, recMode, recStraight, rc, lastLineSide
+    #   lineMode = normal|edge|blind|recovery; e = error (ref - center); u = p+i+d; y = clamped turn rate.
     # ============= end tuning & print options =============
 
     # raw AD values
@@ -276,6 +288,10 @@ class SEdge:
     lineMinTurnActive = False
     lineTurnSlewActive = False
     lineVelocityAdjusted = False
+    lineMode = "normal"
+    lineEdgeHoldCnt = 0
+    lineEdgeActive = False
+    lineBlindActive = False
     # memory for recovery (A4: remember last side)
     lastLineSide = 0   # -1 = line was left, +1 = line was right, 0 = unknown; recovery turns this way
     # management
@@ -690,6 +706,19 @@ class SEdge:
       measuredCenter = self.lineCenterPattern if self.lineUsePatternCenter else weightedCenter
       lineCenter = measuredCenter if rawLineValid else self.lastValidLineCenter
       e = self.refPosition - lineCenter
+      edge_center = getattr(self, 'lineEdgeCenter', 0.0)
+      edge_sample = rawLineValid and trackingLineValid and abs(lineCenter) >= edge_center
+      if edge_sample:
+        self.lineEdgeHoldCnt += 1
+      else:
+        self.lineEdgeHoldCnt = 0
+      self.lineEdgeActive = self.lineEdgeHoldCnt >= getattr(self, 'lineEdgeMinCount', 1)
+      self.lineBlindActive = (
+        trackingLineValid
+        and not rawLineValid
+        and self.high < getattr(self, 'lineBlindHighThreshold', 0)
+      )
+      self.lineMode = "normal"
 
       if trackingLineValid and not self.lineWasValid:
         if self.lineSuppressInitialSettle:
@@ -782,6 +811,10 @@ class SEdge:
         self.lineE_prev = None
 
       if not trackingLineValid:
+        self.lineMode = "recovery"
+        self.lineEdgeHoldCnt = 0
+        self.lineEdgeActive = False
+        self.lineBlindActive = False
         if self.lineLostStartTime <= 0.0:
           self.lineLostStartTime = now
           self.recoveryMode = "turn"
@@ -841,6 +874,46 @@ class SEdge:
           speed_sign = 1.0 if self.velocity >= 0.0 else -1.0
           sent_velocity = speed_sign * min(abs(self.velocity), abs(active_profile["lineVelocity"]))
         sent_turn = self.lineY
+        if self.lineBlindActive:
+          self.lineMode = "blind"
+          turn_sign = self.lastLineSide
+          if turn_sign == 0:
+            if sent_turn > 0.0:
+              turn_sign = 1
+            elif sent_turn < 0.0:
+              turn_sign = -1
+            else:
+              turn_sign = 1
+          speed_sign = 1.0 if sent_velocity >= 0.0 else -1.0
+          sent_velocity = speed_sign * abs(getattr(self, 'lineBlindVelocity', 0.0))
+          sent_turn = abs(self.recoveryTurnRate) * turn_sign
+          self.lineY = sent_turn
+        elif self.lineEdgeActive:
+          self.lineMode = "edge"
+          speed_sign = 1.0 if sent_velocity >= 0.0 else -1.0
+          sent_velocity = speed_sign * min(abs(sent_velocity), abs(getattr(self, 'lineEdgeVelocity', sent_velocity)))
+          min_edge_turn = abs(getattr(self, 'lineEdgeMinTurnRate', 0.0))
+          if min_edge_turn > 0.0 and abs(sent_turn) < min_edge_turn:
+            if sent_turn > 0.0:
+              turn_sign = 1
+            elif sent_turn < 0.0:
+              turn_sign = -1
+            elif e > 0.0:
+              turn_sign = 1
+            elif e < 0.0:
+              turn_sign = -1
+            elif self.lastLineSide != 0:
+              turn_sign = self.lastLineSide
+            else:
+              turn_sign = 1
+            sent_turn = min_edge_turn * turn_sign
+            self.lineY = sent_turn
+        if sent_turn > self.lineYMax:
+          sent_turn = self.lineYMax
+          self.lineY = sent_turn
+        elif sent_turn < self.lineYMin:
+          sent_turn = self.lineYMin
+          self.lineY = sent_turn
 
       if sent_velocity < 0.0:
         sent_turn = -sent_turn
@@ -877,7 +950,7 @@ class SEdge:
           parts.append(f"center={lineCenter:5.2f}")
         if 'wCenter' in enabled:
           parts.append(f"wCenter={weightedCenter:5.2f}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'dGuard', 'minTurn', 'recMode', 'recStraight', 'rc', 'lastLineSide')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'dGuard', 'minTurn', 'lineMode', 'edgeCnt', 'blind', 'recMode', 'recStraight', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
           parts.append(f"e={e:6.3f}")
@@ -897,6 +970,12 @@ class SEdge:
           parts.append(f"minTurn={str(self.lineMinTurnActive):5}")
         if 'settle' in enabled:
           parts.append(f"settle={str(self.lineSettleActive):5}")
+        if 'lineMode' in enabled:
+          parts.append(f"lineMode={self.lineMode}")
+        if 'edgeCnt' in enabled:
+          parts.append(f"edgeCnt={self.lineEdgeHoldCnt}")
+        if 'blind' in enabled:
+          parts.append(f"blind={str(self.lineBlindActive):5}")
         if 'recMode' in enabled:
           parts.append(f"recMode={self.recoveryMode}")
         if 'recStraight' in enabled:
