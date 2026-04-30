@@ -46,6 +46,39 @@ class SEdge:
     yMinSpan    = 4            # Y-crossing: minimum span between leftmost and rightmost active sensor
     yMidIndices = (3, 4)       # centre sensor indices; if any are inactive while above conditions hold → Y
     low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
+    # Pattern-based line position. Bits are sensor 0..7 from left to right,
+    # where 1 means edge_n[i] >= lineValidThreshold. Negative center = line left.
+    lineUsePatternCenter = True
+    linePatternFallbackCenters = (-3.4, -2.3, -1.1, -0.25, 0.25, 1.1, 2.3, 3.4)
+    linePatternCenterTable = [None] * 256
+    linePatternCenterTable[0b10000000] = -3.4
+    linePatternCenterTable[0b01000000] = -2.3
+    linePatternCenterTable[0b00100000] = -1.1
+    linePatternCenterTable[0b00010000] = -0.25
+    linePatternCenterTable[0b00001000] = 0.25
+    linePatternCenterTable[0b00000100] = 1.1
+    linePatternCenterTable[0b00000010] = 2.3
+    linePatternCenterTable[0b00000001] = 3.4
+    linePatternCenterTable[0b11000000] = -3.0
+    linePatternCenterTable[0b01100000] = -1.8
+    linePatternCenterTable[0b00110000] = -0.8
+    linePatternCenterTable[0b00011000] = 0.0
+    linePatternCenterTable[0b00001100] = 0.8
+    linePatternCenterTable[0b00000110] = 1.8
+    linePatternCenterTable[0b00000011] = 3.0
+    linePatternCenterTable[0b11100000] = -2.6
+    linePatternCenterTable[0b01110000] = -1.5
+    linePatternCenterTable[0b00111000] = -0.5
+    linePatternCenterTable[0b00011100] = 0.5
+    linePatternCenterTable[0b00001110] = 1.5
+    linePatternCenterTable[0b00000111] = 2.6
+    linePatternCenterTable[0b11110000] = -2.0
+    linePatternCenterTable[0b01111000] = -0.8
+    linePatternCenterTable[0b00111100] = 0.0
+    linePatternCenterTable[0b00011110] = 0.8
+    linePatternCenterTable[0b00001111] = 2.0
+    linePatternCenterTable[0b11111111] = 0.0
+    linePatternCenterTable[0b01111110] = 0.0
     # Active line-follow tuning. Start with PI-only so straight-line behavior
     # can be tuned before adding separate turn/edge behavior.
     lineKp = 0.25
@@ -109,13 +142,13 @@ class SEdge:
     flog_write_every_n = 1         # flog.write() every Nth livn update (appends line/sensor log line to file)
     
     print_follow_line_fields = (
-        'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
-        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'i', 'd', 'u',
+        'livn', 'pattern', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
+        'crossingCnt', 'leftMost', 'rightMost', 'center', 'wCenter', 'e', 'p', 'i', 'd', 'u',
         'y', 'dGuard', 'minTurn', 'settle', 'recMode', 'recStraight', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
-    #   livn, avg, high, valid, validCnt, center, state, aboveCnt,
+    #   livn, pattern, avg, high, valid, validCnt, center, wCenter, state, aboveCnt,
     #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, minTurn, settle, recMode, recStraight, rc, lastLineSide
     #   e = error (ref - center); u = p+i+d; y = clamped turn rate.
     # ============= end tuning & print options =============
@@ -139,6 +172,7 @@ class SEdge:
     posLeft = 0.0
     posRight = 0.0
     lineCenterWeighted = 0.0  # weighted center of mass from analog values, -3.5..3.5
+    lineCenterPattern = 0.0   # threshold-pattern center from linePatternCenterTable
     refPosition = 0.0  # setpoint: 0 = line center under sensor
     lineValid = False
     lineValidCnt = 0 # a value up to 20 for most confident line detect
@@ -151,6 +185,7 @@ class SEdge:
     sensorsAboveCount = 0                # number of sensors above threshold (0..8)
     leftmostAboveIndex = None           # first sensor index 0..7 above threshold, or None
     rightmostAboveIndex = None          # last sensor index 0..7 above threshold, or None
+    linePattern = 0                     # 8-bit sensor mask; bit 7 = sensor 0, bit 0 = sensor 7
     lineState = "no_line"               # "no_line" | "line" | "crossing" (set from sensorsAboveCount vs crossingMinSensors)
     mission_crossing_count = 0          # set by mission (driveToLine) so print can show crossing counter
     #
@@ -418,8 +453,11 @@ class SEdge:
       # average white level
       self.average = total / 8.0
       # Per-sensor above-threshold state (each sensor checked against lineValidThreshold)
+      self.linePattern = 0
       for i in range(8):
         self.sensorAboveThreshold[i] = self.edge_n[i] >= self.lineValidThreshold
+        if self.sensorAboveThreshold[i]:
+          self.linePattern |= 1 << (7 - i)
       self.sensorsAboveCount = sum(1 for b in self.sensorAboveThreshold if b)
       self.leftmostAboveIndex = None
       self.rightmostAboveIndex = None
@@ -459,6 +497,7 @@ class SEdge:
       if sumW > 0:
         self.lineCenterWeighted = sumPosW / sumW
       # else sumW == 0 (avoid div by zero only). "No line" is indicated by lineValid elsewhere.
+      self.lineCenterPattern = self.lineCenterFromPattern()
       # threshold-based left/right edges (kept for validity, display, crossing)
       if self.lineValid:
         posLeft = -3.5 # max left
@@ -498,6 +537,17 @@ class SEdge:
           self.crossingLineCnt = 0
       pass
       # print(f"% Edge (sedge.py):: ({self.edge_n[0]} {self.edge_n[1]} {self.edge_n[2]} {self.edge_n[3]} {self.edge_n[4]} {self.edge_n[5]} {self.edge_n[6]}), high={self.high}, left={self.posLeft:.2f}, right={self.posRight:.2f}.")
+
+    ##########################################################
+
+    def lineCenterFromPattern(self):
+      center = self.linePatternCenterTable[self.linePattern]
+      if center is not None:
+        return center
+      active = [i for i, is_on in enumerate(self.sensorAboveThreshold) if is_on]
+      if not active:
+        return self.lineCenterWeighted
+      return sum(self.linePatternFallbackCenters[i] for i in active) / len(active)
 
     ##########################################################
 
@@ -564,7 +614,9 @@ class SEdge:
       trackingLineValid = rawLineValid or self.lineValidCnt >= self.lineRecentValidCnt
       # A single weak sample can dip below threshold while the line is still
       # under the sensor. Hold the last good center until confidence decays.
-      lineCenter = self.lineCenterWeighted if rawLineValid else self.lastValidLineCenter
+      weightedCenter = self.lineCenterWeighted
+      measuredCenter = self.lineCenterPattern if self.lineUsePatternCenter else weightedCenter
+      lineCenter = measuredCenter if rawLineValid else self.lastValidLineCenter
       e = self.refPosition - lineCenter
 
       if trackingLineValid and not self.lineWasValid:
@@ -729,6 +781,8 @@ class SEdge:
         if 'livn' in enabled:
           norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
           parts.append(f"livn [{norm}]")
+        if 'pattern' in enabled:
+          parts.append(f"pattern={self.linePattern:08b}")
         if 'high' in enabled:
           parts.append(f"high={self.high:4d}")
         if 'valid' in enabled:
@@ -747,6 +801,8 @@ class SEdge:
           parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
         if 'center' in enabled:
           parts.append(f"center={lineCenter:5.2f}")
+        if 'wCenter' in enabled:
+          parts.append(f"wCenter={weightedCenter:5.2f}")
         if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'dGuard', 'minTurn', 'recMode', 'recStraight', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
