@@ -145,7 +145,7 @@ class SEdge:
     lineTurnLimit = 0.90        # normal line-following abs(turn rate) cap, below recovery turn cap
     lineVelocityMin = 0.10      # slow to at least this speed when line error is large
     lineSlowdownError = 1.00    # abs(error) where adaptive slowdown reaches lineVelocityMin
-    lineControlPeriod = 0.050   # motor command update period (50 ms)
+    lineControlPeriod = 0.025   # motor command update period (50 ms)
     # Sample period used by the PID (s). T0/livn is published every ~10 ms
     # ("sub livn 3"), so the controller assumes a fixed dt to keep Kd and Ki
     # tuning independent of MQTT arrival jitter / EWMA warm-up. The measured
@@ -169,8 +169,8 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.25, lineKi=0.0, lineKd=0.006, lineVelocity=0.20),
-        "slow":   dict(lineKp=0.25, lineKi=0.0, lineKd=0.006, lineVelocity=0.20),
+        "normal": dict(lineKp=0.20, lineKi=0.0, lineKd=0.004, lineVelocity=0.20),
+        "slow":   dict(lineKp=0.20, lineKi=0.0, lineKd=0.004, lineVelocity=0.20),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"
