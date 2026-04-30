@@ -477,6 +477,7 @@ FIRST_CROSSING_SEQUENCE = [
 #                       (instead of letting sedge recovery keep turning).
 #   line_loss_forward_s — if stop_on_line_loss is True, drive straight forward
 #                       this many seconds before final stop.
+#   sensor_diag      - "forward" or "line"; print livn/pattern/result only.
 #
 # Add or rename entries freely.
 ################################################################
@@ -504,6 +505,12 @@ SUBMISSIONS = {
                             ],
                             stop_on_line_loss=True,
                             line_loss_forward_s=2.0),
+    "sensors":         dict(start_state=90,
+                            sensor_diag="forward",
+                            arm_position="up"),
+    "sensors_line":    dict(start_state=91,
+                            sensor_diag="line",
+                            arm_position="up"),
     "after_crossing_1": dict(start_state=10,
                              first_cross_done=True,
                              line_control=("slow", None)),
@@ -699,6 +706,66 @@ def driveForwardTime(seconds, speed):
         t.sleep(0.02)
     if not service.is_quiet():
         print(f"# driveForwardTime: ran for {pose.tripBtimePassed():.2f} s at {speed:.2f} m/s")
+
+
+def _sensorPatternResult():
+    crossing_type = getattr(edge, "crossingType", "none")
+    if crossing_type != "none":
+        return f"{crossing_type}.crossing"
+    return f"center={getattr(edge, 'lineCenterPattern', 0.0):5.2f}"
+
+
+def printSensorPatternLine(prefix="sensors"):
+    norm = " ".join(f"{int(edge.edge_n[i]):4d}" for i in range(8))
+    pattern = getattr(edge, "linePattern", 0)
+    print(
+        f"% {prefix}: livn [{norm}] "
+        f"pattern={pattern:08b} result={_sensorPatternResult()} "
+        f"state={edge.lineState} high={edge.high:4d} valid={str(edge.lineValid):5}"
+    )
+
+
+def _printSensorPatternOnUpdate(last_update, prefix):
+    update = edge.edge_nUpdCnt
+    if update != last_update:
+        printSensorPatternLine(prefix)
+        return update
+    return last_update
+
+
+def driveSensorPatternForward(dist=0.25, speed=0.10):
+    """Drive straight while printing raw normalized values and pattern decode."""
+    edge.lineControl(0)
+    pose.tripBreset()
+    last_update = -1
+    print(f"% sensors: drive straight {dist:.2f} m at {speed:.2f} m/s")
+    service.send("robobot/cmd/ti", f"rc {speed:.2f} 0.0")
+    while not _aborted() and abs(pose.tripB) < abs(dist):
+        last_update = _printSensorPatternOnUpdate(last_update, "sensors")
+        t.sleep(0.005)
+    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+    while not _aborted() and abs(pose.velocity()) > 0.001:
+        last_update = _printSensorPatternOnUpdate(last_update, "sensors")
+        t.sleep(0.01)
+    print(f"% sensors: done after {pose.tripB:.3f} m")
+
+
+def driveSensorPatternLine(seconds=2.0, params="slow"):
+    """Follow line briefly while printing sensor pattern decode for tuning."""
+    speed = speed_for_params(params)
+    pose.tripBreset()
+    last_update = -1
+    print(f"% sensors_line: follow line {seconds:.2f} s at {speed:.2f} m/s (params={params})")
+    edge.lineControl(velocity=speed, refPosition=0, params=params)
+    while not _aborted() and pose.tripBtimePassed() < seconds:
+        last_update = _printSensorPatternOnUpdate(last_update, "sensors_line")
+        t.sleep(0.005)
+    edge.lineControl(0)
+    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+    while not _aborted() and abs(pose.velocity()) > 0.001:
+        last_update = _printSensorPatternOnUpdate(last_update, "sensors_line")
+        t.sleep(0.01)
+    print(f"% sensors_line: done after {pose.tripBtimePassed():.2f} s, {pose.tripB:.3f} m")
 
 
 def seekLine(speed, timeout_s):
@@ -1112,6 +1179,17 @@ def driveMission(submission="full"):
         if state != last_state:
             set_telemetry(state=str(state))
             last_state = state
+
+        # Sensor diagnostics: print binary pattern decode without mission reactions.
+        if state == 90:
+            driveSensorPatternForward(dist=0.25, speed=0.10)
+            state = 2
+            continue
+
+        if state == 91:
+            driveSensorPatternLine(seconds=2.0, params="slow")
+            state = 2
+            continue
 
         # ── State 0: immediate start (no IR gate wait; arm raised once at driveMission entry)
         if state == 0:

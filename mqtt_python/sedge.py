@@ -29,17 +29,25 @@ import cv2 as cv
 from ulog import flog
 
 
-def _build_crossing_pattern_table(crossing_min_sensors, y_min_sensors, y_min_span, y_mid_indices):
-    table = ["none"] * 256
-    for pattern in range(256):
-        active = [i for i in range(8) if pattern & (1 << (7 - i))]
-        if len(active) >= crossing_min_sensors:
-            table[pattern] = "wide"
-        elif len(active) >= y_min_sensors and (active[-1] - active[0]) >= y_min_span:
-            center_gap = any(not (pattern & (1 << (7 - i))) for i in y_mid_indices)
-            if center_gap:
-                table[pattern] = "split"
-    return table
+class _LineCrossing:
+    def __init__(self, name):
+        self.name = name
+
+
+class T:
+    crossing = _LineCrossing("T")
+
+
+class Y:
+    crossing = _LineCrossing("Y")
+
+
+class LeftL:
+    crossing = _LineCrossing("LeftL")
+
+
+class RightL:
+    crossing = _LineCrossing("RightL")
 
 
 class SEdge:
@@ -48,8 +56,8 @@ class SEdge:
     defaultLineVelocity = 0.30  # m/s
     # Line detection (livn 0–1000 scale)
     lineValidThreshold = 500   # each sensor above this → "on line"; line valid when peak >= this
-    crossingThreshold = 700    # legacy: was used for average-based crossing; crossing now uses crossingMinSensors
-    crossingMinSensors = 4     # T-crossing: this many or more sensors above lineValidThreshold counts as a crossing
+    crossingThreshold = 700    # legacy: was used for average-based crossing
+    crossingMinSensors = 4     # legacy/reference; common 4+ crossing patterns are explicit below
     # Y-crossing detection: a crossing can also be declared with FEWER active sensors
     # when the line splits into two narrow branches with a dark gap between them.
     # All three Y conditions must hold:
@@ -65,6 +73,7 @@ class SEdge:
     lineUsePatternCenter = True
     linePatternFallbackCenters = (-3.4, -2.3, -1.1, -0.25, 0.25, 1.1, 2.3, 3.4)
     linePatternCenterTable = [None] * 256
+
     linePatternCenterTable[0b10000000] = -3.4
     linePatternCenterTable[0b01000000] = -2.3
     linePatternCenterTable[0b00100000] = -1.1
@@ -73,6 +82,7 @@ class SEdge:
     linePatternCenterTable[0b00000100] = 1.1
     linePatternCenterTable[0b00000010] = 2.3
     linePatternCenterTable[0b00000001] = 3.4
+
     linePatternCenterTable[0b11000000] = -3.0
     linePatternCenterTable[0b01100000] = -1.8
     linePatternCenterTable[0b00110000] = -0.8
@@ -80,24 +90,46 @@ class SEdge:
     linePatternCenterTable[0b00001100] = 0.8
     linePatternCenterTable[0b00000110] = 1.8
     linePatternCenterTable[0b00000011] = 3.0
+
     linePatternCenterTable[0b11100000] = -2.6
     linePatternCenterTable[0b01110000] = -1.5
     linePatternCenterTable[0b00111000] = -0.5
     linePatternCenterTable[0b00011100] = 0.5
     linePatternCenterTable[0b00001110] = 1.5
     linePatternCenterTable[0b00000111] = 2.6
+
     linePatternCenterTable[0b11110000] = -2.0
     linePatternCenterTable[0b01111000] = -0.8
     linePatternCenterTable[0b00111100] = 0.0
     linePatternCenterTable[0b00011110] = 0.8
     linePatternCenterTable[0b00001111] = 2.0
+
     linePatternCenterTable[0b11111111] = 0.0
     linePatternCenterTable[0b01111110] = 0.0
-    # Binary crossing classification. The table preserves the old behavior:
-    # "wide" = 4+ sensors on, "split" = old wide-span/center-gap Y heuristic.
-    lineCrossingPatternTable = _build_crossing_pattern_table(
-        crossingMinSensors, yMinSensors, yMinSpan, yMidIndices
-    )
+
+    # Binary crossing classification. All markers are currently treated as a
+    # general crossing, but the type is logged for later mission-specific use.
+    linePatternCrossingTable = [None] * 256
+
+    linePatternCrossingTable[0b11110000] = LeftL.crossing
+    linePatternCrossingTable[0b01111000] = T.crossing
+    linePatternCrossingTable[0b00111100] = Y.crossing
+    linePatternCrossingTable[0b00011110] = T.crossing
+    linePatternCrossingTable[0b00001111] = RightL.crossing
+
+    linePatternCrossingTable[0b11111000] = LeftL.crossing
+    linePatternCrossingTable[0b01111100] = T.crossing
+    linePatternCrossingTable[0b00111110] = T.crossing
+    linePatternCrossingTable[0b00011111] = RightL.crossing
+
+    linePatternCrossingTable[0b11111100] = T.crossing
+    linePatternCrossingTable[0b01111110] = T.crossing
+    linePatternCrossingTable[0b00111111] = T.crossing
+
+    linePatternCrossingTable[0b11111110] = T.crossing
+    linePatternCrossingTable[0b01111111] = T.crossing
+
+    linePatternCrossingTable[0b11111111] = T.crossing
     # Active line-follow tuning. Start with PI-only so straight-line behavior
     # can be tuned before adding separate turn/edge behavior.
     lineKp = 0.25
@@ -205,7 +237,7 @@ class SEdge:
     leftmostAboveIndex = None           # first sensor index 0..7 above threshold, or None
     rightmostAboveIndex = None          # last sensor index 0..7 above threshold, or None
     linePattern = 0                     # 8-bit sensor mask; bit 7 = sensor 0, bit 0 = sensor 7
-    crossingType = "none"               # "none" | "wide" | "split", looked up from linePattern
+    crossingType = "none"               # "none" | "T" | "Y" | "LeftL" | "RightL"
     lineState = "no_line"               # "no_line" | "line" | "crossing" (set from sensorsAboveCount vs crossingMinSensors)
     mission_crossing_count = 0          # set by mission (driveToLine) so print can show crossing counter
     #
@@ -487,7 +519,8 @@ class SEdge:
             self.leftmostAboveIndex = i
           self.rightmostAboveIndex = i
       # Crossing detection is table-driven from the binary threshold pattern.
-      self.crossingType = self.lineCrossingPatternTable[self.linePattern]
+      crossing = self.linePatternCrossingTable[self.linePattern]
+      self.crossingType = crossing.name if crossing is not None else "none"
       self.crossingLine = self.crossingType != "none"
       # Named state for status prints / overlays
       if self.sensorsAboveCount == 0:
