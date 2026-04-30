@@ -83,20 +83,20 @@ class SEdge:
     linePatternCenterTable[0b00000010] = 2.3
     linePatternCenterTable[0b00000001] = 3.3
 
-    linePatternCenterTable[0b11000000] = -2.7
+    linePatternCenterTable[0b11000000] = -2.45
     linePatternCenterTable[0b01100000] = -1.45
     linePatternCenterTable[0b00110000] = -0.8
     linePatternCenterTable[0b00011000] = 0.0
     linePatternCenterTable[0b00001100] = 0.8
     linePatternCenterTable[0b00000110] = 1.45
-    linePatternCenterTable[0b00000011] = 2.7
+    linePatternCenterTable[0b00000011] = 2.45
 
-    linePatternCenterTable[0b11100000] = -2.2
+    linePatternCenterTable[0b11100000] = -2
     linePatternCenterTable[0b01110000] = -1.15
     linePatternCenterTable[0b00111000] = -0.35
     linePatternCenterTable[0b00011100] = 0.35
     linePatternCenterTable[0b00001110] = 1.15
-    linePatternCenterTable[0b00000111] = 2.2
+    linePatternCenterTable[0b00000111] = 2
 
     linePatternCenterTable[0b11110000] = -2.0
     linePatternCenterTable[0b01111000] = -0.8
@@ -168,9 +168,6 @@ class SEdge:
     lineDerivativeBeta = 0.0
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
-    PARAM_SETS = {
-        "normal": dict(lineKp=0.25, lineKi=0.0, lineKd=0.0, lineVelocity=0.2),
-        "slow":   dict(lineKp=0.20, lineKi=0.0, lineKd=0.0, lineVelocity=0.15),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"
