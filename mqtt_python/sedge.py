@@ -46,11 +46,11 @@ class SEdge:
     yMinSpan    = 4            # Y-crossing: minimum span between leftmost and rightmost active sensor
     yMidIndices = (3, 4)       # centre sensor indices; if any are inactive while above conditions hold → Y
     low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
-    # Active line-follow tuning. These defaults are intentionally kept close
-    # to the values tested on the robot.
-    lineKp = 0.4
-    lineKi = 0.0
-    lineKd = 0.3
+    # Active line-follow tuning. Start with PI-only so straight-line behavior
+    # can be tuned before adding separate turn/edge behavior.
+    lineKp = 0.25
+    lineKi = 0.005
+    lineKd = 0.0
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
     lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
     lineMinTurnError = 1.10     # if abs(error) is this large, enforce a minimum turn
@@ -84,8 +84,8 @@ class SEdge:
     # Named PID parameter sets — select via lineControl(params="slow"|"normal")
     # "slow" starts as a copy of "normal"; tune independently on the robot.
     PARAM_SETS = {
-        "normal": dict(lineKp=0.4, lineKi=0.0, lineKd=0.3, lineVelocity=0.30),
-        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.2, lineVelocity=0.15),
+        "normal": dict(lineKp=0.25, lineKi=0.005, lineKd=0.0, lineVelocity=0.30),
+        "slow":   dict(lineKp=0.20, lineKi=0.005, lineKd=0.0, lineVelocity=0.15),
     }
     lineReacquireSettleTime = 3.0     # seconds to use slow profile after line is found again
     lineReacquireSettleParams = "slow"
