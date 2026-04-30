@@ -192,7 +192,7 @@ class SEdge:
     flog_write_every_n = 1         # flog.write() every Nth livn update (appends line/sensor log line to file)
     
     print_follow_line_fields = (
-        'pattern', 'high', 'validCnt', 'state', 'crossType',
+        'livn', 'pattern', 'high', 'validCnt', 'state', 'crossType',
         'center', 'e', 'p', 'd', 'y', 'dGuard', 'minTurn', 'recMode', 'rc'
     )
 
@@ -668,6 +668,21 @@ class SEdge:
         # Ignore unsupported binary patterns instead of treating them as
         # centered. This avoids a hidden "drive straight" command for patterns
         # reserved for crossing behavior.
+        if self.print_follow_line_block and (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)):
+          norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
+          print(
+              "% line: "
+              + " ".join((
+                  f"livn [{norm}]",
+                  f"pattern={self.linePattern:08b}",
+                  f"high={self.high:4d}",
+                  f"validCnt={self.lineValidCnt:2d}",
+                  f"state={self.lineState}",
+                  f"crossType={self.crossingType}",
+                  "unsupported=True",
+                  "-> rc hold",
+              ))
+          )
         return
       # A single weak sample can dip below threshold while the line is still
       # under the sensor. Hold the last good center until confidence decays.
