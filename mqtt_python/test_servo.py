@@ -12,6 +12,7 @@
 #   python3 test_servo.py --servo12-min -475 --servo12-max 260 --arm-speed 70
 #   python3 test_servo.py --servo1 --servo12-min -100 --servo12-max 100
 #   python3 test_servo.py --servo2 --servo12-min -100 --servo12-max 100
+#   python3 test_servo.py --servo1 --set-pos -1024 --arm-speed 1000
 #   python3 test_servo.py --servo3 --servo3-min -400 --servo3-max 400
 
 import argparse
@@ -47,6 +48,25 @@ def servo_move(position, speed, servo_mode):
         service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {-position} {speed}")
 
 
+def servo_set_literal(position, speed, servo_mode):
+    if servo_mode == "servo1":
+        service.send("robobot/cmd/T0", f"servo {SERVO_ID} {position} {speed}")
+    elif servo_mode == "servo2":
+        service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {position} {speed}")
+    else:
+        service.send("robobot/cmd/T0", f"servo {SERVO_ID} {position} {speed}")
+        service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {-position} {speed}")
+
+
+def literal_move_label(position, speed, servo_mode):
+    if servo_mode == "servo1":
+        return f"servo {SERVO_ID} {position} {speed}"
+    if servo_mode == "servo2":
+        return f"servo {SERVO_MIRROR_ID} {position} {speed}"
+    return (f"servo {SERVO_ID} {position} {speed}, "
+            f"servo {SERVO_MIRROR_ID} {-position} {speed}")
+
+
 def arm_move_label(position, speed, servo_mode):
     if servo_mode == "servo1":
         return f"servo {SERVO_ID} {position} {speed}"
@@ -68,6 +88,14 @@ def run_cycle(pause_s, hold_down_s, open_pos, closed_pos, speed, servo_mode):
     print(f"% Arm UP    ({arm_move_label(open_pos, speed, servo_mode)}) - final park")
     servo_move(open_pos, speed, servo_mode)
     time.sleep(pause_s)
+
+
+def run_single_position(position, speed, servo_mode, hold_s):
+    edge.lineControl(0)
+    service.send("robobot/cmd/ti", "rc 0 0")
+    print(f"% Set position ({literal_move_label(position, speed, servo_mode)})")
+    servo_set_literal(position, speed, servo_mode)
+    time.sleep(hold_s)
 
 
 def servo3_move(position, speed):
@@ -149,6 +177,13 @@ def main():
         help=f"Servo speed for servos 1/2 (default: {SERVO_SPEED})",
     )
     parser.add_argument(
+        "--set-pos",
+        type=int,
+        default=None,
+        metavar="POS",
+        help="Send one literal position command and exit; with --servo2 this is not mirrored",
+    )
+    parser.add_argument(
         "--servo3",
         action="store_true",
         help="Also cycle servo 3 between min and max after testing servos 1/2",
@@ -214,15 +249,23 @@ def main():
         servo_mode = "servo2"
 
     try:
-        run_cycle(
-            cli.pause,
-            cli.hold_down,
-            cli.servo12_min,
-            cli.servo12_max,
-            cli.arm_speed,
-            servo_mode,
-        )
-        if cli.servo3:
+        if cli.set_pos is not None:
+            run_single_position(
+                cli.set_pos,
+                cli.arm_speed,
+                servo_mode,
+                cli.pause,
+            )
+        else:
+            run_cycle(
+                cli.pause,
+                cli.hold_down,
+                cli.servo12_min,
+                cli.servo12_max,
+                cli.arm_speed,
+                servo_mode,
+            )
+        if cli.servo3 and cli.set_pos is None:
             run_servo3_cycle(
                 cli.servo3_dwell,
                 cli.servo3_min,
@@ -233,12 +276,16 @@ def main():
         print("\n% Ctrl+C - parking servos")
         service.stop = True
     finally:
-        print("% Stopping drive; arm parked up")
+        if cli.set_pos is None:
+            print("% Stopping drive; arm parked up")
+        else:
+            print("% Stopping drive; leaving servo at requested position")
         try:
             service.send("robobot/cmd/ti", "rc 0 0")
             time.sleep(0.05)
-            servo_move(cli.servo12_min, cli.arm_speed, servo_mode)
-            if cli.servo3:
+            if cli.set_pos is None:
+                servo_move(cli.servo12_min, cli.arm_speed, servo_mode)
+            if cli.servo3 and cli.set_pos is None:
                 servo3_move(cli.servo3_min, cli.servo3_speed)
             edge.lineControl(0)
         except Exception:
