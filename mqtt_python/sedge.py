@@ -54,7 +54,8 @@ class SEdge:
     lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
     lineDerivativeTermLimit = 0.25  # max absolute D contribution to turn-rate output
     lineMinTurnError = 1.10     # if abs(error) is this large, enforce a minimum turn
-    lineMinTurnRate = 0.25      # minimum abs(turn rate) while the visible line is far off-center
+    lineMinTurnRate = 0.55      # minimum abs(turn rate) while the visible line is far off-center
+    lineRecentValidCnt = 5      # below this confidence, recovery may start
     lineNoReverseError = 0.25   # above this abs(error), D may damp but not reverse PI steering
     lineTurnSlewRate = 4.0      # max change in commanded turn rate (rad/s per second); 0 disables
     lineTurnLimit = 0.90        # normal line-following abs(turn rate) cap, below recovery turn cap
@@ -110,12 +111,12 @@ class SEdge:
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
         'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'p', 'i', 'd', 'u',
-        'y', 'dGuard', 'settle', 'recMode', 'recStraight', 'rc'
+        'y', 'dGuard', 'minTurn', 'settle', 'recMode', 'recStraight', 'rc'
     )
 
     # Available fields (copy into tuple above; order = order on screen; single line):
     #   livn, avg, high, valid, validCnt, center, state, aboveCnt,
-    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, settle, recMode, recStraight, rc, lastLineSide
+    #   crossingCnt, leftMost, rightMost, e, p, i, d, u, y, dGuard, minTurn, settle, recMode, recStraight, rc, lastLineSide
     #   e = error (ref - center); u = p+i+d; y = clamped turn rate.
     # ============= end tuning & print options =============
 
@@ -545,8 +546,6 @@ class SEdge:
       from uservice import service
       # Simple PID line follower. Sensor updates can arrive faster, but motor
       # commands are deliberately sent at a fixed, slower cadence.
-      lineCenter = self.lineCenterWeighted
-      e = self.refPosition - lineCenter
 
       if not self.lineCtrl:
         return
@@ -561,8 +560,14 @@ class SEdge:
       self.lineLastControlTime = now
 
       Tsec = control_period if previous_control_time <= 0.0 else max(0.001, now - previous_control_time)
+      rawLineValid = self.lineValid
+      trackingLineValid = rawLineValid or self.lineValidCnt >= self.lineRecentValidCnt
+      # A single weak sample can dip below threshold while the line is still
+      # under the sensor. Hold the last good center until confidence decays.
+      lineCenter = self.lineCenterWeighted if rawLineValid else self.lastValidLineCenter
+      e = self.refPosition - lineCenter
 
-      if self.lineValid and not self.lineWasValid:
+      if trackingLineValid and not self.lineWasValid:
         if self.lineSuppressInitialSettle:
           self.lineReacquireSettleUntil = 0.0
           self.lineSuppressInitialSettle = False
@@ -573,7 +578,7 @@ class SEdge:
 
       settle_params = getattr(self, 'lineReacquireSettleParams', 'slow')
       self.lineSettleActive = (
-        self.lineValid
+        trackingLineValid
         and self.lineReacquireSettleUntil > 0.0
         and now < self.lineReacquireSettleUntil
         and settle_params in self.PARAM_SETS
@@ -585,17 +590,17 @@ class SEdge:
       lineKd = active_profile.get("lineKd", self.lineKd)
 
       pTerm = lineKp * e
-      if self.lineValid:
+      if rawLineValid:
         self.lineIntegral += e * Tsec
         if self.lineIntegral > self.lineIntegralLimit:
           self.lineIntegral = self.lineIntegralLimit
         elif self.lineIntegral < -self.lineIntegralLimit:
           self.lineIntegral = -self.lineIntegralLimit
-      else:
+      elif not trackingLineValid:
         self.lineIntegral = 0.0
 
       iTerm = lineKi * self.lineIntegral
-      if self.lineValid and self.lineE_prev is not None:
+      if trackingLineValid and self.lineE_prev is not None:
         dTerm = (e - self.lineE_prev) / Tsec
       else:
         dTerm = 0.0
@@ -615,11 +620,18 @@ class SEdge:
       # D should damp the steering, not reverse it while the line is clearly
       # off-center. This avoids the back-and-forth kicks visible in the logs.
       no_reverse_error = getattr(self, 'lineNoReverseError', 0.0)
-      if (self.lineValid and abs(e) >= no_reverse_error
+      if (trackingLineValid and abs(e) >= no_reverse_error
           and piTerm != 0.0 and self.u * piTerm < 0.0):
         dContribution = 0.0
         self.u = piTerm
         self.lineDerivativeGuardActive = True
+      self.lineMinTurnActive = False
+      min_turn_error = getattr(self, 'lineMinTurnError', 0.0)
+      min_turn_rate = getattr(self, 'lineMinTurnRate', 0.0)
+      if (trackingLineValid and min_turn_rate > 0.0
+          and abs(e) >= min_turn_error and abs(self.u) < min_turn_rate):
+        self.u = min_turn_rate if e > 0 else -min_turn_rate
+        self.lineMinTurnActive = True
       self.lineY = self.u
       if self.lineY > self.lineYMax:
         self.lineY = self.lineYMax
@@ -628,14 +640,15 @@ class SEdge:
       self.lineY1 = self.lineY
       self.lineE1 = self.u
 
-      if self.lineValid:
+      if trackingLineValid:
         self.lineE_prev = e
         self.lineLostStartTime = 0.0
         self.recoveryMode = "none"
         self.recoveryPhaseStartTime = 0.0
         self.recoveryForwardStartTrip = None
         self.recoveryForwardStartTime = 0.0
-        self.lastValidLineCenter = lineCenter
+        if rawLineValid:
+          self.lastValidLineCenter = lineCenter
         self.recoveryStraightActive = False
         if e > 0:
           self.lastLineSide = 1
@@ -644,7 +657,7 @@ class SEdge:
       else:
         self.lineE_prev = None
 
-      if not self.lineValid:
+      if not trackingLineValid:
         if self.lineLostStartTime <= 0.0:
           self.lineLostStartTime = now
           self.recoveryMode = "turn"
@@ -734,7 +747,7 @@ class SEdge:
           parts.append(f"rightMost={self.rightmostAboveIndex if self.rightmostAboveIndex is not None else '-'}")
         if 'center' in enabled:
           parts.append(f"center={lineCenter:5.2f}")
-        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'dGuard', 'recMode', 'recStraight', 'rc', 'lastLineSide')):
+        if any(k in enabled for k in ('e', 'p', 'i', 'd', 'u', 'y', 'dGuard', 'minTurn', 'recMode', 'recStraight', 'rc', 'lastLineSide')):
           parts.append("|")
         if 'e' in enabled:
           parts.append(f"e={e:6.3f}")
@@ -750,6 +763,8 @@ class SEdge:
           parts.append(f"y={self.lineY:6.3f}")
         if 'dGuard' in enabled:
           parts.append(f"dGuard={str(self.lineDerivativeGuardActive):5}")
+        if 'minTurn' in enabled:
+          parts.append(f"minTurn={str(self.lineMinTurnActive):5}")
         if 'settle' in enabled:
           parts.append(f"settle={str(self.lineSettleActive):5}")
         if 'recMode' in enabled:
@@ -762,7 +777,7 @@ class SEdge:
           parts.append(f"lastSide={self.lastLineSide:+d}")
         if parts:
           print("% line: " + " ".join(parts))
-      self.lineWasValid = self.lineValid
+      self.lineWasValid = trackingLineValid
       return  # Legacy PID/filter implementation below is intentionally bypassed.
       # some parameters depend on sample time, adjust
       # print(f"LineCtrl:: sample time {self.edge_nInterval}")
