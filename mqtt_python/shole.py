@@ -20,20 +20,14 @@ class SHole:
 
     # --- Edge detection parameters ---
     # Tune with calibrate_hole.py; copy printed values here.
-    blur_size        = 5      # Gaussian blur kernel size (must be odd)
-    canny_lo         = 30     # Canny lower threshold
-    canny_hi         = 80     # Canny upper threshold
-
-    # --- Contour size filter ---
-    min_area         = 500    # px²
-    max_area         = 40000  # px²
-
-    # --- Ellipse shape filter ---
-    max_aspect_ratio = 4.0    # major/minor axis ratio; allows elongated ellipses from angled view
-    min_circularity  = 0.15   # 4π·area/perimeter² — rejects very non-ellipse-like contours
-
-    # --- Ground ROI ---
-    roi_fraction     = 0.5    # search only the bottom fraction of the frame
+    blur_size        = 3
+    canny_lo         = 61
+    canny_hi         = 244
+    min_area         = 548
+    max_area         = 32800
+    max_aspect_ratio = 3.3
+    min_circularity  = 0.07
+    roi_fraction     = 0.52
 
     # --- Detection persistence ---
     persistence_frames = 5    # keep last known position for this many consecutive misses

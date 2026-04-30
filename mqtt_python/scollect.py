@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 
-#/***************************************************************************
-#*   Copyright (C) 2025 by DTU
-#*   jcan@dtu.dk
-#*
-#* The MIT License (MIT)  https://mit-license.org/
-#***************************************************************************/
-
 # Ball collection module.
 # Call collect.collect() from the main mission loop when the ball is in sight.
 # Returns True when the ball is captured, False if interrupted (service.stop).
@@ -22,21 +15,21 @@ class SCollect:
     servo_id    = 1
     arm_up    = -900
     arm_down  = 400
-    servo_speed = 900    # positions per second (0 = full speed)
+    servo_speed = 300    # positions per second (0 = full speed)
 
     # --- Gate parameters ---
     gate_id     = 3
-    gate_open   =  900   # gate open — allows ball to enter cage
-    gate_closed = -900   # gate closed — retains ball when arm is raised
+    gate_open   =  200   # gate open — allows ball to enter cage
+    gate_closed = -1024   # gate closed — retains ball when arm is raised
 
     # --- Drive parameters ---
     drive_speed     = 0.15   # forward speed during approach (m/s)
-    turn_gain       = 1.0    # steeringError → turn rate (rad/s)
+    turn_gain       = 0.8    # steeringError → turn rate (rad/s)
     align_threshold = 0.05   # max |steeringError| to consider ball centred
     commit_radius    = 50     # ball radius (px) that triggers centering step
-    center_threshold = 0.05  # max |steeringError| to consider ball centered before capture run
+    center_threshold = 0.01  # max |steeringError| to consider ball centered before capture run
     commit_speed     = 0.10  # forward speed during blind capture run (m/s)
-    commit_duration  = 0.3   # seconds to drive straight before closing arm
+    commit_duration  = 0.45   # seconds to drive straight before closing arm
 
     # --- Debug ---
     verbose = False           # set True in test scripts for per-tick logging

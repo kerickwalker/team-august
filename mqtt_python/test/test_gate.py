@@ -17,7 +17,6 @@
 
 import sys
 import os
-import time
 import cv2 as cv
 from datetime import datetime
 
@@ -55,75 +54,58 @@ def main():
         sys.exit(1)
     h, w = frame.shape[:2]
     print(f"% Stream live — {w}x{h}")
-    print("% Running headless — press Ctrl+C to stop and save final frame")
 
-    save_dir     = os.path.dirname(__file__)  # save into test/
-    frame_count  = 0
-    last_frame   = None
-    t_last_print = time.time()
+    save_dir = os.path.dirname(__file__)  # save into test/
 
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("% Lost stream")
-                break
+    # Flush a few buffered frames so we get a fresh one
+    for _ in range(5):
+        cap.read()
 
-            frame_count += 1
-            gate.detect(frame)
-            gate.paint(frame)
-            vline.detect(frame)
-            vline.paint(frame)
-            ball.detect(frame)
-            ball.paint(frame)
-            hole.detect(frame)
-            hole.paint(frame)
-            last_frame = frame
+    ret, frame = cap.read()
+    if not ret:
+        print("% Error: could not read frame")
+        cap.release()
+        sys.exit(1)
 
-            # Print detection status to terminal at ~2 Hz
-            now = time.time()
-            if now - t_last_print >= 0.5:
-                if gate.detected:
-                    print(f"% Gate  FOUND  width={gate.gate_width_px}px  "
-                          f"cx={gate.gate_cx}  steeringErr={gate.steeringError():+.3f}")
-                else:
-                    print("% Gate  not found")
-                if vline.lineValid:
-                    print(f"% Line  FOUND  offset={vline.lineOffset:+.3f}  "
-                          f"conf={vline.lineValidCnt}/20")
-                else:
-                    print(f"% Line  not found  conf={vline.lineValidCnt}/20")
-                if ball.detected:
-                    print(f"% Ball  FOUND  r={ball.radius}px  "
-                          f"cx={ball.cx}  steeringErr={ball.steeringError():+.3f}  "
-                          f"close={ball.isClose()}")
-                else:
-                    print("% Ball  not found")
-                if hole.detected:
-                    print(f"% Hole  FOUND  r={hole.radius}px  "
-                          f"cx={hole.cx}  steeringErr={hole.steeringError():+.3f}  "
-                          f"close={hole.isClose()}")
-                else:
-                    print("% Hole  not found")
-                t_last_print = now
+    gate.detect(frame);  gate.paint(frame)
+    vline.detect(frame); vline.paint(frame)
+    ball.detect(frame);  ball.paint(frame)
+    hole.detect(frame);  hole.paint(frame)
 
-    except KeyboardInterrupt:
-        pass
+    if gate.detected:
+        print(f"% Gate  FOUND  width={gate.gate_width_px}px  "
+              f"cx={gate.gate_cx}  steeringErr={gate.steeringError():+.3f}")
+    else:
+        print("% Gate  not found")
+    if vline.lineValid:
+        print(f"% Line  FOUND  offset={vline.lineOffset:+.3f}  "
+              f"conf={vline.lineValidCnt}/20")
+    else:
+        print(f"% Line  not found  conf={vline.lineValidCnt}/20")
+    if ball.detected:
+        print(f"% Ball  FOUND  r={ball.radius}px  "
+              f"cx={ball.cx}  steeringErr={ball.steeringError():+.3f}  "
+              f"close={ball.isClose()}")
+    else:
+        print("% Ball  not found")
+    if hole.detected:
+        print(f"% Hole  FOUND  r={hole.radius}px  "
+              f"cx={hole.cx}  steeringErr={hole.steeringError():+.3f}  "
+              f"close={hole.isClose()}")
+    else:
+        print("% Hole  not found")
 
-    # Save the final annotated frame
-    if last_frame is not None:
-        ts = datetime.now().strftime('%Y_%b_%d_%H%M%S')
-        fn = os.path.join(save_dir, f"vision_{ts}_{frame_count:04d}.jpg")
-        cv.imwrite(fn, last_frame)
-        print(f"% Saved final frame to {fn}")
+    ts = datetime.now().strftime('%Y_%b_%d_%H%M%S')
+    fn = os.path.join(save_dir, f"vision_{ts}_0001.jpg")
+    cv.imwrite(fn, frame)
+    print(f"% Saved frame to {fn}")
 
     cap.release()
     gate.terminate()
     vline.terminate()
     ball.terminate()
     hole.terminate()
-    print(f"% Done — {frame_count} frames processed")
-    print(f"%         gate={gate.detCnt}  line={vline.detCnt}  "
+    print(f"% Done — gate={gate.detCnt}  line={vline.detCnt}  "
           f"ball={ball.detCnt}  hole={hole.detCnt}")
 
 

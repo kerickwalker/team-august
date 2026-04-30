@@ -62,10 +62,11 @@ def print_params():
 
 
 def safe_exit():
-    print("% Stopping motors and disabling servo ...")
+    print("% Stopping motors and holding arm up ...")
     try:
         service.send("robobot/cmd/ti", "rc 0 0")
         time.sleep(0.05)
+        #service.send("robobot/cmd/T0", f"servo {collect.servo_id} {collect.arm_up} {collect.servo_speed}")
         service.send("robobot/cmd/T0", f"servo {collect.servo_id} 3000 0")
     except Exception:
         pass

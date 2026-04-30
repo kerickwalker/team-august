@@ -28,6 +28,9 @@ import cv2 as cv
 import numpy as np
 from datetime import datetime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from shole import hole as _hole
+
 
 WINDOW_SRC   = "Source + detection  (s=save values  q=quit)"
 WINDOW_EDGES = "Canny edges"
@@ -142,7 +145,7 @@ def detect_and_draw(img, blur, canny_lo, canny_hi, min_area, max_area,
     black   = np.zeros((pad_top, w, 3), dtype=np.uint8)
     debug   = np.vstack([black, edges3])
 
-    return overlay, debug
+    return overlay, debug, best_ellipse is not None
 
 
 def print_values(blur, canny_lo, canny_hi, min_area, max_area,
@@ -183,16 +186,16 @@ def calibrate(img):
     h, w = img.shape[:2]
     print(f"% Image resolution: {w}x{h} (no resize — thresholds match shole.py directly)")
 
-    # Seed trackbars with reasonable starting defaults
+    # Seed trackbars from the current values in shole.py
     build_controls(
-        blur=5,
-        canny_lo=30,
-        canny_hi=80,
-        min_area=500,
-        max_area=400,       # 400 * 100 = 40 000 px²
-        max_aspect_x10=40,  # 4.0 — allows fairly elongated ellipses from angled view
-        min_circ_x100=15,   # 0.15 — low default; raise to reject non-ellipse shapes
-        roi_pct=50,
+        blur=_hole.blur_size,
+        canny_lo=_hole.canny_lo,
+        canny_hi=_hole.canny_hi,
+        min_area=_hole.min_area,
+        max_area=_hole.max_area // 100,
+        max_aspect_x10=int(_hole.max_aspect_ratio * 10),
+        min_circ_x100=int(_hole.min_circularity * 100),
+        roi_pct=int(_hole.roi_fraction * 100),
     )
 
     print("Canny edges window shows what the detector sees.")
@@ -209,12 +212,98 @@ def calibrate(img):
          min_area, max_area,
          max_aspect, min_circ, roi_frac) = read_controls()
 
-        overlay, debug = detect_and_draw(img, blur, canny_lo, canny_hi,
-                                         min_area, max_area,
-                                         max_aspect, min_circ, roi_frac)
+        overlay, debug, _ = detect_and_draw(img, blur, canny_lo, canny_hi,
+                                            min_area, max_area,
+                                            max_aspect, min_circ, roi_frac)
 
         cv.imshow(WINDOW_SRC,   overlay)
         cv.imshow(WINDOW_EDGES, debug)
+
+        key = cv.waitKey(30) & 0xFF
+        if key == ord('q'):
+            break
+        if key == ord('s'):
+            print_values(blur, canny_lo, canny_hi, min_area, max_area,
+                         max_aspect, min_circ, roi_frac)
+
+    cv.destroyAllWindows()
+
+
+def load_images_from_dir(dirpath):
+    exts = ('.jpg', '.jpeg', '.png')
+    paths = sorted(
+        p for p in (os.path.join(dirpath, f) for f in os.listdir(dirpath))
+        if os.path.isfile(p) and p.lower().endswith(exts)
+    )
+    images = []
+    for p in paths:
+        img = cv.imread(p)
+        if img is not None:
+            images.append((os.path.basename(p), img))
+    print(f"% Loaded {len(images)} images from {dirpath}")
+    return images
+
+
+def calibrate_batch(named_images):
+    THUMB_W = 160
+    THUMB_H = 120
+    BORDER  = 3
+    COLS    = 8
+    n       = len(named_images)
+    ROWS    = (n + COLS - 1) // COLS
+    GRID_W  = COLS * THUMB_W
+    GRID_H  = ROWS * THUMB_H
+
+    WINDOW_GRID = "Batch  (green=detected  red=missed  s=save values  q=quit)"
+    cv.namedWindow(WINDOW_GRID, cv.WINDOW_NORMAL)
+    cv.resizeWindow(WINDOW_GRID, GRID_W, GRID_H)
+
+    build_controls(
+        blur=_hole.blur_size,
+        canny_lo=_hole.canny_lo,
+        canny_hi=_hole.canny_hi,
+        min_area=_hole.min_area,
+        max_area=_hole.max_area // 100,
+        max_aspect_x10=int(_hole.max_aspect_ratio * 10),
+        min_circ_x100=int(_hole.min_circularity * 100),
+        roi_pct=int(_hole.roi_fraction * 100),
+    )
+
+    print(f"% Batch mode: {n} images")
+    print("  s = print values  |  q = quit")
+
+    while True:
+        (blur, canny_lo, canny_hi,
+         min_area, max_area,
+         max_aspect, min_circ, roi_frac) = read_controls()
+
+        grid      = np.zeros((GRID_H, GRID_W, 3), dtype=np.uint8)
+        n_detected = 0
+
+        for i, (name, img) in enumerate(named_images):
+            overlay, _, detected = detect_and_draw(
+                img, blur, canny_lo, canny_hi,
+                min_area, max_area, max_aspect, min_circ, roi_frac)
+
+            thumb = cv.resize(overlay, (THUMB_W, THUMB_H))
+            color = (0, 200, 0) if detected else (0, 0, 200)
+            cv.rectangle(thumb, (0, 0), (THUMB_W - 1, THUMB_H - 1), color, BORDER)
+
+            # Filename label in bottom-left of thumbnail
+            cv.putText(thumb, name[:18], (2, THUMB_H - 4),
+                       cv.FONT_HERSHEY_PLAIN, 0.6, color, 1)
+
+            row, col = divmod(i, COLS)
+            y1, x1 = row * THUMB_H, col * THUMB_W
+            grid[y1:y1 + THUMB_H, x1:x1 + THUMB_W] = thumb
+
+            if detected:
+                n_detected += 1
+
+        cv.setWindowTitle(WINDOW_GRID,
+                          f"Batch  {n_detected}/{n} detected  "
+                          f"(green=detected  red=missed  s=save  q=quit)")
+        cv.imshow(WINDOW_GRID, grid)
 
         key = cv.waitKey(30) & 0xFF
         if key == ord('q'):
@@ -231,19 +320,25 @@ def main():
         print("Usage:")
         print("  python3 calibrate_hole.py <robot-ip>      # capture frame then calibrate")
         print("  python3 calibrate_hole.py <image-file>    # calibrate from saved image")
+        print("  python3 calibrate_hole.py <directory>     # batch calibrate across all images")
         sys.exit(1)
 
     arg = sys.argv[1]
-    if os.path.isfile(arg):
+    if os.path.isdir(arg):
+        named_images = load_images_from_dir(arg)
+        if not named_images:
+            print(f"% Error: no images found in '{arg}'")
+            sys.exit(1)
+        calibrate_batch(named_images)
+    elif os.path.isfile(arg):
         img = cv.imread(arg)
         if img is None:
             print(f"% Error: could not read '{arg}'")
             sys.exit(1)
         print(f"% Loaded image: {arg}")
+        calibrate(img)
     else:
-        img = capture_frame(arg)
-
-    calibrate(img)
+        calibrate(capture_frame(arg))
 
 
 if __name__ == "__main__":
