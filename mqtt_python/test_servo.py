@@ -31,9 +31,9 @@ MQTT_HOST = "localhost"
 # Defaults for calibration/testing
 SERVO_ID = 1
 SERVO_MIRROR_ID = 2
-POS_OPEN = -400
-POS_CLOSED = 200
-SERVO_SPEED = 70
+POS_OPEN = -400 # -475
+POS_CLOSED = 260 # 260
+SERVO_SPEED = 100 # 70
 SERVO_KILL_POSITION = 10000
 SERVO_KILL_SPEED = 0
 
@@ -42,8 +42,8 @@ SERVO_KILL_SPEED = 0
 # Servo 2 is mirrored, so servo 1 -400 means servo 2 400.
 # Lowest arm position is servo 1 200 and servo 2 -200.
 SERVO1_MIN = -400
-SERVO1_MAX = 200
-SERVO2_MIN = -200
+SERVO1_MAX = 260
+SERVO2_MIN = -260
 SERVO2_MAX = 400
 
 # Third servo (gripper / extra): tune --servo3-min / --servo3-max on your hardware
