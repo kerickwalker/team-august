@@ -486,6 +486,9 @@ HALF_SECOND_CROSSING_SEQUENCE = [
 SUBMISSIONS = {
     "full":            dict(start_state=0),
     "half":            dict(start_state=0,
+                            crossing_count=1,
+                            roundabout_done=True,
+                            first_cross_done=True,
                             half_mode=True),
 
 
