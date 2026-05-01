@@ -292,11 +292,7 @@ class SEdge:
             self.edge_nUpdCnt += 1
 
 
-            sample_age = (self.edge_nRxTime - self.edge_nTime).total_seconds()
-            if sample_age < self.lineStopAge:
-              self.LineDetect()
-            else:
-              self.lineStaleMode = "drop"
+            self.LineDetect()
 
             if self.lineCtrl:
               self.followLine()
@@ -464,7 +460,7 @@ class SEdge:
       now_dt = datetime.now()
       sample_age = (now_dt - self.edge_nTime).total_seconds()
       receive_age = (now_dt - self.edge_nRxTime).total_seconds()
-      line_age = max(sample_age, receive_age)
+      line_age = receive_age
       stale_stop = line_age >= self.lineStopAge
       stale_hold = (not stale_stop) and line_age >= self.lineHoldAge
       stale_no_d = (not stale_hold) and line_age >= self.lineNoDerivativeAge
