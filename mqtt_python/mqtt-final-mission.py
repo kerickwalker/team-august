@@ -259,6 +259,26 @@ HALF = SimpleNamespace(
     second_cross_follow_params = "slow",
 )
 
+COLORBALL = SimpleNamespace(
+    follow_speed      = LINE_SPEEDS.slow,
+    follow_params     = "slow",
+    crossing_threshold= CROSSINGS.sensor_threshold,
+    crossing4_turn_deg= 90.0,
+    crossing4_turn_dir= "left",
+    final_turn_deg    = 90.0,
+    final_turn_dir    = "right",
+)
+
+RAMP = SimpleNamespace(
+    follow_speed          = LINE_SPEEDS.slow,
+    follow_params         = "slow",
+    slope_tilt_min_rad    = np.radians(6.0),
+    flat_tilt_max_rad     = np.radians(3.0),
+    flat_confirm_s        = 0.4,
+    min_run_s             = 0.5,
+    print_interval_s      = 0.25,
+)
+
 LINE_FOLLOW_RULES = SimpleNamespace(
     line_detect_valid_cnt     = 4,
     line_reacquire_valid_cnt  = 4,
@@ -490,6 +510,16 @@ SUBMISSIONS = {
                             roundabout_done=True,
                             first_cross_done=True,
                             half_mode=True),
+    "colorball":       dict(start_state=10,
+                            crossing_count=3,
+                            first_cross_done=True,
+                            roundabout_done=True,
+                            colorball_mode=True,
+                            line_control=("slow", None)),
+    "ramp":            dict(start_state=30,
+                            ramp_mode=True,
+                            line_control=("slow", None),
+                            pure_follow_params="slow"),
 
 
     "line_follow":     dict(start_state=0,
@@ -917,6 +947,24 @@ def apply_pid_overrides():
         print(f"% controller overrides applied to normal+slow: {overrides}")
 
 
+def apply_ramp_overrides():
+    overrides = {}
+    flat_deg = getattr(service.args, "ramp_flat_deg", None)
+    slope_deg = getattr(service.args, "ramp_slope_deg", None)
+    confirm_s = getattr(service.args, "ramp_confirm_s", None)
+    if flat_deg is not None:
+        RAMP.flat_tilt_max_rad = np.radians(float(flat_deg))
+        overrides["flat_deg"] = float(flat_deg)
+    if slope_deg is not None:
+        RAMP.slope_tilt_min_rad = np.radians(float(slope_deg))
+        overrides["slope_deg"] = float(slope_deg)
+    if confirm_s is not None:
+        RAMP.flat_confirm_s = float(confirm_s)
+        overrides["confirm_s"] = float(confirm_s)
+    if overrides and not service.is_quiet():
+        print(f"% ramp overrides applied: {overrides}")
+
+
 def driveMission(submission="full"):
     """Full mission state machine.
 
@@ -952,6 +1000,8 @@ def driveMission(submission="full"):
     roundabout_done     = sub.get("roundabout_done", False)
     stop_at_roundabout  = sub.get("stop_at_roundabout", False)
     half_mode           = bool(sub.get("half_mode", False))
+    colorball_mode      = bool(sub.get("colorball_mode", False))
+    ramp_mode           = bool(sub.get("ramp_mode", False))
     end_mode            = sub.get("end_mode", False)
     pure_follow_after_seek = sub.get("pure_follow_after_seek", False)
     pure_follow_params  = sub.get("pure_follow_params", "normal")
@@ -976,6 +1026,12 @@ def driveMission(submission="full"):
     end21_was_at_crossing = False
     end21_last_time_at_crossing = None
     half_second_crossing_cnt = 0
+    colorball_crossing4_done = bool(sub.get("colorball_crossing4_done", False))
+    colorball_wait_clear = False
+    colorball_clear_since = None
+    ramp_seen_slope = False
+    ramp_flat_since = None
+    ramp_last_print = 0.0
 
     if not service.is_quiet():
         print(f"% driveMission: starting (submission={submission}, state={state}, "
@@ -1064,6 +1120,54 @@ def driveMission(submission="full"):
 
         elif state == 10:
             edge.mission_crossing_count = crossing_count
+
+            if colorball_mode:
+                at_crossing = edge.crossingLineCnt >= COLORBALL.crossing_threshold
+                now = datetime.now()
+
+                if not colorball_crossing4_done:
+                    if at_crossing and is_left_l_crossing():
+                        if not service.is_quiet():
+                            print("% colorball: crossing 4 -> hard left 90, then slow follow")
+                        edge.lineControl(0)
+                        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                        t.sleep(LINE_FOLLOW_RULES.post_stop_settle_s)
+                        driveTurn(COLORBALL.crossing4_turn_deg, COLORBALL.crossing4_turn_dir)
+                        crossing_count = 4
+                        colorball_crossing4_done = True
+                        colorball_wait_clear = True
+                        colorball_clear_since = None
+                        edge.lineControl(velocity=COLORBALL.follow_speed,
+                                         refPosition=0,
+                                         params=COLORBALL.follow_params)
+                    t.sleep(0.01)
+                    continue
+
+                if colorball_wait_clear:
+                    if at_crossing:
+                        colorball_clear_since = None
+                    else:
+                        if colorball_clear_since is None:
+                            colorball_clear_since = now
+                        elif (now - colorball_clear_since).total_seconds() >= CROSSINGS.leave_delay_s:
+                            colorball_wait_clear = False
+                            if not service.is_quiet():
+                                print("% colorball: crossing 4 cleared -> waiting for T crossing")
+                    t.sleep(0.01)
+                    continue
+
+                if at_crossing:
+                    if not service.is_quiet():
+                        print("% colorball: T crossing -> hard right 90, stop")
+                    edge.lineControl(0)
+                    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                    t.sleep(LINE_FOLLOW_RULES.post_stop_settle_s)
+                    driveTurn(COLORBALL.final_turn_deg, COLORBALL.final_turn_dir)
+                    edge.lineControl(0)
+                    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                    state = 2
+                t.sleep(0.01)
+                continue
 
             if half_mode and roundabout_done and crossing_count == 1:
                 if is_left_l_crossing():
@@ -1260,6 +1364,38 @@ def driveMission(submission="full"):
 
         elif state == 30:
             edge.mission_crossing_count = 0
+
+            if ramp_mode:
+                now_mono = t.time()
+                tilt_rad = float(pose.pose[3])
+                abs_tilt_rad = abs(tilt_rad)
+                if not service.is_quiet() and now_mono - ramp_last_print >= RAMP.print_interval_s:
+                    seen = "yes" if ramp_seen_slope else "no"
+                    flat_for = 0.0 if ramp_flat_since is None else now_mono - ramp_flat_since
+                    print(f"% ramp: tilt={np.degrees(tilt_rad):+.2f} deg "
+                          f"abs={np.degrees(abs_tilt_rad):.2f} deg "
+                          f"slope_seen={seen} flat_for={flat_for:.2f}s")
+                    ramp_last_print = now_mono
+
+                if (pose.tripBtimePassed() >= RAMP.min_run_s
+                        and abs_tilt_rad >= RAMP.slope_tilt_min_rad):
+                    ramp_seen_slope = True
+                    ramp_flat_since = None
+
+                if ramp_seen_slope:
+                    if abs_tilt_rad <= RAMP.flat_tilt_max_rad:
+                        if ramp_flat_since is None:
+                            ramp_flat_since = now_mono
+                        elif now_mono - ramp_flat_since >= RAMP.flat_confirm_s:
+                            edge.lineControl(0)
+                            service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                            if not service.is_quiet():
+                                print(f"% ramp: flat for {RAMP.flat_confirm_s:.2f}s "
+                                      f"(tilt={np.degrees(tilt_rad):+.2f} deg) -> stop")
+                            state = 2
+                    else:
+                        ramp_flat_since = None
+
             if (arm_raise_after_s is not None and not arm_raised_after_delay
                     and arm_raise_stage_idx < 0
                     and pose.tripBtimePassed() >= arm_raise_after_s):
@@ -1405,6 +1541,38 @@ if __name__ == "__main__":
                   + ", ".join(sorted(SUBMISSIONS.keys())) + " (default: full)."),
         )
         service.parser.add_argument(
+            "-colorball", "--colorball",
+            dest="submission_shortcut",
+            action="store_const",
+            const="colorball",
+            help="Shortcut for --submission colorball.",
+        )
+        service.parser.add_argument(
+            "-ramp", "--ramp",
+            dest="submission_shortcut",
+            action="store_const",
+            const="ramp",
+            help="Shortcut for --submission ramp.",
+        )
+        service.parser.add_argument(
+            "--ramp-flat-deg",
+            type=float,
+            default=None,
+            help="Ramp mode: absolute tilt in degrees considered flat again.",
+        )
+        service.parser.add_argument(
+            "--ramp-slope-deg",
+            type=float,
+            default=None,
+            help="Ramp mode: absolute tilt in degrees required before flat detection is armed.",
+        )
+        service.parser.add_argument(
+            "--ramp-confirm-s",
+            type=float,
+            default=None,
+            help="Ramp mode: seconds tilt must stay flat before stopping.",
+        )
+        service.parser.add_argument(
             "--kp", type=float, default=None,
             help="Override line-follow Kp for params='normal' and 'slow' (e.g. 0.4).",
         )
@@ -1444,8 +1612,10 @@ if __name__ == "__main__":
                 service.args.silent = True
 
             apply_pid_overrides()
+            apply_ramp_overrides()
 
-            submission = getattr(service.args, "submission", "full")
+            submission = (getattr(service.args, "submission_shortcut", None)
+                          or getattr(service.args, "submission", "full"))
             if submission not in SUBMISSIONS:
                 print(f"% unknown submission '{submission}', using 'full'")
                 submission = "full"

@@ -28,6 +28,13 @@ class SEdge:
     recoveryTurnRate = 1.0
     recoveryVelocity = 0.0
 
+    lineNoDerivativeAge = 0.030
+    lineHoldAge = 0.060
+    lineStopAge = 0.150
+    lineHoldDecay = 0.8
+    lineWatchdogPeriod = 0.020
+    lineWatchdogStopEvery = 0.050
+
     TS_NOMINAL = 0.010
     TS_DRIFT_WARN_FRAC = 0.30
     
@@ -46,7 +53,8 @@ class SEdge:
 
     print_follow_line_fields = (
         'livn', 'high', 'valid', 'validCnt', 'state', 'aboveCnt',
-        'crossingCnt', 'leftMost', 'rightMost', 'center', 'e', 'y'
+        'crossingCnt', 'leftMost', 'rightMost', 'center', 'stale',
+        'e', 'y', 'rc'
     )
 
 
@@ -62,6 +70,7 @@ class SEdge:
     edge_n = [0, 0, 0 , 0, 0, 0, 0, 0]
     edge_nUpdCnt = 0
     edge_nTime = datetime.now()
+    edge_nRxTime = datetime.now()
     edge_nInterval = 0
 
     posLeft = 0.0
@@ -94,6 +103,12 @@ class SEdge:
     lineE_prev = None
     lineD_prev = 0.0
     lineY = 0.0
+    lineLastCommandY = 0.0
+    lineLastCommandVelocity = 0.0
+    lineStaleMode = "fresh"
+    lineWatchdogThread = None
+    lineWatchdogStop = False
+    lineWatchdogLastStop = 0.0
 
     lastLineSide = 0
 
@@ -113,6 +128,7 @@ class SEdge:
 
       service.send(self.topicCmdT0,"sub livn 3")
       service.send(self.topicCmdT0,"sub liv 3")
+      self.startLineWatchdog()
 
       while not service.stop:
         t.sleep(0.02)
@@ -251,8 +267,10 @@ class SEdge:
           from uservice import service
           gg = msg.split(" ")
           if (len(gg) >= 4):
+            rx_time = datetime.now()
             t0 = self.edge_nTime;
             self.edge_nTime = datetime.fromtimestamp(float(gg[0]))
+            self.edge_nRxTime = rx_time
             self.edge_n[0] = int(gg[1])
             self.edge_n[1] = int(gg[2])
             self.edge_n[2] = int(gg[3])
@@ -269,8 +287,11 @@ class SEdge:
             self.edge_nUpdCnt += 1
 
 
-            self.LineDetect()
-
+            sample_age = (self.edge_nRxTime - self.edge_nTime).total_seconds()
+            if sample_age < self.lineStopAge:
+              self.LineDetect()
+            else:
+              self.lineStaleMode = "drop"
 
             if self.lineCtrl:
               self.followLine()
@@ -398,6 +419,10 @@ class SEdge:
 
 
       self.lineCtrl = abs(velocity) > 0.001
+      if not self.lineCtrl:
+        self.lineStaleMode = "disabled"
+        self.lineLastCommandY = 0.0
+        self.lineLastCommandVelocity = 0.0
       if params in self.PARAM_SETS:
         for k, v in self.PARAM_SETS[params].items():
           setattr(self, k, v)
@@ -406,11 +431,39 @@ class SEdge:
         self.lineD_prev = 0.0
 
 
+    def startLineWatchdog(self):
+      if self.lineWatchdogThread is None or not self.lineWatchdogThread.is_alive():
+        self.lineWatchdogStop = False
+        self.lineWatchdogThread = Thread(target=self.lineWatchdog, daemon=True)
+        self.lineWatchdogThread.start()
+
+
+    def lineWatchdog(self):
+      from uservice import service
+      while not self.lineWatchdogStop and not service.stop:
+        if self.lineCtrl and self.edge_nUpdCnt > 0:
+          line_age = (datetime.now() - self.edge_nRxTime).total_seconds()
+          now = t.time()
+          if line_age >= self.lineStopAge and now - self.lineWatchdogLastStop >= self.lineWatchdogStopEvery:
+            service.send("robobot/cmd/ti", f"rc 0.000 0.000 {now}")
+            self.lineWatchdogLastStop = now
+            self.lineStaleMode = "watchdog_stop"
+        t.sleep(self.lineWatchdogPeriod)
+
+
     def followLine(self):
       from uservice import service
 
       lineCenter = self.lineCenterWeighted
       e = self.refPosition - lineCenter
+      now_dt = datetime.now()
+      sample_age = (now_dt - self.edge_nTime).total_seconds()
+      receive_age = (now_dt - self.edge_nRxTime).total_seconds()
+      line_age = max(sample_age, receive_age)
+      stale_stop = line_age >= self.lineStopAge
+      stale_hold = (not stale_stop) and line_age >= self.lineHoldAge
+      stale_no_d = (not stale_hold) and line_age >= self.lineNoDerivativeAge
+      self.lineStaleMode = "stop" if stale_stop else ("hold" if stale_hold else ("no_d" if stale_no_d else "fresh"))
 
 
       Tsec = self.TS_NOMINAL
@@ -426,13 +479,38 @@ class SEdge:
         self._ts_warned = True
 
 
-      if not self.lineValid:
+      pTerm = 0.0
+      iTerm = 0.0
+      dTerm = 0.0
+      sent_velocity = self.velocity
+      sent_turn = self.lineY
+
+      if stale_stop:
+        self.lineIntegral = 0.0
+        self.u = 0.0
+        self.lineY = 0.0
+        sent_velocity = 0.0
+        sent_turn = 0.0
+      elif stale_hold:
+        slow_velocity = float(self.PARAM_SETS.get("slow", {}).get("lineVelocity", abs(self.velocity)))
+        held_y = self.lineLastCommandY * self.lineHoldDecay
+        if held_y > self.lineYMax:
+          held_y = self.lineYMax
+        elif held_y < self.lineYMin:
+          held_y = self.lineYMin
+        self.lineY = held_y
+        self.u = held_y
+        sent_velocity = min(abs(self.velocity), slow_velocity)
+        if self.velocity < 0.0:
+          sent_velocity = -sent_velocity
+        sent_turn = self.lineY
+      elif not self.lineValid:
         dTerm = 0.0
         self.lineIntegral = 0.0
         self.lineE_prev = None
         self.lineD_prev = 0.0
       else:
-        if self.lineE_prev is not None:
+        if self.lineE_prev is not None and not stale_no_d:
           derivative_raw = (e - self.lineE_prev) / Tsec
           alpha = max(0.0, min(1.0, self.lineDerivativeAlpha))
           dTerm = alpha * self.lineD_prev + (1.0 - alpha) * derivative_raw
@@ -442,7 +520,7 @@ class SEdge:
         self.lineE_prev = e
 
 
-      if self.lineValid:
+      if self.lineValid and not stale_stop and not stale_hold:
         self.lineIntegral += e * Tsec
         if self.lineIntegral > self.lineIntegralLimit:
           self.lineIntegral = self.lineIntegralLimit
@@ -450,25 +528,31 @@ class SEdge:
           self.lineIntegral = -self.lineIntegralLimit
 
 
-      pTerm = self.lineKp * e
-      iTerm = self.lineKi * self.lineIntegral
-      self.u = pTerm + iTerm + self.lineKd * dTerm
-      raw_y = self.u
-      if raw_y > self.lineYMax:
-        raw_y = self.lineYMax
-      elif raw_y < self.lineYMin:
-        raw_y = self.lineYMin
+      if not stale_stop and not stale_hold:
+        pTerm = self.lineKp * e
+        iTerm = self.lineKi * self.lineIntegral
+        self.u = pTerm + iTerm + self.lineKd * dTerm
+        raw_y = self.u
+        if raw_y > self.lineYMax:
+          raw_y = self.lineYMax
+        elif raw_y < self.lineYMin:
+          raw_y = self.lineYMin
 
-      self.lineY = raw_y
+        self.lineY = raw_y
 
-      if self.lineValid:
+      if self.lineValid and not stale_stop and not stale_hold:
         if e > 0:
           self.lastLineSide = 1
         elif e < 0:
           self.lastLineSide = -1
 
 
-      if not self.lineValid and self.lineCtrl:
+      if stale_stop:
+        sent_velocity = 0.0
+        sent_turn = 0.0
+      elif stale_hold:
+        sent_turn = self.lineY
+      elif not self.lineValid and self.lineCtrl:
         recovery_turn = self.recoveryTurnRate * (self.lastLineSide if self.lastLineSide != 0 else 1)
         if recovery_turn > self.lineYMax:
           recovery_turn = self.lineYMax
@@ -486,12 +570,17 @@ class SEdge:
         sent_turn = -sent_turn
       par = f"rc {sent_velocity:.3f} {sent_turn:.3f} {t.time()}"
       service.send("robobot/cmd/ti", par)
+      self.lineLastCommandVelocity = sent_velocity
+      self.lineLastCommandY = sent_turn
 
       if self.print_follow_line_block and (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % self.follow_line_print_every_n == 0:
         enabled = set(self.print_follow_line_fields)
         parts = []
-        rxAge = (datetime.now() - self.edge_nTime).total_seconds()
+        now_dt = datetime.now()
+        sampleAge = (now_dt - self.edge_nTime).total_seconds()
+        rxAge = (now_dt - self.edge_nRxTime).total_seconds()
         parts.append(f"sample={self.edge_nUpdCnt}")
+        parts.append(f"sampleAge={sampleAge:6.3f}s")
         parts.append(f"rxAge={rxAge:6.3f}s")
         parts.append(f"teensyT={self.edge_nTime:%H:%M:%S.%f}"[:-3])
         if 'livn' in enabled:
@@ -511,6 +600,8 @@ class SEdge:
           parts.append(f"posR={self.posRight:5.2f}")
         if 'center' in enabled:
           parts.append(f"center={lineCenter:5.2f}")
+        if 'stale' in enabled:
+          parts.append(f"age={line_age:5.3f}s stale={self.lineStaleMode}")
         if 'cross' in enabled:
           parts.append(f"cross={str(self.crossingLine):5}")
         if 'state' in enabled:
@@ -552,6 +643,9 @@ class SEdge:
     def terminate(self):
       from uservice import service
       self.need_data = False
+      self.lineWatchdogStop = True
+      if self.lineWatchdogThread is not None:
+        self.lineWatchdogThread.join(timeout=0.2)
       if not service.is_quiet():
         print("% Edge (sedge.py):: turn off line sensor")
       service.send(self.topicCmdT0, "lip 0")
