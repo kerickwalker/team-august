@@ -34,10 +34,10 @@ class SEdge:
     
 
     PARAM_SETS = {
-        "normal": dict(lineKp=0.3, lineKi=0.0, lineKd=0.0,
+        "normal": dict(lineKp=0.3, lineKi=0.0, lineKd=0.05,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.0,
                        lineDerivativeBeta=0.0, lineVelocity=0.20),
-        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.0,
+        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.02,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.0,
                        lineDerivativeBeta=0.0, lineVelocity=0.15),
     }

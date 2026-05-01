@@ -37,7 +37,9 @@ class ULog:
     self.f.write("% 3,4,5 (x,y,h) (m,m,rad)\n")
     self.f.write("% 6 Camera frame count\n")
     self.f.write("% 7-9 Line sensor: line position, e*kp, control y (rad/s), validCnt\n")
-    self.f.write(f"%     Line sensor: Kp={edge.lineKp}, tau_z={edge.lineTauZ}s, tau_p={edge.lineTauP}s\n")
+    self.f.write(
+        f"%     Line sensor: Kp={edge.lineKp}, Ki={edge.lineKi}, Kd={edge.lineKd}\n"
+    )
     self.f.write("% 10,11 trip A (distance and heading change)\n")
     self.f.write("% 12,13 trip B (distance and heading change)\n")
     pass
