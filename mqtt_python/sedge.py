@@ -343,14 +343,16 @@ class SEdge:
         self.lineState = "line"
 
       self.lineValid = self.high >= self.lineValidThreshold
-      active = 0
-      sumPos = 0.0
+      sumW = 0.0
+      sumPosW = 0.0
       for i in range(8):
         if self.sensorAboveThreshold[i]:
-          active += 1
-          sumPos += i - 3.5
-      if active > 0:
-        self.lineCenterWeighted = sumPos / active
+          w = self.edge_n[i] - self.lineValidThreshold
+          if w > 0:
+            sumW += w
+            sumPosW += (i - 3.5) * w
+      if sumW > 0.0:
+        self.lineCenterWeighted = sumPosW / sumW
 
       if self.lineValid:
         posLeft = -3.5
