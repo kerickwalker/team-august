@@ -21,22 +21,34 @@ Run with -s to suppress verbose MQTT send prints:
 
 import sys
 import threading
-import tty
-import termios
-import select
 import time as t
-import cv2 as cv
 import argparse
-from setproctitle import setproctitle
-from uservice import service
-from uteensy import start_teensy_interface, stop_teensy_interface
-from sgate import gate
-from sgate_1 import gate1
 try:
-    from flask import Flask, Response
-    _flask_available = True
+    from setproctitle import setproctitle
 except ImportError:
-    _flask_available = False
+    def setproctitle(_title):
+        return None
+
+try:
+    import tty
+    import termios
+    import select
+    _tty_available = True
+except ImportError:
+    tty = None
+    termios = None
+    select = None
+    _tty_available = False
+
+cv = None
+gate = None
+gate1 = None
+service = None
+start_teensy_interface = None
+stop_teensy_interface = None
+_flask_app = None
+_flask_response = None
+_flask_available = None
 
 LINEAR_VEL  = 0.4
 TURN_RATE   = 0.5
@@ -53,24 +65,65 @@ _stream_frame  = None
 _stream_lock   = threading.Lock()
 _teleop_status = {"linvel": 0.0, "turnrate": 0.0}
 
-if _flask_available:
+
+def _ensure_robot_modules():
+    global service, start_teensy_interface, stop_teensy_interface
+    if service is not None:
+        return True
+    from uservice import service as _service
+    from uteensy import start_teensy_interface as _start_teensy_interface
+    from uteensy import stop_teensy_interface as _stop_teensy_interface
+    service = _service
+    start_teensy_interface = _start_teensy_interface
+    stop_teensy_interface = _stop_teensy_interface
+    return True
+
+
+def _ensure_cv():
+    global cv
+    if cv is not None:
+        return True
+    try:
+        import cv2 as _cv
+    except ImportError:
+        return False
+    cv = _cv
+    return True
+
+
+def _ensure_gate_modules():
+    global gate, gate1
+    if gate is not None and gate1 is not None:
+        return True
+    if not _ensure_cv():
+        return False
+    try:
+        from sgate import gate as _gate
+        from sgate_1 import gate1 as _gate1
+    except ImportError as e:
+        print(f"% Vision disabled: could not import gate modules ({e})")
+        return False
+    gate = _gate
+    gate1 = _gate1
+    for detector in (gate, gate1):
+        setup = getattr(detector, "setup", None)
+        if callable(setup):
+            setup()
+    return True
+
+
+def _ensure_flask():
+    global _flask_app, _flask_response, _flask_available
+    if _flask_available is not None:
+        return _flask_available
+    try:
+        from flask import Flask, Response
+    except ImportError:
+        _flask_available = False
+        return False
+
     _flask_app = Flask(__name__)
-
-    def _push_frame(frame):
-        global _stream_frame
-        with _stream_lock:
-            _stream_frame = frame.copy()
-
-    def _mjpeg_generate():
-        while True:
-            with _stream_lock:
-                f = _stream_frame
-            if f is not None:
-                ok, buf = cv.imencode(".jpg", f, [cv.IMWRITE_JPEG_QUALITY, 70])
-                if ok:
-                    yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
-                           + buf.tobytes() + b"\r\n")
-            t.sleep(0.033)
+    _flask_response = Response
 
     @_flask_app.route("/")
     def _index():
@@ -79,28 +132,55 @@ if _flask_available:
 
     @_flask_app.route("/stream")
     def _stream_view():
-        return Response(
+        return _flask_response(
             _mjpeg_generate(),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
-    def start_stream_server(port=5000):
-        import logging
+    _flask_available = True
+    return True
 
-        logging.getLogger("werkzeug").setLevel(logging.ERROR)
-        threading.Thread(
-            target=lambda: _flask_app.run(host="0.0.0.0", port=port, threaded=True),
-            daemon=True,
-        ).start()
-        print(f"% Camera stream: http://{service.host}:{port}/")
 
-else:
-    def start_stream_server(port=5000):
-        print("% Flask not installed — camera stream disabled (pip install flask)")
+def _push_frame(frame):
+    global _stream_frame
+    with _stream_lock:
+        _stream_frame = frame.copy()
+
+
+def _mjpeg_generate():
+    while True:
+        with _stream_lock:
+            f = _stream_frame
+        if f is not None and _ensure_cv():
+            ok, buf = cv.imencode(".jpg", f, [cv.IMWRITE_JPEG_QUALITY, 70])
+            if ok:
+                yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+                       + buf.tobytes() + b"\r\n")
+        t.sleep(0.033)
+
+
+def start_stream_server(port=5000):
+    if not _ensure_flask():
+        print("% Flask not installed - camera stream disabled (pip install flask)")
+        return
+    if not _ensure_cv():
+        print("% cv2 not installed - camera stream disabled")
+        return
+    import logging
+
+    logging.getLogger("werkzeug").setLevel(logging.ERROR)
+    threading.Thread(
+        target=lambda: _flask_app.run(host="0.0.0.0", port=port, threaded=True),
+        daemon=True,
+    ).start()
+    print(f"% Camera stream: http://{service.host}:{port}/")
 
 
 def _camera_loop():
     """Stream gate detections over MJPEG using a dedicated capture connection."""
+    if not _ensure_gate_modules():
+        print("% Vision disabled: cv2/gate modules unavailable")
+        return
     url = f"http://{service.host}:7123/stream.mjpg"
     cap = cv.VideoCapture(url)
     if not cap.isOpened():
@@ -161,6 +241,14 @@ def print_status(linvel, turnrate, lin_speed, turn_speed):
 
 
 def loop(step_mode=True, step_linear_sec=STEP_LINEAR_SEC, step_turn_sec=STEP_TURN_SEC):
+    _ensure_robot_modules()
+    if not _tty_available:
+        print("% Teleop requires a POSIX terminal (termios/tty not available here)")
+        return
+    if not sys.stdin.isatty():
+        print("% Teleop requires an interactive terminal")
+        return
+
     lin_speed = LINEAR_VEL
     turn_speed = TURN_RATE
     linvel = 0.0
@@ -317,6 +405,7 @@ if __name__ == "__main__":
     # Keep downstream parsers (e.g. uservice) from seeing teleop-only flags.
     sys.argv = [sys.argv[0]] + unknown
 
+    _ensure_robot_modules()
     if service.process_running("mqtt-client"):
         print("% mqtt-client is already running — terminating")
     else:
