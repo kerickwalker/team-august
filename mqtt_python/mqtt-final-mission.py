@@ -9,6 +9,16 @@ import numpy as np
 from datetime import datetime
 from types import SimpleNamespace
 from setproctitle import setproctitle
+try:
+    import termios
+    import tty
+    import select
+    _tty_available = True
+except ImportError:
+    termios = None
+    tty = None
+    select = None
+    _tty_available = False
 
 OTHER_MQTT_DIR = Path(__file__).resolve().parent / "other-mqtt"
 if str(OTHER_MQTT_DIR) not in sys.path:
@@ -28,10 +38,14 @@ DEFAULT_RECORD_FPS        = 20.0
 
 _telemetry = {"state": "init", "crossing": 0}
 _telemetry_lock = threading.Lock()
+_mission_abort_evt = threading.Event()
+_test_log_file = None
+_test_log_stdout = None
+_test_log_stderr = None
 
 
 def _aborted():
-    return service.stop
+    return service.stop or _mission_abort_evt.is_set()
 
 
 def set_telemetry(**kwargs):
@@ -42,6 +56,55 @@ def set_telemetry(**kwargs):
 def _read_telemetry():
     with _telemetry_lock:
         return dict(_telemetry)
+
+
+class TerminalTee:
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+        return len(data)
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+    def isatty(self):
+        return self.streams[0].isatty()
+
+    @property
+    def encoding(self):
+        return getattr(self.streams[0], "encoding", "utf-8")
+
+
+def start_test_log():
+    global _test_log_file, _test_log_stdout, _test_log_stderr
+    if _test_log_file is not None:
+        return
+    log_path = Path(__file__).resolve().parent / "PID_log.txt"
+    _test_log_stdout = sys.stdout
+    _test_log_stderr = sys.stderr
+    _test_log_file = open(log_path, "w", encoding="utf-8", buffering=1)
+    sys.stdout = TerminalTee(_test_log_stdout, _test_log_file)
+    sys.stderr = TerminalTee(_test_log_stderr, _test_log_file)
+    print(f"% test log: writing terminal output to {log_path}")
+    print(f"% test log started {datetime.now():%Y-%m-%d %H:%M:%S}")
+
+
+def stop_test_log():
+    global _test_log_file, _test_log_stdout, _test_log_stderr
+    if _test_log_file is None:
+        return
+    print(f"% test log ended {datetime.now():%Y-%m-%d %H:%M:%S}")
+    sys.stdout = _test_log_stdout
+    sys.stderr = _test_log_stderr
+    _test_log_file.close()
+    _test_log_file = None
+    _test_log_stdout = None
+    _test_log_stderr = None
 
 
 class MissionRecorder:
@@ -609,6 +672,160 @@ def run_sequence(steps):
                 print(f"% run_sequence: unknown action '{action}' — skipped")
 
 
+class MissionKeyListener:
+    def __init__(self):
+        self._fd = None
+        self._old = None
+        self._thread = None
+        self._stop_evt = threading.Event()
+        self.switch_to_teleop = False
+        self.user_quit = False
+
+    def start(self):
+        if not _tty_available or not sys.stdin.isatty():
+            print("% key listener disabled: no interactive POSIX terminal")
+            return self
+        try:
+            self._fd = sys.stdin.fileno()
+            self._old = termios.tcgetattr(self._fd)
+            mode = list(termios.tcgetattr(self._fd))
+            mode[3] = mode[3] & ~(termios.ICANON | termios.ECHO)
+            mode[6] = list(mode[6])
+            mode[6][termios.VMIN] = 1
+            mode[6][termios.VTIME] = 0
+            termios.tcsetattr(self._fd, termios.TCSANOW, mode)
+        except Exception as e:
+            print(f"% key listener disabled: tty setup failed ({e})")
+            self._fd = None
+            self._old = None
+            return self
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        if not service.is_quiet():
+            print("% hotkeys: SPACE = stop + turn 180 + teleop, q/ESC = stop")
+        return self
+
+    def _run(self):
+        while not self._stop_evt.is_set() and not _aborted():
+            try:
+                r, _, _ = select.select([sys.stdin], [], [], 0.1)
+            except Exception:
+                break
+            if not r:
+                continue
+            try:
+                ch = sys.stdin.read(1)
+            except Exception:
+                break
+            if ch == " ":
+                print("\n% spacebar -> stopping mission, turning 180, switching to teleop")
+                self.switch_to_teleop = True
+                _mission_abort_evt.set()
+                break
+            if ch in ("q", "\x1b"):
+                label = "ESC" if ch == "\x1b" else "q"
+                print(f"\n% {label} -> stopping mission")
+                self.user_quit = True
+                _mission_abort_evt.set()
+                break
+
+    def stop(self):
+        self._stop_evt.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+        if self._old is not None and self._fd is not None:
+            try:
+                termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
+            except Exception:
+                pass
+        self._old = None
+        self._fd = None
+
+
+def _load_teleop_module():
+    import importlib.util
+    teleop_path = Path(__file__).resolve().parent / "mqtt-teleop.py"
+    spec = importlib.util.spec_from_file_location("_mqtt_teleop_inproc", str(teleop_path))
+    if spec is None or spec.loader is None:
+        raise ImportError(f"could not load {teleop_path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def safeHandoffTurn180(direction="left",
+                       turn_rate=1.0,
+                       hard_time_cap_s=4.5,
+                       overshoot_factor=1.25):
+    target_rad = np.pi
+    slow_zone_rad = np.radians(140.0)
+    stop_at_rad = np.radians(172.0)
+    slow_turn_rate = 0.35
+    sign = 1.0 if direction == "left" else -1.0
+    pose.tripBreset()
+
+    service.send("robobot/cmd/T0", "leds 16 0 100 0")
+    start_t = t.time()
+    last_t = start_t
+    commanded_angle = 0.0
+    reason = "service_stop"
+
+    while not _aborted():
+        now = t.time()
+        dt = now - last_t
+        last_t = now
+        elapsed = now - start_t
+
+        if elapsed >= hard_time_cap_s:
+            reason = "hard_time_cap"
+            break
+
+        progress = abs(pose.tripBh)
+        if progress >= stop_at_rad:
+            reason = "pose_target_reached"
+            break
+        if progress >= target_rad * overshoot_factor:
+            reason = "pose_overshoot_guard"
+            break
+        if commanded_angle >= target_rad * overshoot_factor:
+            reason = "commanded_overshoot_guard"
+            break
+
+        active_rate = turn_rate if progress < slow_zone_rad else slow_turn_rate
+        service.send("robobot/cmd/ti", f"rc 0.0 {sign * active_rate:.3f}")
+        commanded_angle += active_rate * dt
+        t.sleep(0.02)
+
+    for _ in range(3):
+        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+        t.sleep(0.02)
+    service.send("robobot/cmd/T0", "leds 16 0 0 0")
+    print(
+        f"% handoff turn done: pose={np.degrees(pose.tripBh):.1f} deg, "
+        f"cmd={np.degrees(commanded_angle):.1f} deg ({reason})"
+    )
+
+
+def run_teleop_in_process():
+    try:
+        teleop = _load_teleop_module()
+    except Exception as e:
+        print(f"% could not load teleop module: {e}")
+        return
+
+    edge.lineControl(0)
+    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+    service.send("robobot/cmd/T0", "leds 16 0 0 30")
+    _mission_abort_evt.clear()
+    service.stop = False
+    print("% teleop active - w/a/s/d to drive, SPACE to halt, q to quit")
+    try:
+        teleop.loop(step_mode=True)
+    finally:
+        service.send("robobot/cmd/ti", "rc 0.0 0.0")
+        service.send("robobot/cmd/T0", "leds 16 0 0 0")
+
+
 def apply_pid_overrides():
     """Apply optional CLI overrides to both sedge.PARAM_SETS["normal"/"slow"].
 
@@ -1136,6 +1353,9 @@ if __name__ == "__main__":
                   "See mqtt_python/PID_explanation.md."),
         )
 
+        pre_test_mode = any(arg in ("-t", "--test") for arg in sys.argv[1:])
+        if pre_test_mode:
+            start_test_log()
 
         start_teensy_interface()
         service.setup('localhost')
@@ -1166,15 +1386,33 @@ if __name__ == "__main__":
                                        DEFAULT_RECORD_STREAM_URL),
                 ).start()
 
+            key_listener = MissionKeyListener().start() if test_mode else None
             try:
                 loop(submission=submission)
             except KeyboardInterrupt:
                 print("\n% Ctrl+C -> aborting mission")
                 service.stop = True
             finally:
+                if key_listener is not None:
+                    key_listener.stop()
                 if recorder is not None:
                     recorder.stop()
+
+            if key_listener is not None and key_listener.switch_to_teleop:
+                _mission_abort_evt.clear()
+                if _tty_available and sys.stdin.isatty():
+                    try:
+                        termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
+                    except Exception:
+                        pass
+                print("% test handoff -> turning 180 degrees before teleop")
+                safeHandoffTurn180(direction="left",
+                                   turn_rate=1.0,
+                                   hard_time_cap_s=4.5,
+                                   overshoot_factor=1.25)
+                run_teleop_in_process()
         service.terminate()
         stop_teensy_interface()
     if not service.is_quiet():
         print("% Main Terminated")
+    stop_test_log()
