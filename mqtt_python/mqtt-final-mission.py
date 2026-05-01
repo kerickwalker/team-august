@@ -42,6 +42,7 @@ _mission_abort_evt = threading.Event()
 _test_log_file = None
 _test_log_stdout = None
 _test_log_stderr = None
+_test_log_start_mono = None
 
 
 def _aborted():
@@ -59,43 +60,66 @@ def _read_telemetry():
 
 
 class TerminalTee:
-    def __init__(self, *streams):
-        self.streams = streams
+    def __init__(self, terminal_stream, log_stream, start_mono):
+        self.terminal_stream = terminal_stream
+        self.log_stream = log_stream
+        self.start_mono = start_mono
+        self._log_line_start = True
 
     def write(self, data):
-        for stream in self.streams:
-            stream.write(data)
-            stream.flush()
+        self.terminal_stream.write(data)
+        self.terminal_stream.flush()
+        self._write_log(data)
+        self.log_stream.flush()
         return len(data)
 
     def flush(self):
-        for stream in self.streams:
-            stream.flush()
+        self.terminal_stream.flush()
+        self.log_stream.flush()
 
     def isatty(self):
-        return self.streams[0].isatty()
+        return self.terminal_stream.isatty()
 
     @property
     def encoding(self):
-        return getattr(self.streams[0], "encoding", "utf-8")
+        return getattr(self.terminal_stream, "encoding", "utf-8")
+
+    def _log_prefix(self):
+        now = datetime.now()
+        elapsed = t.monotonic() - self.start_mono
+        return f"[{now:%H:%M:%S}.{now.microsecond // 1000:03d} +{elapsed:8.3f}s] "
+
+    def _write_log(self, data):
+        while data:
+            if self._log_line_start:
+                self.log_stream.write(self._log_prefix())
+                self._log_line_start = False
+            newline = data.find("\n")
+            if newline < 0:
+                self.log_stream.write(data)
+                return
+            self.log_stream.write(data[:newline + 1])
+            self._log_line_start = True
+            data = data[newline + 1:]
 
 
 def start_test_log():
-    global _test_log_file, _test_log_stdout, _test_log_stderr
+    global _test_log_file, _test_log_stdout, _test_log_stderr, _test_log_start_mono
     if _test_log_file is not None:
         return
     log_path = Path(__file__).resolve().parent / "PID_log.txt"
     _test_log_stdout = sys.stdout
     _test_log_stderr = sys.stderr
+    _test_log_start_mono = t.monotonic()
     _test_log_file = open(log_path, "w", encoding="utf-8", buffering=1)
-    sys.stdout = TerminalTee(_test_log_stdout, _test_log_file)
-    sys.stderr = TerminalTee(_test_log_stderr, _test_log_file)
+    sys.stdout = TerminalTee(_test_log_stdout, _test_log_file, _test_log_start_mono)
+    sys.stderr = TerminalTee(_test_log_stderr, _test_log_file, _test_log_start_mono)
     print(f"% test log: writing terminal output to {log_path}")
     print(f"% test log started {datetime.now():%Y-%m-%d %H:%M:%S}")
 
 
 def stop_test_log():
-    global _test_log_file, _test_log_stdout, _test_log_stderr
+    global _test_log_file, _test_log_stdout, _test_log_stderr, _test_log_start_mono
     if _test_log_file is None:
         return
     print(f"% test log ended {datetime.now():%Y-%m-%d %H:%M:%S}")
@@ -105,6 +129,7 @@ def stop_test_log():
     _test_log_file = None
     _test_log_stdout = None
     _test_log_stderr = None
+    _test_log_start_mono = None
 
 
 class MissionRecorder:

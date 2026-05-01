@@ -491,6 +491,10 @@ class SEdge:
       if self.print_follow_line_block and (getattr(service.args, 'test', False) or not getattr(service.args, 'silent', True)) and self.edge_nUpdCnt > 0 and self.edge_nUpdCnt % self.follow_line_print_every_n == 0:
         enabled = set(self.print_follow_line_fields)
         parts = []
+        rxAge = (datetime.now() - self.edge_nTime).total_seconds()
+        parts.append(f"sample={self.edge_nUpdCnt}")
+        parts.append(f"rxAge={rxAge:6.3f}s")
+        parts.append(f"teensyT={self.edge_nTime:%H:%M:%S.%f}"[:-3])
         if 'livn' in enabled:
           norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
           parts.append(f"livn [{norm}]")
