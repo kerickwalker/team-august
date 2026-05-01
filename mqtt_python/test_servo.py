@@ -9,10 +9,11 @@
 # Usage:
 #   python3 test_servo.py
 #   python3 test_servo.py --pause 2 --hold-down 6 --verbose
-#   python3 test_servo.py --servo12-min -475 --servo12-max 260 --arm-speed 70
+#   python3 test_servo.py --servo12-min -400 --servo12-max 200 --arm-speed 70
 #   python3 test_servo.py --servo1 --servo12-min -100 --servo12-max 100
 #   python3 test_servo.py --servo2 --servo12-min -100 --servo12-max 100
-#   python3 test_servo.py --servo1 --set-pos -1024 --arm-speed 1000
+#   python3 test_servo.py --servo1 --set-pos -400 --arm-speed 1000
+#   python3 test_servo.py --servo3 --set-pos 0 --servo3-speed 1000
 #   python3 test_servo.py --servo3 --servo3-min -400 --servo3-max 400
 
 import argparse
@@ -31,9 +32,18 @@ MQTT_HOST = "localhost"
 # Defaults for calibration/testing
 SERVO_ID = 1
 SERVO_MIRROR_ID = 2
-POS_OPEN = -475
-POS_CLOSED = 260
+POS_OPEN = -400
+POS_CLOSED = 200
 SERVO_SPEED = 70
+
+# Arm servo limits after recalibration:
+# Servo 1 up position is -400; decreasing it makes it go higher / closer to body.
+# Servo 2 is mirrored, so servo 1 -400 means servo 2 400.
+# Lowest arm position is servo 1 200 and servo 2 -200.
+SERVO1_MIN = -400
+SERVO1_MAX = 200
+SERVO2_MIN = -200
+SERVO2_MAX = 400
 
 # Third servo (gripper / extra): tune --servo3-min / --servo3-max on your hardware
 SERVO3_ID = 3
@@ -53,6 +63,8 @@ def servo_set_literal(position, speed, servo_mode):
         service.send("robobot/cmd/T0", f"servo {SERVO_ID} {position} {speed}")
     elif servo_mode == "servo2":
         service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {position} {speed}")
+    elif servo_mode == "servo3":
+        service.send("robobot/cmd/T0", f"servo {SERVO3_ID} {position} {speed}")
     else:
         service.send("robobot/cmd/T0", f"servo {SERVO_ID} {position} {speed}")
         service.send("robobot/cmd/T0", f"servo {SERVO_MIRROR_ID} {-position} {speed}")
@@ -63,6 +75,8 @@ def literal_move_label(position, speed, servo_mode):
         return f"servo {SERVO_ID} {position} {speed}"
     if servo_mode == "servo2":
         return f"servo {SERVO_MIRROR_ID} {position} {speed}"
+    if servo_mode == "servo3":
+        return f"servo {SERVO3_ID} {position} {speed}"
     return (f"servo {SERVO_ID} {position} {speed}, "
             f"servo {SERVO_MIRROR_ID} {-position} {speed}")
 
@@ -98,6 +112,35 @@ def run_single_position(position, speed, servo_mode, hold_s):
     time.sleep(hold_s)
 
 
+def validate_position(name, position, pos_min, pos_max):
+    if position < pos_min or position > pos_max:
+        print(f"% Refusing {name}={position}: allowed range is {pos_min}..{pos_max}.")
+        return False
+    return True
+
+
+def validate_arm_cycle(cli, servo_mode):
+    if servo_mode in ("both", "servo1"):
+        ok_min = validate_position("servo12-min", cli.servo12_min, SERVO1_MIN, SERVO1_MAX)
+        ok_max = validate_position("servo12-max", cli.servo12_max, SERVO1_MIN, SERVO1_MAX)
+        return ok_min and ok_max
+    if servo_mode == "servo2":
+        servo2_min = -cli.servo12_min
+        servo2_max = -cli.servo12_max
+        ok_min = validate_position("mirrored servo2 min", servo2_min, SERVO2_MIN, SERVO2_MAX)
+        ok_max = validate_position("mirrored servo2 max", servo2_max, SERVO2_MIN, SERVO2_MAX)
+        return ok_min and ok_max
+    return True
+
+
+def validate_single_position(position, servo_mode):
+    if servo_mode in ("both", "servo1"):
+        return validate_position("servo1 set-pos", position, SERVO1_MIN, SERVO1_MAX)
+    if servo_mode == "servo2":
+        return validate_position("servo2 set-pos", position, SERVO2_MIN, SERVO2_MAX)
+    return True
+
+
 def servo3_move(position, speed):
     service.send("robobot/cmd/T0", f"servo {SERVO3_ID} {position} {speed}")
 
@@ -120,6 +163,11 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Arm servo smoke test (localhost MQTT, start immediately).",
+        epilog=(
+            "Calibration note: servo1 up position is -400 and decreasing it "
+            "makes it go higher / closer to body. Servo2 is mirrored: servo1 "
+            "-400 equals servo2 400, and servo1 200 equals servo2 -200."
+        ),
     )
     parser.add_argument(
         "--pause",
@@ -158,7 +206,7 @@ def main():
         default=POS_OPEN,
         dest="servo12_min",
         metavar="POS",
-        help=f"Servo 1 open/up position; servo 2 uses the mirrored value (default: {POS_OPEN})",
+        help=f"Servo 1 up position; servo 2 uses the mirrored value (default: {POS_OPEN})",
     )
     parser.add_argument(
         "--servo12-max",
@@ -167,7 +215,7 @@ def main():
         default=POS_CLOSED,
         dest="servo12_max",
         metavar="POS",
-        help=f"Servo 1 closed/down position; servo 2 uses the mirrored value (default: {POS_CLOSED})",
+        help=f"Servo 1 down position; servo 2 uses the mirrored value (default: {POS_CLOSED})",
     )
     parser.add_argument(
         "--arm-speed",
@@ -181,7 +229,7 @@ def main():
         type=int,
         default=None,
         metavar="POS",
-        help="Send one literal position command and exit; with --servo2 this is not mirrored",
+        help="Send one literal position command and exit; with --servo2/--servo3 this is not mirrored",
     )
     parser.add_argument(
         "--servo3",
@@ -222,6 +270,23 @@ def main():
     )
     cli = parser.parse_args()
 
+    servo_mode = "both"
+    if cli.servo1:
+        servo_mode = "servo1"
+    elif cli.servo2:
+        servo_mode = "servo2"
+    elif cli.servo3 and cli.set_pos is not None:
+        servo_mode = "servo3"
+
+    if cli.set_pos is not None:
+        speed = cli.servo3_speed if servo_mode == "servo3" else cli.arm_speed
+        if not validate_single_position(cli.set_pos, servo_mode):
+            sys.exit(2)
+    else:
+        speed = cli.arm_speed
+        if not validate_arm_cycle(cli, servo_mode):
+            sys.exit(2)
+
     from sedge import edge
     from uservice import service
     from uteensy import start_teensy_interface, stop_teensy_interface
@@ -242,17 +307,11 @@ def main():
     if not cli.verbose:
         service.args.silent = True
 
-    servo_mode = "both"
-    if cli.servo1:
-        servo_mode = "servo1"
-    elif cli.servo2:
-        servo_mode = "servo2"
-
     try:
         if cli.set_pos is not None:
             run_single_position(
                 cli.set_pos,
-                cli.arm_speed,
+                speed,
                 servo_mode,
                 cli.pause,
             )
