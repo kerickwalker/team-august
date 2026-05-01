@@ -31,13 +31,12 @@ class SEdge:
     TS_NOMINAL = 0.010
     TS_DRIFT_WARN_FRAC = 0.30
     
-
     PARAM_SETS = {
-        "normal": dict(lineKp=0.3, lineKi=0.0, lineKd=0.05,
-                       lineIntegralLimit=2.0, lineDerivativeAlpha=0.0,
+        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.07,
+                       lineIntegralLimit=2.0, lineDerivativeAlpha=0.7,
                        lineVelocity=0.20),
-        "slow":   dict(lineKp=0.4, lineKi=0.05, lineKd=0.03,
-                       lineIntegralLimit=2.0, lineDerivativeAlpha=0.0,
+        "slow":   dict(lineKp=0.3, lineKi=0.0, lineKd=0.1,
+                       lineIntegralLimit=2.0, lineDerivativeAlpha=0.8,
                        lineVelocity=0.10),
     }
 
