@@ -71,6 +71,7 @@ class SEdge:
     edge_nUpdCnt = 0
     edge_nTime = datetime.now()
     edge_nRxTime = datetime.now()
+    edge_nRxGap = 0.0
     edge_nInterval = 0
 
     posLeft = 0.0
@@ -268,6 +269,10 @@ class SEdge:
           gg = msg.split(" ")
           if (len(gg) >= 4):
             rx_time = datetime.now()
+            if self.edge_nUpdCnt > 0:
+              self.edge_nRxGap = (rx_time - self.edge_nRxTime).total_seconds()
+            else:
+              self.edge_nRxGap = 0.0
             t0 = self.edge_nTime;
             self.edge_nTime = datetime.fromtimestamp(float(gg[0]))
             self.edge_nRxTime = rx_time
@@ -582,6 +587,7 @@ class SEdge:
         parts.append(f"sample={self.edge_nUpdCnt}")
         parts.append(f"sampleAge={sampleAge:6.3f}s")
         parts.append(f"rxAge={rxAge:6.3f}s")
+        parts.append(f"rxGap={self.edge_nRxGap:6.3f}s")
         parts.append(f"teensyT={self.edge_nTime:%H:%M:%S.%f}"[:-3])
         if 'livn' in enabled:
           norm = " ".join(f"{self.edge_n[i]:4d}" for i in range(8))
