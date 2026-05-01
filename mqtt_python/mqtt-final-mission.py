@@ -59,30 +59,26 @@ def _read_telemetry():
         return dict(_telemetry)
 
 
-class TerminalTee:
-    def __init__(self, terminal_stream, log_stream, start_mono):
-        self.terminal_stream = terminal_stream
+class TimestampLogStream:
+    def __init__(self, original_stream, log_stream, start_mono):
+        self.original_stream = original_stream
         self.log_stream = log_stream
         self.start_mono = start_mono
         self._log_line_start = True
 
     def write(self, data):
-        self.terminal_stream.write(data)
-        self.terminal_stream.flush()
         self._write_log(data)
-        self.log_stream.flush()
         return len(data)
 
     def flush(self):
-        self.terminal_stream.flush()
         self.log_stream.flush()
 
     def isatty(self):
-        return self.terminal_stream.isatty()
+        return False
 
     @property
     def encoding(self):
-        return getattr(self.terminal_stream, "encoding", "utf-8")
+        return getattr(self.original_stream, "encoding", "utf-8")
 
     def _log_prefix(self):
         now = datetime.now()
@@ -112,9 +108,9 @@ def start_test_log():
     _test_log_stderr = sys.stderr
     _test_log_start_mono = t.monotonic()
     _test_log_file = open(log_path, "w", encoding="utf-8", buffering=1)
-    sys.stdout = TerminalTee(_test_log_stdout, _test_log_file, _test_log_start_mono)
-    sys.stderr = TerminalTee(_test_log_stderr, _test_log_file, _test_log_start_mono)
-    print(f"% test log: writing terminal output to {log_path}")
+    sys.stdout = TimestampLogStream(_test_log_stdout, _test_log_file, _test_log_start_mono)
+    sys.stderr = TimestampLogStream(_test_log_stderr, _test_log_file, _test_log_start_mono)
+    print(f"% test log: redirecting terminal output to {log_path}")
     print(f"% test log started {datetime.now():%Y-%m-%d %H:%M:%S}")
 
 
