@@ -9,13 +9,11 @@ from ulog import flog
 class SEdge:
 
 
-    defaultLineVelocity = 0.3
-
+    defaultLineVelocity = 0.2
     lineValidThreshold = 500
     crossingMinSensors = 4
 
-
-    yMinSensors = 3
+    yMinSensors = 4
     yMinSpan    = 4
     yMidIndices = (3, 4)
 
@@ -23,34 +21,26 @@ class SEdge:
     lineKi = 0.0
     lineKd = 0.0
     lineIntegralLimit = 2.0
-
-
-    TS_NOMINAL = 0.010
-    TS_DRIFT_WARN_FRAC = 0.30
-
-
+    lineOutputAlpha = 0.5
+    lineDerivativeBeta = 0.0
     lineYMax = 3.0
     lineYMin = -3.0
-
-
-    lineOutputAlpha = 0.0
-
-
-    lineDerivativeBeta = 0.0
-
-
-    PARAM_SETS = {
-        "normal": dict(lineKp=0.5, lineKi=0.0, lineKd=0.0,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.0,
-                       lineDerivativeBeta=0.0, lineVelocity=0.30),
-        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.0,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.0,
-                       lineDerivativeBeta=0.0, lineVelocity=0.15),
-    }
 
     recoveryTurnRate = 1.0
     recoveryVelocity = 0.0
 
+    TS_NOMINAL = 0.010
+    TS_DRIFT_WARN_FRAC = 0.30
+    
+
+    PARAM_SETS = {
+        "normal": dict(lineKp=0.3, lineKi=0.0, lineKd=0.0,
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.0,
+                       lineDerivativeBeta=0.0, lineVelocity=0.20),
+        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.0,
+                       lineIntegralLimit=2.0, lineOutputAlpha=0.0,
+                       lineDerivativeBeta=0.0, lineVelocity=0.15),
+    }
 
     print_follow_line_block = True
     follow_line_print_every_n = 1
