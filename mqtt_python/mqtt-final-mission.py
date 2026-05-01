@@ -239,6 +239,9 @@ CROSSINGS = SimpleNamespace(
     go_straight_until    = 3,
     stop_at              = 5,
     hard_turn_cooldown_s = 2.0,
+    l_min_sensors        = 4,
+    left_rightmost_max   = 6,
+    right_leftmost_min   = 1,
 )
 
 CROSSING1 = SimpleNamespace(
@@ -246,6 +249,14 @@ CROSSING1 = SimpleNamespace(
     turn_dir      = "left",
     turn_rate     = 0.5,
     forward_speed = 0.15,
+)
+
+HALF = SimpleNamespace(
+    second_cross_turn_deg      = 90.0,
+    second_cross_turn_dir      = "left",
+    second_cross_follow_dist_m = 0.20,
+    second_cross_follow_speed  = LINE_SPEEDS.slow,
+    second_cross_follow_params = "slow",
 )
 
 LINE_FOLLOW_RULES = SimpleNamespace(
@@ -385,6 +396,20 @@ def line_lost():
     return edge.lineValidCnt < LINE_FOLLOW_RULES.line_lost_valid_cnt
 
 
+def is_left_l_crossing():
+    return (edge.sensorsAboveCount > CROSSINGS.l_min_sensors
+            and edge.leftmostAboveIndex == 0
+            and edge.rightmostAboveIndex is not None
+            and edge.rightmostAboveIndex <= CROSSINGS.left_rightmost_max)
+
+
+def is_right_l_crossing():
+    return (edge.sensorsAboveCount > CROSSINGS.l_min_sensors
+            and edge.rightmostAboveIndex == 7
+            and edge.leftmostAboveIndex is not None
+            and edge.leftmostAboveIndex >= CROSSINGS.right_leftmost_min)
+
+
 def speed_for_params(params_name):
     if params_name == "slow":
         return LINE_SPEEDS.slow
@@ -450,9 +475,18 @@ FIRST_CROSSING_SEQUENCE = [
                       "stop_after": False}),
 ]
 
+HALF_SECOND_CROSSING_SEQUENCE = [
+    ("turn", {"deg": HALF.second_cross_turn_deg, "dir": HALF.second_cross_turn_dir}),
+    ("follow_line", {"dist": HALF.second_cross_follow_dist_m,
+                     "speed": HALF.second_cross_follow_speed,
+                     "params": HALF.second_cross_follow_params}),
+]
+
 
 SUBMISSIONS = {
     "full":            dict(start_state=0),
+    "half":            dict(start_state=0,
+                            half_mode=True),
 
 
     "line_follow":     dict(start_state=0,
@@ -914,6 +948,7 @@ def driveMission(submission="full"):
 
     roundabout_done     = sub.get("roundabout_done", False)
     stop_at_roundabout  = sub.get("stop_at_roundabout", False)
+    half_mode           = bool(sub.get("half_mode", False))
     end_mode            = sub.get("end_mode", False)
     pure_follow_after_seek = sub.get("pure_follow_after_seek", False)
     pure_follow_params  = sub.get("pure_follow_params", "normal")
@@ -937,6 +972,7 @@ def driveMission(submission="full"):
     end_rejoin_last_time_at_crossing = None
     end21_was_at_crossing = False
     end21_last_time_at_crossing = None
+    half_second_crossing_cnt = 0
 
     if not service.is_quiet():
         print(f"% driveMission: starting (submission={submission}, state={state}, "
@@ -1026,7 +1062,15 @@ def driveMission(submission="full"):
         elif state == 10:
             edge.mission_crossing_count = crossing_count
 
-            at_crossing = edge.crossingLineCnt >= CROSSINGS.sensor_threshold
+            if half_mode and roundabout_done and crossing_count == 1:
+                if is_left_l_crossing():
+                    half_second_crossing_cnt = min(20, half_second_crossing_cnt + 1)
+                elif half_second_crossing_cnt > 0:
+                    half_second_crossing_cnt -= 1
+                at_crossing = half_second_crossing_cnt >= CROSSINGS.sensor_threshold
+            else:
+                half_second_crossing_cnt = 0
+                at_crossing = edge.crossingLineCnt >= CROSSINGS.sensor_threshold
             now = datetime.now()
             if at_crossing:
                 last_time_at_crossing = now
@@ -1043,7 +1087,18 @@ def driveMission(submission="full"):
             if at_crossing:
                 crossing_number = crossing_count + 1
 
-                if crossing_number == 1 and not first_cross_done:
+                if half_mode and roundabout_done and crossing_number == 2:
+                    if not service.is_quiet():
+                        print("% half crossing 2 -> hard left 90, slow follow 0.20 m, stop")
+                    edge.lineControl(0)
+                    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                    t.sleep(LINE_FOLLOW_RULES.post_stop_settle_s)
+                    run_sequence(HALF_SECOND_CROSSING_SEQUENCE)
+                    edge.lineControl(0)
+                    service.send("robobot/cmd/ti", "rc 0.0 0.0")
+                    state = 2
+
+                elif crossing_number == 1 and not first_cross_done:
                     if not service.is_quiet():
                         print(f"% crossing 1 → turn {CROSSING1.turn_dir} {CROSSING1.turn_deg:.0f}°"
                               f" (fwd={CROSSING1.forward_speed:.2f} m/s)")
@@ -1066,12 +1121,8 @@ def driveMission(submission="full"):
                         (now - last_hard_turn_time).total_seconds() >= CROSSINGS.hard_turn_cooldown_s
                     )
                     if cooldown_ok:
-                        hard_left  = (edge.leftmostAboveIndex == 0 and
-                                      edge.rightmostAboveIndex is not None and
-                                      edge.rightmostAboveIndex <= 4)
-                        hard_right = (edge.rightmostAboveIndex == 7 and
-                                      edge.leftmostAboveIndex is not None and
-                                      edge.leftmostAboveIndex >= 3)
+                        hard_left  = is_left_l_crossing()
+                        hard_right = is_right_l_crossing()
                         if hard_left or hard_right:
                             direction = "left" if hard_left else "right"
                             if not service.is_quiet():

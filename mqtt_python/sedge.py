@@ -11,9 +11,9 @@ class SEdge:
 
     defaultLineVelocity = 0.2
     lineValidThreshold = 500
-    crossingMinSensors = 4
+    crossingMinSensors = 5
 
-    yMinSensors = 4
+    yMinSensors = 5
     yMinSpan    = 4
     yMidIndices = (3, 4)
 
