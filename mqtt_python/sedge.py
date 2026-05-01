@@ -37,9 +37,9 @@ class SEdge:
         "normal": dict(lineKp=0.3, lineKi=0.0, lineKd=0.05,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.0,
                        lineDerivativeBeta=0.0, lineVelocity=0.20),
-        "slow":   dict(lineKp=0.2, lineKi=0.0, lineKd=0.02,
+        "slow":   dict(lineKp=0.4, lineKi=0.05, lineKd=0.03,
                        lineIntegralLimit=2.0, lineOutputAlpha=0.0,
-                       lineDerivativeBeta=0.0, lineVelocity=0.15),
+                       lineDerivativeBeta=0.0, lineVelocity=0.10),
     }
 
     print_follow_line_block = True
