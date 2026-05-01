@@ -21,8 +21,7 @@ class SEdge:
     lineKi = 0.0
     lineKd = 0.0
     lineIntegralLimit = 2.0
-    lineOutputAlpha = 0.5
-    lineDerivativeBeta = 0.0
+    lineDerivativeAlpha = 0.0
     lineYMax = 3.0
     lineYMin = -3.0
 
@@ -35,11 +34,11 @@ class SEdge:
 
     PARAM_SETS = {
         "normal": dict(lineKp=0.3, lineKi=0.0, lineKd=0.05,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.0,
-                       lineDerivativeBeta=0.0, lineVelocity=0.20),
+                       lineIntegralLimit=2.0, lineDerivativeAlpha=0.0,
+                       lineVelocity=0.20),
         "slow":   dict(lineKp=0.4, lineKi=0.05, lineKd=0.03,
-                       lineIntegralLimit=2.0, lineOutputAlpha=0.0,
-                       lineDerivativeBeta=0.0, lineVelocity=0.10),
+                       lineIntegralLimit=2.0, lineDerivativeAlpha=0.0,
+                       lineVelocity=0.10),
     }
 
     print_follow_line_block = True
@@ -94,9 +93,7 @@ class SEdge:
 
     lineIntegral = 0.0
     lineE_prev = None
-    lineE_filt = 0.0
-    lineE_filt_prev = None
-    lineY1 = 0.0
+    lineD_prev = 0.0
     lineY = 0.0
 
     lastLineSide = 0
@@ -406,7 +403,8 @@ class SEdge:
         for k, v in self.PARAM_SETS[params].items():
           setattr(self, k, v)
         self.lineIntegral = 0.0
-        self.lineE_filt_prev = None
+        self.lineE_prev = None
+        self.lineD_prev = 0.0
 
 
     def followLine(self):
@@ -430,27 +428,19 @@ class SEdge:
 
 
       if not self.lineValid:
-        self.lineIntegral = 0.0
-        self.lineE_prev = e
-        self.lineE_filt = e
-        self.lineE_filt_prev = None
-      elif self.lineDerivativeBeta > 0.0:
-
-        if self.lineE_filt_prev is None:
-          self.lineE_filt = e
-        else:
-          b = self.lineDerivativeBeta
-          self.lineE_filt = b * self.lineE_filt + (1.0 - b) * e
-      else:
-        self.lineE_filt = e
-
-
-      if self.lineE_filt_prev is not None:
-        dTerm = (self.lineE_filt - self.lineE_filt_prev) / Tsec
-      else:
         dTerm = 0.0
-      self.lineE_filt_prev = self.lineE_filt
-      self.lineE_prev = e
+        self.lineIntegral = 0.0
+        self.lineE_prev = None
+        self.lineD_prev = 0.0
+      else:
+        if self.lineE_prev is not None:
+          derivative_raw = (e - self.lineE_prev) / Tsec
+          alpha = max(0.0, min(1.0, self.lineDerivativeAlpha))
+          dTerm = alpha * self.lineD_prev + (1.0 - alpha) * derivative_raw
+        else:
+          dTerm = 0.0
+        self.lineD_prev = dTerm
+        self.lineE_prev = e
 
 
       if self.lineValid:
@@ -470,9 +460,7 @@ class SEdge:
       elif raw_y < self.lineYMin:
         raw_y = self.lineYMin
 
-      alpha = max(0.0, min(1.0, self.lineOutputAlpha))
-      self.lineY = (1.0 - alpha) * raw_y + alpha * self.lineY1
-      self.lineY1 = self.lineY
+      self.lineY = raw_y
 
       if self.lineValid:
         if e > 0:

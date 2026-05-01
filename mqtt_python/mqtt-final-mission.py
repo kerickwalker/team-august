@@ -839,16 +839,16 @@ def apply_pid_overrides():
         ("lineKp", "kp"),
         ("lineKd", "kd"),
         ("lineKi", "ki"),
-        ("lineOutputAlpha", "alpha"),
-        ("lineDerivativeBeta", "beta"),
+        ("lineDerivativeAlpha", "alpha"),
     ):
         val = getattr(service.args, attr, None)
         if val is not None:
             overrides[key] = float(val)
-    if "lineOutputAlpha" in overrides:
-        overrides["lineOutputAlpha"] = max(0.0, min(1.0, overrides["lineOutputAlpha"]))
-    if "lineDerivativeBeta" in overrides:
-        overrides["lineDerivativeBeta"] = max(0.0, min(1.0, overrides["lineDerivativeBeta"]))
+    beta_alias = getattr(service.args, "beta", None)
+    if beta_alias is not None and "lineDerivativeAlpha" not in overrides:
+        overrides["lineDerivativeAlpha"] = float(beta_alias)
+    if "lineDerivativeAlpha" in overrides:
+        overrides["lineDerivativeAlpha"] = max(0.0, min(1.0, overrides["lineDerivativeAlpha"]))
     if not overrides:
         return
     for params_name in ("normal", "slow"):
@@ -1343,14 +1343,13 @@ if __name__ == "__main__":
         )
         service.parser.add_argument(
             "--alpha", type=float, default=None,
-            help=("Override turn output filter alpha (0..1). "
-                  "0 = no filter, 1 = full previous-output hold. Applies to normal+slow."),
+            help=("Override derivative smoothing alpha (0..1). "
+                  "d = alpha*d_prev + (1-alpha)*d_raw; 0 = raw derivative, 1 = hold previous D. "
+                  "Applies to normal+slow."),
         )
         service.parser.add_argument(
             "--beta", type=float, default=None,
-            help=("Override D-path EWMA on tracking error (0..1). "
-                  "Smooths e before (e_filt-e_filt_prev)/dt; P and I still use raw e. Applies to normal+slow. "
-                  "See mqtt_python/PID_explanation.md."),
+            help="Deprecated alias for --alpha.",
         )
 
         pre_test_mode = any(arg in ("-t", "--test") for arg in sys.argv[1:])
