@@ -1,0 +1,11 @@
+FILE_TYPE = MULTI_PHYS_TABLE;
+
+PART 'DRV8874PWPR'
+CLASS = IC
+{========================================================================================}
+:"MANUFACTURER_NAME", "MANUFACTURER_PART_NUMBER"= "PART_NUMBER", "JEDEC_TYPE", "PACK_TYPE", "MOUSER_PART_NUMBER", "MOUSER_PRICE/STOCK", "DESCRIPTION", "DATASHEET", "HEIGHT";
+{========================================================================================}
+ "Texas Instruments", "DRV8874PWPR" (!) = "", "SOP65P640X120-17N", "Small Outline Packages", "595-DRV8874PWPR", "https://www.mouser.co.uk/ProductDetail/Texas-Instruments/DRV8874PWPR?qs=mAH9sUMRCtvh%2FSU15ywmDA%3D%3D", "H-Bridge Motor Driver With Integrated Current Sense and Regulation", "https://www.ti.com/lit/gpn/DRV8874", "1.2 mm"
+END_PART
+
+END.

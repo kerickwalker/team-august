@@ -1,0 +1,26 @@
+[
+{
+  "directory": "/home/chr/aaa/svn/robobot/off_by_mqtt/build2",
+  "command": "/usr/bin/c++  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/off_by_mqtt.dir/src/main.cpp.o -c /home/chr/aaa/svn/robobot/off_by_mqtt/src/main.cpp",
+  "file": "/home/chr/aaa/svn/robobot/off_by_mqtt/src/main.cpp",
+  "output": "CMakeFiles/off_by_mqtt.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/off_by_mqtt/build2",
+  "command": "/usr/bin/c++  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/off_by_mqtt.dir/src/umqtt.cpp.o -c /home/chr/aaa/svn/robobot/off_by_mqtt/src/umqtt.cpp",
+  "file": "/home/chr/aaa/svn/robobot/off_by_mqtt/src/umqtt.cpp",
+  "output": "CMakeFiles/off_by_mqtt.dir/src/umqtt.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/off_by_mqtt/build2",
+  "command": "/usr/bin/c++  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/off_by_mqtt.dir/src/uservice.cpp.o -c /home/chr/aaa/svn/robobot/off_by_mqtt/src/uservice.cpp",
+  "file": "/home/chr/aaa/svn/robobot/off_by_mqtt/src/uservice.cpp",
+  "output": "CMakeFiles/off_by_mqtt.dir/src/uservice.cpp.o"
+},
+{
+  "directory": "/home/chr/aaa/svn/robobot/off_by_mqtt/build2",
+  "command": "/usr/bin/c++  -Wall -pedantic     -Wno-format-truncation -Wno-return-type     -std=c++20 -Dx86_64 -O0 -g2 -Wall -Wextra -Wpedantic -o CMakeFiles/off_by_mqtt.dir/src/utime.cpp.o -c /home/chr/aaa/svn/robobot/off_by_mqtt/src/utime.cpp",
+  "file": "/home/chr/aaa/svn/robobot/off_by_mqtt/src/utime.cpp",
+  "output": "CMakeFiles/off_by_mqtt.dir/src/utime.cpp.o"
+}
+]

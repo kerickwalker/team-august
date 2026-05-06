@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
+rsync -a --exclude '*_backup*' ./ "$tmpdir/teensy_firmware_8/"
+arduino-cli compile --fqbn teensy:avr:teensy41 --build-path build "$tmpdir/teensy_firmware_8"

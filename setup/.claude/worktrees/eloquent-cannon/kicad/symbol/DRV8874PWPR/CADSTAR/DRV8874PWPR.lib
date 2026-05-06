@@ -1,0 +1,16 @@
+.DRV8874PWPR :1 ;H-Bridge Motor Driver With Integrated Current Sense and Regulation
+SOP65P640X120-17N
+*STM IC
+*NGS
+*PLB 1="EN/IN1" 2="PH/IN2" 3="NSLEEP" 4="NFAULT" 5="VREF" 6="IPROPI" 7="IMODE" 8="OUT1" 9="PGND" 10="OUT2" 11="VM" 12="VCP" 13="CPH" 14="CPL" 15="GND" 16="PMODE" 17="EP"
+*MXP 17
+*DFN DRV8874PWPR
+~!Mouser Part Number (595-DRV8874PWPR)
+~!Link Mouser Price/Stock (https://www.mouser.co.uk/ProductDetail/Texas-Instruments/DRV8874PWPR?qs=mAH9sUMRCtvh%2FSU15ywmDA%3D%3D)
+~!Manufacturer_Name (Texas Instruments)
+~!Manufacturer_Part_Number (DRV8874PWPR)
+~!Link Datasheet (https://www.ti.com/lit/gpn/DRV8874)
+~!Height (1.2mm)
+~!3D_Model (DRV8874PWPR)
+DRV8874PWPR
+1.1!U 2.1!U 3.1!U 4.1!U 5.1!U 6.1!U 7.1!U 8.1!U 17.1!U 16.1!U 15.1!U 14.1!U 13.1!U 12.1!U 11.1!U 10.1!U 9.1!U 

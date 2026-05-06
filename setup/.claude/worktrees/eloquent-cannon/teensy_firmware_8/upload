@@ -1,0 +1,2 @@
+#!/bin/bash
+teensy_loader_cli -v -w --mcu=TEENSY41 build/teensy_firmware_8.ino.hex

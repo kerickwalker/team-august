@@ -1,0 +1,29 @@
+%TF.GenerationSoftware,KiCad,Pcbnew,7.0.11+dfsg-1build4*%
+%TF.CreationDate,2024-09-19T14:44:10+02:00*%
+%TF.ProjectId,robobot_v85,726f626f-626f-4745-9f76-38352e6b6963,v8.0*%
+%TF.SameCoordinates,Original*%
+%TF.FileFunction,NonPlated,1,2,NPTH,Drill*%
+%TF.FilePolarity,Positive*%
+%FSLAX46Y46*%
+G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
+G04 Created by KiCad (PCBNEW 7.0.11+dfsg-1build4) date 2024-09-19 14:44:10*
+%MOMM*%
+%LPD*%
+G01*
+G04 APERTURE LIST*
+%TA.AperFunction,ComponentDrill*%
+%ADD10C,3.200000*%
+%TD*%
+G04 APERTURE END LIST*
+D10*
+%TO.C,H3*%
+X103400000Y-60000000D03*
+%TO.C,H5*%
+X103400000Y-150200000D03*
+%TO.C,H1*%
+X158000000Y-144600000D03*
+%TO.C,H2*%
+X193600000Y-60000000D03*
+%TO.C,H4*%
+X193600000Y-150200000D03*
+M02*
