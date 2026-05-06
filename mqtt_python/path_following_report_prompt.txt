@@ -1,0 +1,629 @@
+================================================================================
+  PATH FOLLOWING — SYSTEM DOCUMENTATION & ACADEMIC REPORT PROMPT
+  Robobot team-august | DTU Building Dependable Robot Systems
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 1. SYSTEM OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The path-following subsystem enables the robot to autonomously track a
+pre-recorded spatial trajectory. The algorithm chosen is Pure Pursuit — a
+classical geometric path-tracking method from the autonomous vehicle literature
+(Coulter, 1992). Pure Pursuit was selected because:
+
+  - It requires no linearisation of the vehicle model.
+  - It is computationally cheap (one nearest-point search + one trigonometric
+    transform per control cycle).
+  - Its single tuning knob (lookahead distance) has a clear geometric meaning
+    and is easy to reason about on hardware.
+  - It produces smooth, continuous steering commands even when the robot
+    deviates slightly from the recorded path.
+
+The subsystem is structured in three layers:
+
+  Layer 1 — Math kernel    : spursuit.py       (Pure Pursuit geometry, no MQTT)
+  Layer 2 — MQTT adapter   : spath_follow.py   (subscribes to Kalman pose,
+                                                 publishes rc commands)
+  Layer 3 — Mission runner : mqtt_client_path_follow.py  (state machine,
+                                                           LED feedback, timing)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 2. END-TO-END DATA FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ HARDWARE LAYER                                                              │
+│  Teensy microcontroller                                                     │
+│    - Incremental encoders (68 ticks/rev, 19:1 gear, 0.075 m wheel radius)  │
+│    - IMU (gyroscope, accelerometer, magnetometer)                           │
+│    - Wheel base: 0.22 m                                                     │
+└────────────────────────────┬────────────────────────────────────────────────┘
+                             │ teensy_interface (C++ MQTT bridge)
+                             │ Topics published:
+                             │   T0/vel   — left/right wheel velocities (m/s)
+                             │   T0/pose  — raw encoder odometry (x, y, hdg)
+                             │   T0/mvel  — motor velocities (rad/s)
+                             │   T0/enc   — raw encoder tick counts
+                             │   T0/conf  — wheel geometry config
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ spose.py  — Raw Odometry Decoder                                            │
+│  Parses T0/* MQTT messages into Python objects:                             │
+│    pose.velocity()  = (v_left + v_right) / 2    (linear speed, m/s)        │
+│    pose.turnrate()  = (v_left - v_right) / wheelBase  (rad/s)              │
+│    pose.wheelVelocity[0/1]  — left/right speeds used as Kalman input u     │
+└────────────────────────────┬────────────────────────────────────────────────┘
+                             │ wheel velocities, raw pose, IMU data
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ skalman.py  — 7-State Extended Kalman Filter                                │
+│                                                                             │
+│  State vector:  x = [x, y, z, v, omega, yaw, pitch]                       │
+│                      m  m  m  m/s rad/s  rad   rad                         │
+│                                                                             │
+│  Prediction step (linearised kinematics):                                  │
+│    x[k+1] = A(yaw, pitch, dt) * x[k]  +  B * u[k]                        │
+│    P[k+1] = A * P[k] * A^T  +  Q                                           │
+│                                                                             │
+│  A matrix key entries (yaw/pitch-dependent):                               │
+│    A[0,3] = cos(yaw)*cos(pitch)*dt   (x advances with forward velocity)   │
+│    A[1,3] = sin(yaw)*cos(pitch)*dt   (y advances with forward velocity)   │
+│    A[5,4] = dt                        (yaw integrates angular velocity)    │
+│                                                                             │
+│  B matrix (control input: [v_left, v_right]):                              │
+│    B[3,:] = [0.5, 0.5]               (linear velocity = mean of wheels)   │
+│    B[4,:] = [-1/W, 1/W]             (angular vel from differential drive) │
+│             W = track width = 0.23 m                                       │
+│                                                                             │
+│  Update step (standard EKF):                                               │
+│    y = z - H * x_pred              (innovation / residual)                 │
+│    S = H * P * H^T + R             (innovation covariance)                 │
+│    K = P * H^T * pinv(S)           (Kalman gain)                           │
+│    x = x + K * y                   (state correction)                      │
+│    P = (I - K*H) * P               (covariance update)                     │
+│                                                                             │
+│  Measurement vector (17 elements, H is 17x7):                             │
+│    Rows  0-6  : Encoder odometry (x, y, z, v, omega_gyro, yaw, omega_enc) │
+│    Rows  7-11 : Vision pose  (DISABLED — R set to 1e6)                    │
+│    Rows 12-13 : IMU yaw (gyro-integrated, magnetometer)                   │
+│    Rows 14-16 : IMU pitch (accelerometer, magnetometer, vision)            │
+│                                                                             │
+│  Process noise Q (diagonal):                                               │
+│    [0.8, 0.8, 0.8, 0.5, 0.5, 0.02, 1e6]                                  │
+│     x    y    z    v   ome  yaw  pitch                                     │
+│                                                                             │
+│  Publishes filtered state to MQTT every ~100 ms                            │
+└────────────────────────────┬────────────────────────────────────────────────┘
+                             │ MQTT topic: robobot/kalman/state
+                             │ JSON schema:
+                             │   { "position":    {"x":…, "y":…, "z":…},
+                             │     "orientation": {"yaw":…, "pitch":…},
+                             │     "velocity":    {"linear":…, "angular":…},
+                             │     "covariance_diag": […] }
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ spath_follow.py  — MQTT Integration Layer                                  │
+│                                                                             │
+│  Subscribes to robobot/kalman/state (QoS=1)                               │
+│  Caches: self._x, self._y, self._heading, self._speed                     │
+│                                                                             │
+│  pathControl(velocity):                                                    │
+│    - Arms the controller, sets reference speed                             │
+│    - Reloads trajectory.csv, resets nearest-point index                   │
+│    - Translates trajectory to align its first point with current Kalman   │
+│      pose (origin alignment — decouples abstract path from odometry frame) │
+│                                                                             │
+│  update()  [called at ~50 Hz from mission loop]:                           │
+│    linvel, turnrate = pursuit.compute_command(                             │
+│        self._x, self._y, self._heading, self._speed, self._velocity)      │
+│    service.send("robobot/cmd/ti",  f"rc {linvel:.3f} {turnrate:.3f}")     │
+└────────────────────────────┬────────────────────────────────────────────────┘
+                             │ MQTT topic: robobot/cmd/ti
+                             │ Message format: "rc <v_m/s> <omega_rad/s>"
+                             │ Rate: ~50 Hz (20 ms sleep in mission loop)
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ teensy_interface  →  Teensy  →  Motors                                     │
+│  "rc 0.300 -0.850" → left/right PWM via differential drive kinematics     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 3. TRAJECTORY AUTHORING WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The Pure Pursuit controller has no internal interpolation — it consumes a
+pre-computed dense trajectory. The authoring pipeline is:
+
+  Step 1: DEFINE / CAPTURE SPARSE WAYPOINTS
+    Path defined analytically or captured via:
+      python3 mqtt_client_teleop.py
+    Drive the robot manually; press 'c' at each key pose.
+    Output: teleop_waypoints.csv  (columns: x, y, heading — sparse, ~0.5-1 m gaps)
+    Convention: +x = right, +y = up (path generation frame).
+    Robot is placed at (0, 0) facing the +y direction at path start.
+
+  Step 2: INTERPOLATE TO DENSE TRAJECTORY
+    python3 interpolate_waypoints.py
+    - Parameterises waypoints by cumulative chord length s.
+    - Fits independent cubic splines: x(s) and y(s).
+    - Resamples at 0.05 m intervals along the spline arc.
+    - Derives heading from spline tangent: heading = atan2(dy/ds, dx/ds).
+      (Raw capture headings are discarded — tangent headings are geometrically
+       consistent even if the robot wasn't perfectly aligned at capture time.)
+    - Converts from path generation frame (+x=right, +y=up, robot faces +y) to
+      the trajectory CSV frame (+x=forward, +y=right):
+        x_csv = y_input   (forward = up)
+        y_csv = x_input   (right   = right)
+      Path start is shifted to (0, 0) in the CSV frame.
+    - Appends cumulative_dist column (recomputed over converted coordinates).
+    Output: trajectory.csv  (columns: x, y, heading, cumulative_dist)
+
+  Step 3: RUN MISSION
+    python3 mqtt_client_path_follow.py -s
+
+  Trajectory CSV schema example:
+    x,y,heading,cumulative_dist
+    0.000,0.000,0.000,0.000
+    0.050,0.001,0.020,0.050
+    0.100,0.003,0.022,0.100
+    ...
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 4. PURE PURSUIT — INTUITION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Imagine driving a car on a winding road in the dark. Rather than constantly
+reacting to where you are right now, you fix your gaze on a point some fixed
+distance down the road and steer toward it. That "gaze point" is the lookahead
+point; the fixed distance is the lookahead distance L_d.
+
+The key insight is that any two-wheeled (or Ackermann-steered) vehicle can
+reach a nearby goal point by driving along a circular arc. Pure Pursuit finds
+the unique circular arc that begins at the robot's current pose and ends at
+the lookahead point. The curvature of that arc determines the required
+steering angle (or, for a differential-drive robot, the angular velocity).
+
+The lookahead distance L_d is the single trade-off parameter:
+  - Large L_d: smooth, less reactive, cuts corners on tight turns.
+  - Small L_d: precise tracking, but oscillates and amplifies noise.
+  - Rule of thumb: L_d must be at least as large as the tightest turn radius
+    in the trajectory, or the controller will become unstable.
+
+In this implementation L_d = 1.0 m, the robot speed is ~0.15–0.30 m/s, and
+the trajectory was recorded on a flat arena floor, so the curvature demands
+are low enough for stable tracking at that lookahead distance.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 5. PURE PURSUIT — FULL MATHEMATICS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Given:
+  Robot pose in world frame:  (x_r, y_r, theta)     [theta = heading, rad]
+  Trajectory:                 array of (x_i, y_i, heading_i, s_i)
+                              where s_i is cumulative arc length in metres.
+  Reference speed:            v  (m/s, set by pathControl())
+  Lookahead distance:         L_d = 1.0 m
+
+────────────────────────────────────────────────────
+ Step 1 — Find the Nearest Trajectory Point
+────────────────────────────────────────────────────
+
+Search over a bounded forward window of SEARCH_WINDOW = 30 points (~1.5 m)
+starting from the previously stored nearest index i* to prevent backward jumps:
+
+  i* = argmin  { (x_i - x_r)^2 + (y_i - y_r)^2 }
+       i in [i*, i*+30]
+
+where the trajectory y-coordinates are sign-flipped to account for the
+coordinate convention difference between the CSV file (+y right) and the
+robot/Kalman frame (+y left):
+
+  effective_y_i = -y_i   (CSV convention → robot convention)
+
+This index i* is preserved across control cycles so the search window
+slides forward along the trajectory (the robot can never go backward).
+
+────────────────────────────────────────────────────
+ Step 2 — Find the Lookahead Point
+────────────────────────────────────────────────────
+
+Starting from i*, scan forward until:
+
+  s_j  >=  s_{i*}  +  L_d
+
+The point (x_j, y_j) is the lookahead point in the world frame.
+Apply the y sign-flip here as well:
+
+  x_L = x_j
+  y_L = -y_j      (trajectory → robot convention)
+
+If the trajectory ends before reaching s_{i*} + L_d, use the final point.
+
+────────────────────────────────────────────────────
+ Step 3 — Transform Lookahead to Robot Frame
+────────────────────────────────────────────────────
+
+Compute the world-frame displacement:
+
+  dx_w = x_L - x_r
+  dy_w = y_L - y_r
+
+Rotate into the robot body frame using the heading theta:
+
+  | dx_r |   |  cos(theta)   sin(theta) |   | dx_w |
+  | dy_r | = | -sin(theta)   cos(theta) | * | dy_w |
+
+  dx_r =  cos(theta) * dx_w  +  sin(theta) * dy_w     (forward in robot frame)
+  dy_r = -sin(theta) * dx_w  +  cos(theta) * dy_w     (left in robot frame)
+
+────────────────────────────────────────────────────
+ Step 4 — Compute the Steering Curvature
+────────────────────────────────────────────────────
+
+The geometry of a circular arc from the origin to a point (dx_r, dy_r) gives:
+
+  The chord length squared:
+    l^2 = dx_r^2 + dy_r^2
+
+  The radius of curvature R of the unique circle passing through the robot
+  origin and the lookahead point (and tangent to the robot's forward axis) is:
+
+    R = l^2 / (2 * dy_r)
+
+  Curvature (inverse radius):
+
+    kappa = 1/R = 2 * dy_r / (dx_r^2 + dy_r^2)
+
+Derivation sketch (chord geometry):
+  Place the robot at the origin facing +x. The lookahead point P = (dx_r, dy_r).
+  Any circle through the origin and P centred on the y-axis (perpendicular to
+  the robot heading) has centre (0, R) and satisfies:
+
+    dx_r^2  +  (dy_r - R)^2  =  R^2
+
+  Expanding:  dx_r^2 + dy_r^2 - 2*R*dy_r = 0
+  Solving:    R = (dx_r^2 + dy_r^2) / (2 * dy_r)
+              kappa = 2*dy_r / (dx_r^2 + dy_r^2)
+
+Sign convention:
+  dy_r > 0  →  lookahead is to the left   → kappa > 0 → turn left
+  dy_r < 0  →  lookahead is to the right  → kappa < 0 → turn right
+
+This matches the rc command convention (positive omega = turn left).
+
+────────────────────────────────────────────────────
+ Step 5 — Compute and Saturate the Control Command
+────────────────────────────────────────────────────
+
+For a differential-drive robot at forward speed v, the required angular
+velocity omega to track curvature kappa is simply:
+
+  omega = kappa * v
+
+Saturate to prevent wheel slip (inner wheel reverses above ~1.5 rad/s at low speed):
+
+  omega_cmd = clip(kappa * v,  -MAX_TURNRATE,  +MAX_TURNRATE)
+                                   -1.0 rad/s       +1.0 rad/s
+
+Final output:
+
+  rc command:  "rc  {v:.3f}  {omega_cmd:.3f}"
+
+  Published to MQTT topic robobot/cmd/ti at ~50 Hz.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 6. COORDINATE CONVENTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Four frames exist in the system:
+
+  Frame A — Path generation / design frame:
+    +x = right
+    +y = up  (robot faces +y at path start, placed at origin)
+
+  Frame B — Trajectory CSV frame  (output of interpolate_waypoints.py):
+    +x = forward  (= Frame A +y:  forward = up when robot faces +y)
+    +y = RIGHT    (= Frame A +x:  right   = right)
+    heading: CCW = positive  (stored from Frame A tangent — not used by spursuit.py)
+
+  Frame C — Kalman / Robot internal frame:
+    +x = forward
+    +y = LEFT  (standard mathematical / ROS convention)
+    heading: CCW = positive
+
+  Frame D — Human display (the -s status line):
+    y displayed as: -y_Kalman    (so positive = rightward motion, intuitive)
+    heading displayed as: -theta_Kalman  (positive = turned right, intuitive)
+
+The Pure Pursuit controller (spursuit.py) bridges B and C by negating the
+trajectory y-coordinate before all computations:
+
+  effective_y_traj = -y_csv    (right → left, Frame B → Frame C)
+
+This means the math in Section 5 is fully self-consistent in Frame C.
+
+At mission start, spath_follow.py applies an origin alignment: it translates
+the loaded trajectory so its first point matches the robot's current Kalman
+pose.  This decouples the abstract path origin (0, 0 in Frame A) from the
+encoder-odometry frame, which accumulates from Teensy power-on.
+
+RC command sign rules:
+  Positive omega (angular velocity) → turn LEFT
+  Negative omega                    → turn RIGHT
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 7. KEY PARAMETERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Parameter          Value     Location          Effect
+  ─────────────────────────────────────────────────────────────────────────────
+  LOOKAHEAD_DIST     1.0 m     spursuit.py       Primary tuning knob.
+                                                 Larger → smoother, cuts corners.
+                                                 Must be >= tightest turn radius.
+  MAX_LINVEL         0.3 m/s   spursuit.py       Fallback if pathControl() not
+                                                 called. Override with
+                                                 pathControl(v) at runtime.
+  MAX_TURNRATE       1.0 rad/s spursuit.py       Saturation limit. >1.5 rad/s
+                                                 at 0.15 m/s reverses inner wheel.
+  SEARCH_WINDOW      30 pts    spursuit.py       Forward scan window for nearest
+                                                 point. 30 × 0.05 m = 1.5 m.
+  Trajectory spacing 0.05 m   interpolate_      Dense enough for 1.0 m lookahead
+                               waypoints.py      to always find a valid point.
+  Control rate       50 Hz     mqtt_client_      20 ms sleep in state-1 loop.
+                               path_follow.py
+  Kalman publish     ~10 Hz    skalman.py        Pose estimate refresh rate.
+                                                 Controller runs at 50 Hz but
+                                                 uses cached pose between updates.
+  Numerical guard    1e-6 m²   spursuit.py       Avoids division by zero when
+                                                 lookahead point is at the robot.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 8. KALMAN FILTER — EXTENDED SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The Extended Kalman Filter (skalman.py) is the pose estimator that feeds the
+Pure Pursuit controller. Key characteristics:
+
+  State vector (7 dimensions):
+    x = [ x,  y,  z,  v,  omega,  yaw,  pitch ]
+         m   m   m   m/s  rad/s   rad    rad
+
+  Sensor sources fused:
+    1. Encoder odometry — x, y, heading, velocity (from spose.py)
+    2. Gyroscope        — angular velocity (z-axis)
+    3. IMU gyro-integrated yaw
+    4. Magnetometer     — yaw and pitch
+    5. Accelerometer    — pitch (via atan2(a_x, -a_z))
+    6. Vision pose      — CURRENTLY DISABLED (measurement noise R → infinity)
+
+  Prediction model:
+    Linearised differential-drive kinematics.
+    The A matrix is re-linearised each step around current yaw and pitch,
+    making this an EKF (Extended KF) rather than a linear KF.
+
+  Reset behaviour:
+    kalman.reset() is called at mission start (drivePathFollow).
+    This captures current IMU offsets so the filter starts at
+    x=0, y=0, yaw=0 regardless of physical sensor values.
+    It also sets last_update_time = now() to skip the bootstrap
+    transient that would otherwise overwrite the zeroed state.
+
+  Output:
+    Published to robobot/kalman/state as JSON at ~10 Hz.
+    spath_follow.py subscribes and caches x, y, yaw, velocity
+    for the Pure Pursuit controller.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 9. MISSION RUNNER — STATE MACHINE SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+mqtt_client_path_follow.py runs two nested state machines:
+
+  Outer loop():
+    State 101  → calls drivePathFollow(), then advances
+    State 100  → sends final "rc 0 0"
+    State 200  → stationary hold for 300 s (safety timeout)
+    State 99   → exit
+
+  Inner drivePathFollow():
+    State 0    → initialise (reset odometry, reset Kalman, arm pathControl(0.3))
+    State 1    → active control at ~50 Hz
+                   path_follow.update() each 20 ms
+                   exits when pursuit.at_end() returns True
+    State 2    → wait for velocity < 0.001 m/s (coast-to-stop)
+    State 99   → exit
+
+  at_end() condition:
+    pursuit._nearest_idx  >=  len(trajectory) - 1
+    (the nearest-point tracker has reached the final waypoint)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 10. SOURCE FILE INDEX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  File                           Role
+  ─────────────────────────────────────────────────────────────────────────────
+  spursuit.py                    Pure Pursuit geometry. No MQTT.
+                                 Class SPurePursuit; singleton: pursuit
+  spath_follow.py                MQTT adapter. Subscribes to Kalman, publishes
+                                 rc. Class SPathFollow; singleton: path_follow
+  mqtt_client_path_follow.py     Mission entry point. State machine, LED,
+                                 timing, debug mode.
+  skalman.py                     7-state EKF. Class SKalman; singleton: kalman
+  spose.py                       Raw odometry. Parses T0/* MQTT topics.
+                                 Class SPose; singleton: pose
+  simu.py                        IMU decoder (gyro, acc, mag, yaw integration).
+  uservice.py                    MQTT service, argparse, message routing,
+                                 Kalman decode dispatch.
+  interpolate_waypoints.py       Cubic spline resampler: sparse waypoints →
+                                 trajectory.csv at 0.05 m spacing.
+  mqtt_client_teleop.py          Keyboard teleoperation + waypoint capture.
+  trajectory.csv                 Input trajectory (dense, 0.05 m spacing).
+  teleop_waypoints.csv           Sparse waypoints from teleoperation capture.
+  notes/path_following.md        Tuning guide, architecture notes, edge cases.
+
+
+================================================================================
+  LLM PROMPT — ACADEMIC REPORT SECTION ON PATH FOLLOWING
+================================================================================
+
+Below is a complete, self-contained prompt. Copy everything between the
+START PROMPT and END PROMPT markers and paste it into any capable LLM
+(e.g., Claude, GPT-4, Gemini). It contains all the technical context needed
+to produce a well-sourced academic paragraph without the LLM needing access
+to the codebase.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+START PROMPT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You are helping write a section of a DTU (Technical University of Denmark)
+undergraduate robotics course report. The section covers the autonomous
+path-following subsystem implemented on a differential-drive robot called
+Robobot. Write in clear, formal academic English suitable for a technical
+engineering report. Use third-person passive or active voice consistently.
+
+TARGET LENGTH: 600–800 words of body text (excluding any equations).
+EQUATIONS: Write all mathematical expressions in LaTeX notation
+           (inline: $...$, display: $$...$$  or \begin{equation}...\end{equation}).
+STRUCTURE: Follow the outline below, but write it as flowing prose paragraphs —
+           do NOT use bullet points or sub-headings in the final output.
+
+─── TECHNICAL CONTEXT (do not reproduce this verbatim — synthesise it) ────────
+
+ALGORITHM: Pure Pursuit (Coulter 1992). A geometric path-tracking method that
+steers a mobile robot toward a lookahead point on a pre-computed trajectory.
+Chosen because: no linearisation required, single intuitive tuning parameter
+(lookahead distance L_d), computationally cheap, produces smooth continuous
+commands on a differential-drive robot.
+
+SYSTEM ARCHITECTURE (three layers):
+  Layer 1 — Math kernel (spursuit.py): Pure Pursuit geometry, no MQTT.
+  Layer 2 — MQTT adapter (spath_follow.py): subscribes to Kalman pose,
+            publishes rc commands.
+  Layer 3 — Mission runner (mqtt_client_path_follow.py): state machine,
+            safety, timing.
+
+POSE ESTIMATION: A 7-state Extended Kalman Filter (EKF) fuses encoder
+odometry (wheel ticks → position, heading), gyroscope (angular velocity),
+accelerometer (pitch), and magnetometer (yaw). State vector:
+  x = [x, y, z, v, omega, yaw, pitch]
+Prediction: linearised differential-drive kinematics.
+  A[0,3] = cos(yaw)*cos(pitch)*dt,  A[1,3] = sin(yaw)*cos(pitch)*dt,
+  A[5,4] = dt  (yaw integrates omega).
+Control input B maps [v_left, v_right] to [v, omega] via track width W=0.23 m.
+The EKF publishes its state estimate as JSON on MQTT topic
+robobot/kalman/state at ~10 Hz.
+
+TRAJECTORY: Dense CSV (0.05 m waypoint spacing), columns: x, y, heading,
+cumulative_dist. Produced by: (1) defining or capturing sparse waypoints in
+a path generation frame (+x=right, +y=up, robot placed at origin facing +y);
+(2) cubic spline interpolation, heading derived from spline tangent
+atan2(dy/ds, dx/ds) to ensure geometric consistency; (3) coordinate conversion
+to CSV frame (x_csv = y_input, y_csv = x_input, i.e. forward=up, right=right).
+
+PURE PURSUIT ALGORITHM (implemented in spursuit.py::compute_command):
+
+  Step 1 — Nearest point:
+    Search forward in a 30-point (1.5 m) window from the last known nearest
+    index i* to avoid backward jumps:
+      i* = argmin_{i in [i*, i*+30]}  (x_i - x_r)^2 + (y_i_eff - y_r)^2
+    where y_i_eff = -y_i_csv  (sign flip for coordinate convention).
+
+  Step 2 — Lookahead point:
+    Advance from i* until cumulative arc length exceeds s_{i*} + L_d:
+      j = min { j : s_j >= s_{i*} + L_d }
+    Lookahead coordinates: (x_L, y_L) = (x_j, -y_j_csv).
+
+  Step 3 — Transform to robot frame:
+    dx_w = x_L - x_r,  dy_w = y_L - y_r
+    dx_r =  cos(theta)*dx_w + sin(theta)*dy_w   (forward component)
+    dy_r = -sin(theta)*dx_w + cos(theta)*dy_w   (lateral component, +left)
+
+  Step 4 — Curvature (chord geometry derivation):
+    The unique circle tangent to the robot's heading and passing through
+    (dx_r, dy_r) has radius:
+      R = (dx_r^2 + dy_r^2) / (2 * dy_r)
+    Curvature:
+      kappa = 2 * dy_r / (dx_r^2 + dy_r^2)
+    Sign: kappa > 0 => turn left; kappa < 0 => turn right.
+
+  Step 5 — Control command:
+    omega_cmd = clip(kappa * v,  -omega_max,  +omega_max)
+    where v is the reference speed set via pathControl(v) and
+    omega_max = 1.0 rad/s (prevents inner-wheel reversal at low speed).
+    Published as: "rc {v:.3f} {omega_cmd:.3f}" at ~50 Hz.
+
+COORDINATE CONVENTIONS:
+  Path generation frame: +x = right, +y = up (robot faces +y at path start).
+  Trajectory CSV:  +x = forward (= input +y), +y = right (= input +x).
+    Conversion in interpolate_waypoints.py: x_csv = y_input, y_csv = x_input.
+  Kalman/internal: +x = forward, +y = left (standard math / ROS convention).
+  The controller negates trajectory y before computation (right → left).
+  At mission start spath_follow.py translates the trajectory to match the
+    robot's current Kalman pose (origin alignment).
+  rc command: positive omega = turn left.
+
+PARAMETERS:
+  L_d = 1.0 m (lookahead distance)
+  v = 0.15–0.30 m/s (reference speed, set at runtime)
+  omega_max = 1.0 rad/s
+  Trajectory spacing: 0.05 m
+  Control rate: 50 Hz
+  Kalman publish rate: ~10 Hz
+
+REFERENCE: Coulter, R.C. (1992). "Implementation of the Pure Pursuit Path
+Tracking Algorithm." Carnegie Mellon University, Robotics Institute.
+Technical Report CMU-RI-TR-92-01.
+
+─── WRITING INSTRUCTIONS ───────────────────────────────────────────────────────
+
+Please write the section with this structure as flowing prose:
+
+  PARAGRAPH 1 — Algorithm choice and motivation:
+    Introduce Pure Pursuit, cite Coulter (1992), explain why it was selected
+    over alternatives (e.g., Stanley method, MPC) for this application. Mention
+    the single tuning parameter and its geometric interpretation.
+
+  PARAGRAPH 2 — Pose estimation:
+    Describe the EKF briefly: state vector, sensor fusion sources, prediction
+    model (include the linearised kinematic equations in LaTeX). Explain that
+    the EKF output feeds the path-following controller.
+
+  PARAGRAPH 3 — Trajectory representation and authoring:
+    Explain the dense CSV format, the teleop capture step, and the cubic spline
+    interpolation. Mention that headings are derived from the spline tangent
+    (with LaTeX for atan2(dy/ds, dx/ds)) rather than raw captures.
+
+  PARAGRAPH 4 — Pure Pursuit algorithm (core of the section):
+    Walk through the five steps. Include the curvature derivation
+    in LaTeX. Explain the coordinate-frame sign convention and how it is
+    handled. Mention the angular velocity saturation.
+
+  PARAGRAPH 5 — Lookahead distance trade-off and implementation notes:
+    Discuss the L_d = 1.0 m choice relative to the turn radii in the arena,
+    the 50 Hz control rate, and any practical implementation notes (bounded
+    forward search to prevent backward tracking, coast-to-stop detection).
+
+Format: plain prose paragraphs with LaTeX equations. No bullet points,
+no sub-headings, no markdown. Write as if appearing in the body of a
+technical report.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+END PROMPT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+================================================================================
+  END OF DOCUMENT
+================================================================================

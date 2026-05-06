@@ -14,10 +14,14 @@
 # Output columns (same as trajectory.csv):
 #   x, y, heading, cumulative_dist
 #
-# Coordinate conventions (preserved from input):
-#   x            Forward (Kalman frame)
-#   y            Right   (trajectory CSV convention, +y = right)
-#   heading      CCW+    (radians, computed from spline tangent)
+# Input coordinate convention (path generation frame):
+#   x            Right  (+x = right)
+#   y            Up     (+y = up, robot faces +y at path start)
+#
+# Output CSV convention (required by spursuit.py):
+#   x            Forward (+x = forward = input +y)
+#   y            Right   (+y = right   = input +x)
+#   heading      CCW+    (radians, from spline tangent in input frame — not used by spursuit.py)
 #   cumulative_dist  metres along the resampled path
 
 import argparse
@@ -191,12 +195,24 @@ def main():
 
     x_out, y_out, heading_out, cumdist = interpolate(xs, ys, args.spacing)
 
-    write_trajectory(args.output, x_out, y_out, heading_out, cumdist)
+    # Convert from input frame (+x=right, +y=up, robot faces +y) to CSV frame
+    # (+x=forward, +y=right).  Robot faces +y so: forward=new_y, right=new_x.
+    x_csv = y_out - y_out[0]
+    y_csv = x_out - x_out[0]
 
-    actual_spacing = cumdist[-1] / (len(x_out) - 1) if len(x_out) > 1 else 0.0
-    print(f"% Output: {len(x_out)} points @ ~{actual_spacing:.4f} m spacing "
+    # Recompute cumulative distance over the converted coordinates
+    cumdist_csv = np.zeros(len(x_csv))
+    for i in range(1, len(x_csv)):
+        ddx = x_csv[i] - x_csv[i - 1]
+        ddy = y_csv[i] - y_csv[i - 1]
+        cumdist_csv[i] = cumdist_csv[i - 1] + math.sqrt(ddx * ddx + ddy * ddy)
+
+    write_trajectory(args.output, x_csv, y_csv, heading_out, cumdist_csv)
+
+    actual_spacing = cumdist_csv[-1] / (len(x_csv) - 1) if len(x_csv) > 1 else 0.0
+    print(f"% Output: {len(x_csv)} points @ ~{actual_spacing:.4f} m spacing "
           f"→ {args.output}")
-    print(f"% Total path length: {cumdist[-1]:.3f} m")
+    print(f"% Total path length: {cumdist_csv[-1]:.3f} m")
     print(f"% Heading range: {heading_out.min():.3f} to {heading_out.max():.3f} rad")
     print(f"% Done. Load with: python3 mqtt_client_path_follow.py -s")
 

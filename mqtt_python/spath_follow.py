@@ -97,9 +97,14 @@ class SPathFollow:
         On disarm: stops sending commands (caller must send rc 0 0 separately).
         """
         if velocity > 0.001:
+            pursuit.load_trajectory(TRAJECTORY_CSV)
             pursuit.reset()
-            if not pursuit.is_loaded():
-                pursuit.load_trajectory(TRAJECTORY_CSV)
+            # Translate trajectory so its first point aligns with the robot's
+            # current Kalman pose, decoupling the abstract path origin from the
+            # encoder-odometry frame (survives Teensy reboots / different start spots).
+            traj = pursuit._traj
+            traj[:, 0] += self._x - traj[0, 0]       # forward: same sign convention
+            traj[:, 1] += -self._y - traj[0, 1]      # right: -kalman_y(left) = right
             self._active   = True
             self._velocity = velocity
         else:
