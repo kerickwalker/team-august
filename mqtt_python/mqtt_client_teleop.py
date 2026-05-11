@@ -14,10 +14,10 @@
 #   c            Capture current pose as waypoint
 #   q / Ctrl-C   Quit and save waypoints to teleop_waypoints.csv
 #
-# Coordinate conventions (saved CSV):
-#   x            Forward   (Kalman frame, unchanged)
-#   y            Right     (negated from Kalman left-positive → matches trajectory.csv)
-#   heading      CCW+      (Kalman frame, unchanged — matches trajectory.csv convention)
+# Coordinate conventions (saved CSV — same as Kalman frame):
+#   x            Forward   (+x = forward, same as Kalman x)
+#   y            Left      (+y = left, same as Kalman y)
+#   heading      CCW+      (radians, same as Kalman yaw)
 #   cumulative_dist  metres between consecutive captured waypoints (cumulative)
 #
 # NOTE: These are sparse waypoints captured manually.  They are NOT a dense
@@ -138,10 +138,10 @@ BANNER = """\
 # Waypoint helpers
 # ════════════════════════════════════════════════════════════════════════════
 def capture_waypoint(waypoints: list) -> None:
-    """Append current Kalman pose to waypoints list (trajectory CSV convention)."""
-    x_save   =  teleop.x
-    y_save   = -teleop.y        # Kalman +y=left → CSV +y=right
-    hdg_save =  teleop.heading  # CCW+ unchanged
+    """Append current Kalman pose to waypoints list (Kalman frame: x=forward, y=left)."""
+    x_save   = teleop.x        # forward
+    y_save   = teleop.y        # left
+    hdg_save = teleop.heading  # CCW+
 
     if waypoints:
         prev = waypoints[-1]
@@ -201,12 +201,9 @@ def drive_teleop():
             # Periodic pose print (every 0.5 s)
             now = datetime.now()
             if (now - last_print).total_seconds() >= 1.0:
-                x_d   =  teleop.x
-                y_d   = -teleop.y        # display: positive = right
-                hdg_d = -teleop.heading  # display: positive = right turn
-                wp_n  = len(waypoints)
-                print(f"\r% x={x_d:7.3f} m  y={y_d:7.3f} m  "
-                      f"hdg={hdg_d:6.3f} rad  "
+                wp_n = len(waypoints)
+                print(f"\r% x={teleop.x:7.3f} m  y={teleop.y:7.3f} m  "
+                      f"hdg={teleop.heading:6.3f} rad  "
                       f"wps={wp_n:3d}  [{last_cmd}]   ", end="", flush=True)
                 last_print = now
 

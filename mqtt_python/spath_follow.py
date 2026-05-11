@@ -4,7 +4,7 @@ from paho.mqtt import client as mqtt_client
 from spursuit import pursuit
 
 # Path to the pre-generated trajectory CSV.
-# Columns expected: x, y, heading, cumulative_dist
+# Columns expected: x (forward), y (left), heading (CCW+ rad), cumulative_dist (m)
 TRAJECTORY_CSV = "trajectory.csv"
 
 
@@ -99,12 +99,6 @@ class SPathFollow:
         if velocity > 0.001:
             pursuit.load_trajectory(TRAJECTORY_CSV)
             pursuit.reset()
-            # Translate trajectory so its first point aligns with the robot's
-            # current Kalman pose, decoupling the abstract path origin from the
-            # encoder-odometry frame (survives Teensy reboots / different start spots).
-            traj = pursuit._traj
-            traj[:, 0] += self._x - traj[0, 0]       # forward: same sign convention
-            traj[:, 1] += -self._y - traj[0, 1]      # right: -kalman_y(left) = right
             self._active   = True
             self._velocity = velocity
         else:
