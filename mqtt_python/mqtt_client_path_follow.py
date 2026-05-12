@@ -102,6 +102,8 @@ def drivePathFollow():
                 state = 2
         elif state == 2:
             if abs(pose.velocity()) < 0.001:
+                if _PLOT:
+                    _pose_history.append((-path_follow._y, path_follow._x))
                 state = 99
         else:
             break
