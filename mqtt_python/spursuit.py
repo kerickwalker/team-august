@@ -97,10 +97,10 @@ class SPurePursuit:
         N = len(traj)
 
         # --- Step 1: nearest point (bounded forward search) ---
-        # trajectory.csv stores y in +right convention; negate to match Kalman +y=left frame.
+        # trajectory.csv uses Kalman convention (+y = left), same as robot pose.
         end_search = min(self._nearest_idx + SEARCH_WINDOW, N)
-        seg_x =  traj[self._nearest_idx:end_search, 0] - x
-        seg_y = -traj[self._nearest_idx:end_search, 1] - y
+        seg_x = traj[self._nearest_idx:end_search, 0] - x
+        seg_y = traj[self._nearest_idx:end_search, 1] - y
         local_idx = int(np.argmin(seg_x * seg_x + seg_y * seg_y))
         self._nearest_idx += local_idx
 
@@ -112,16 +112,16 @@ class SPurePursuit:
         lookahead_idx = self._nearest_idx
         while lookahead_idx < N - 1 and traj[lookahead_idx, 3] < target_cum_dist:
             lookahead_idx += 1
-        x_l =  traj[lookahead_idx, 0]
-        y_l = -traj[lookahead_idx, 1]   # negate: trajectory +y=right → Kalman +y=left
+        x_l = traj[lookahead_idx, 0]
+        y_l = traj[lookahead_idx, 1]    # Kalman convention: +y = left
 
         # --- Step 3: transform to robot frame ---
         dx_w = x_l - x
         dy_w = y_l - y
         ch = np.cos(heading)
         sh = np.sin(heading)
-        dx_r =  ch * dx_w - sh * dy_w   # forward in robot frame (CW+ heading)
-        dy_r =  sh * dx_w + ch * dy_w   # left in robot frame   (CW+ heading)
+        dx_r =  ch * dx_w + sh * dy_w   # forward in robot frame (CCW+ heading)
+        dy_r = -sh * dx_w + ch * dy_w   # left in robot frame   (CCW+ heading)
 
         # --- Step 4: curvature ---
         l_sq = dx_r * dx_r + dy_r * dy_r

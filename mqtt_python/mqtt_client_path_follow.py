@@ -38,13 +38,13 @@ def _plot_save(traj):
     ys = [p[0] for p in _pose_history]
     xs = [p[1] for p in _pose_history]
     fig, ax = _plt.subplots(figsize=(8, 8))
-    ax.plot(traj[:, 1], traj[:, 0], 'b-', lw=1.5, label='desired trajectory')
+    ax.plot(-traj[:, 1], traj[:, 0], 'b-', lw=1.5, label='desired trajectory')
     if xs:
         ax.plot(ys, xs, color='orange', lw=1.5, label='actual path')
         ax.plot(ys[0], xs[0], 'k^', ms=8, label='robot start')
         ax.plot(ys[-1], xs[-1], 'kx', ms=10, mew=2, label='robot end')
-    ax.plot(float(traj[0, 1]), float(traj[0, 0]), 'go', ms=8, label='traj start')
-    ax.plot(float(traj[-1, 1]), float(traj[-1, 0]), 'rs', ms=8, label='traj end')
+    ax.plot(float(-traj[0, 1]), float(traj[0, 0]), 'go', ms=8, label='traj start')
+    ax.plot(float(-traj[-1, 1]), float(traj[-1, 0]), 'rs', ms=8, label='traj end')
     ax.set_xlabel('y  (right →, m)')
     ax.set_ylabel('x  (forward ↑, m)')
     ax.set_title('Pure Pursuit — desired vs actual path')
