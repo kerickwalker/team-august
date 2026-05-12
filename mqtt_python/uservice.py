@@ -79,6 +79,10 @@ class UService:
   def is_quiet(self):
     return hasattr(self, "args") and bool(getattr(self.args, "silent", False))
 
+  def log_mqtt_event(self, direction, topic, payload = ""):
+    # Disabled in the hot path: per-message file logging causes severe backlog.
+    return
+
   def setup(self, mqtt_host):
     #
     print(self.startTime.strftime("Started %Y-%m-%d %H:%M:%S.%f"))
@@ -140,7 +144,7 @@ class UService:
       pose.setup()
       imu.setup()
       kalman.reset([4.775, 0.235, 0.0, 0.0, 0.0, 0.0, 0.0])
-      service.send("robobot/kalman/cmd", "reset 4.7750 0.2350 0.0000 0 0 0.0000 0")
+      service.send("robobot/drive/kalman/cmd", "reset 4.7750 0.2350 0.0000 0 0 0.0000 0")
       cam.setup()
       edge.setup()
       path_follow.setup()
@@ -187,12 +191,14 @@ class UService:
       print(f"% Connected to MQTT Broker {self.host} on {self.port}")
       self.connected = True
       self.client2=client
+      self.log_mqtt_event("connect-in", f"{self.host}:{self.port}", f"rc={rc}")
 
   def on_connectOut(self, client, userdata, flags, rc, properties = []):
     if rc == 0:
       print(f"% ConnectedOut to MQTT Broker {self.host} on {self.port}")
       self.connectedOut = True
       self.clientOut2=client
+      self.log_mqtt_event("connect-out", f"{self.host}:{self.port}", f"rc={rc}")
 
   def connect_mqtt(self):
     import platform
@@ -293,9 +299,7 @@ class UService:
       else:
         used = False
       # Kalman is updated as a side-effect module when relevant sensor topics arrive.
-      updated = kalman.decode(subtopic, msg)
-      if updated:
-        self.publish_kalman_state("sensor_update")
+      kalman.decode(subtopic, msg)
     elif topic == "robobot/teleop/cmd":
       # Handle teleoperation commands
       kalman.decode_teleoperation(msg)
@@ -325,6 +329,26 @@ class UService:
     }
     if kalman.has_estimate():
       x = kalman.estimate()
+      payload["timestamp"] = datetime.now().isoformat()
+      payload["update_count"] = kalman.update_count
+      payload["position"] = {
+        "x": x[0],
+        "y": x[1],
+        "z": x[2],
+      }
+      payload["velocity"] = {
+        "linear": x[3],
+        "angular": x[4],
+      }
+      payload["orientation"] = {
+        "yaw": x[5],
+        "pitch": x[6],
+      }
+      payload["orientation_deg"] = {
+        "yaw": x[5] * 180.0 / 3.141592653589793,
+        "pitch": x[6] * 180.0 / 3.141592653589793,
+      }
+      # Legacy shape kept for existing readers.
       payload["x"] = {
         "x": x[0],
         "y": x[1],
@@ -334,7 +358,33 @@ class UService:
         "yaw": x[5],
         "pitch": x[6],
       }
-      # Add predicted state (model prediction before measurement update)
+      if hasattr(kalman, "pose") and hasattr(kalman, "ahrs"):
+        try:
+          import math
+          import numpy as np
+          pose_diag = np.diag(kalman.pose.P)
+          ahrs_diag = np.diag(kalman.ahrs.P)
+          payload["std_dev"] = {
+            "x": float(math.sqrt(max(0.0, pose_diag[kalman.pose.X]))),
+            "y": float(math.sqrt(max(0.0, pose_diag[kalman.pose.Y]))),
+            "z": float(math.sqrt(max(0.0, pose_diag[kalman.pose.Z]))),
+            "yaw": float(math.sqrt(max(0.0, pose_diag[kalman.pose.YAW]))),
+            "pitch": float(math.sqrt(max(0.0, pose_diag[kalman.pose.PITCH]))),
+            "roll": float(math.sqrt(max(0.0, ahrs_diag[kalman.ahrs.ROLL]))),
+          }
+          # Compatibility alias for older viewers.
+          payload["covariance_diag"] = {
+            "x_std": payload["std_dev"]["x"],
+            "y_std": payload["std_dev"]["y"],
+            "z_std": payload["std_dev"]["z"],
+            "velocity_std": float(math.sqrt(max(0.0, pose_diag[kalman.pose.V]))),
+            "angular_std": float(math.sqrt(max(0.0, pose_diag[kalman.pose.OM]))),
+            "yaw_std": payload["std_dev"]["yaw"],
+            "pitch_std": payload["std_dev"]["pitch"],
+          }
+        except Exception:
+          pass
+
       x_pred = kalman.predict()
       if x_pred:
         payload["x_pred"] = {

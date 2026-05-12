@@ -420,7 +420,7 @@ def perception_thread(params_path: str = None,
     start = localizer.set_start_pose()
     if start:
         service.send(
-            "robobot/kalman/cmd",
+            "robobot/drive/kalman/cmd",
             f"reset {start['x']:.4f} {start['y']:.4f} {start['z']:.4f} 0 0 {start['yaw']:.4f} 0"
         )
         _start_pose_cache = {
@@ -564,7 +564,7 @@ def main():
     start = localizer.set_start_pose()
     if start:
         service.send(
-            "robobot/kalman/cmd",
+            "robobot/drive/kalman/cmd",
             f"reset {start['x']:.4f} {start['y']:.4f} {start['z']:.4f} 0 0 {start['yaw']:.4f} 0"
         )
         _start_pose_cache = {

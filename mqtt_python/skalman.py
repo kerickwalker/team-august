@@ -273,7 +273,7 @@ class _PoseEKF:
             0.04,   # v      (model uncertainty)
             0.04,   # omega  (directly set from AHRS; uncertainty resets each step)
             5e-4,   # yaw
-            5e-3,   # z      (larger – allows slope integration to accumulate)
+            5e-5,   # z      (larger – allows slope integration to accumulate)
             1e-4,   # pitch  (slow variation; tight-coupling update follows)
         ])
 
@@ -282,7 +282,7 @@ class _PoseEKF:
         self.R_enc_vel    = np.diag([0.05, 0.05])                  # v, omega
         self.R_ahrs_yaw   = np.array([[0.10]])   # was 0.02 — less yaw jitter
         self.R_ahrs_pitch = np.array([[0.30]])   # was 0.10 — extra damping for noisy pitch
-        self.R_vision     = np.diag([0.05, 0.05, 0.08, 0.10, 0.06])  # x,y,yaw,z,pitch
+        self.R_vision     = np.diag([1e10, 1e10, 1e10, 1e10, 1e10])  # x,y,yaw,z,pitch
 
     # ---------------------------------------------------------------- predict
 
@@ -447,8 +447,8 @@ class SKalman:
 
     # Default starting pose  (X = forward, Y = lateral)
     # X = 0.235 m from start wall (forward), Y = 4.775 m from left wall (lateral)
-    _DEFAULT_X    = 0.235
-    _DEFAULT_Y    = 4.775
+    _DEFAULT_X    = 0.0
+    _DEFAULT_Y    = 0.0
     _DEFAULT_YAW  = 0.0
 
     def __init__(self):

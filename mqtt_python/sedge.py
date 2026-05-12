@@ -31,21 +31,21 @@ from ulog import flog
 class SEdge:
     # ============= TUNING & PRINT OPTIONS (edit these) =============
     # Line detection (livn 0–1000 scale)
-    lineValidThreshold = 500   # line "valid" when peak >= this (500 = half of calibrated white)
-    crossingThreshold = 700    # crossing when 8-sensor average >= this
+    lineValidThreshold = 300   # line "valid" when peak >= this (500 = half of calibrated white)
+    crossingThreshold = 1000    # crossing when 8-sensor average >= this
     low = 400                  # unused; was lineValidThreshold-100 for dark threshold; weighted center uses min(edge_n) as floor
     # PID gains (turn rate rad/s; integral in error·s, derivative in error/s)
-    lineKp = 0.5
-    lineKi = 0.0
+    lineKp = 1
+    lineKi = 0.1
     lineKd = 0.0
-    lineIntegralLimit = 2.0    # clamp integral to ±this (error·s) to limit windup
+    lineIntegralLimit = 1.0    # clamp integral to ±this (error·s) to limit windup
     # Output saturation (turn rate rad/s)
-    lineYMax = 4.0
-    lineYMin = -4.0
+    lineYMax = 10.0
+    lineYMin = -10.0
     # Recovery when line lost (A1/A4: turn toward last line side)
-    recoveryTurnRate = 0.5   # rad/s when turning to find line during recovery
-    recoveryVelocity = 0.0   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
-    recovery_timeout_s = 5.0 # mission stops after this many seconds without line (recovery runs until then)
+    recoveryTurnRate = 0.1   # rad/s when turning to find line during recovery
+    recoveryVelocity = 0.1   # m/s forward during recovery (0 = turn in place; small value = creep forward while turning)
+    recovery_timeout_s = 10.0 # mission stops after this many seconds without line (recovery runs until then)
     # Legacy lead (unused when using PID; for optional re-enable later)
     lineTauZ = 0.8
     lineTauP = 0.25
