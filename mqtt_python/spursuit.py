@@ -97,10 +97,10 @@ class SPurePursuit:
         N = len(traj)
 
         # --- Step 1: nearest point (bounded forward search) ---
-        # Trajectory and Kalman frame share the same convention: col 0 = x = forward, col 1 = y = left.
+        # trajectory.csv stores y in +right convention; negate to match Kalman +y=left frame.
         end_search = min(self._nearest_idx + SEARCH_WINDOW, N)
-        seg_x = traj[self._nearest_idx:end_search, 0] - x
-        seg_y = traj[self._nearest_idx:end_search, 1] - y
+        seg_x =  traj[self._nearest_idx:end_search, 0] - x
+        seg_y = -traj[self._nearest_idx:end_search, 1] - y
         local_idx = int(np.argmin(seg_x * seg_x + seg_y * seg_y))
         self._nearest_idx += local_idx
 
@@ -112,8 +112,8 @@ class SPurePursuit:
         lookahead_idx = self._nearest_idx
         while lookahead_idx < N - 1 and traj[lookahead_idx, 3] < target_cum_dist:
             lookahead_idx += 1
-        x_l = traj[lookahead_idx, 0]   # forward
-        y_l = traj[lookahead_idx, 1]   # left
+        x_l =  traj[lookahead_idx, 0]
+        y_l = -traj[lookahead_idx, 1]   # negate: trajectory +y=right → Kalman +y=left
 
         # --- Step 3: transform to robot frame ---
         dx_w = x_l - x
