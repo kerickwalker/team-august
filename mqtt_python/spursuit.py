@@ -1,7 +1,7 @@
 import numpy as np
 import csv
 
-LOOKAHEAD_DIST = 1.0   # metres — distance ahead on trajectory to aim for
+LOOKAHEAD_DIST = 0.3   # metres — distance ahead on trajectory to aim for
 MAX_LINVEL     = 0.3   # m/s   — constant forward speed during tracking
 MAX_TURNRATE   = 1.0   # rad/s — saturation limit for angular velocity output
 SEARCH_WINDOW  = 30    # max points to scan forward when finding nearest point
@@ -120,8 +120,8 @@ class SPurePursuit:
         dy_w = y_l - y
         ch = np.cos(heading)
         sh = np.sin(heading)
-        dx_r =  ch * dx_w + sh * dy_w   # forward in robot frame
-        dy_r = -sh * dx_w + ch * dy_w   # left in robot frame
+        dx_r =  ch * dx_w - sh * dy_w   # forward in robot frame (CW+ heading)
+        dy_r =  sh * dx_w + ch * dy_w   # left in robot frame   (CW+ heading)
 
         # --- Step 4: curvature ---
         l_sq = dx_r * dx_r + dy_r * dy_r
