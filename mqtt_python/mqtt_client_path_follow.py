@@ -21,48 +21,41 @@ from uservice import service
 from spath_follow import path_follow
 from spursuit import pursuit
 
-# ─── optional live plot (--plot / -p) ───────────────────────────────────────
+# ─── optional save-on-exit plot (--plot / -p) ───────────────────────────────
+# Records the robot's Kalman pose during the mission and saves a PNG when the
+# script stops (normal end or Ctrl-C).  No display server needed — works over
+# plain SSH.  Copy the file off the Pi with: scp pi@<ip>:~/robobot/mqtt_python/path_follow_result.png .
 _PLOT = '--plot' in _sys.argv or '-p' in _sys.argv
 if _PLOT:
     _sys.argv = [a for a in _sys.argv if a not in ('--plot', '-p')]
+    _pose_history = []   # (y_right, x_fwd) in display frame, sampled at ~10 Hz
+
+def _plot_save(traj):
+    import matplotlib
+    matplotlib.use('Agg')           # non-interactive backend — no display needed
     import matplotlib.pyplot as _plt
-    from math import cos as _cos, sin as _sin
-    _plt.ion()
-    _fig = _ax = _robot_dot = _quiver = None
-
-def _plot_setup(traj):
-    global _fig, _ax, _robot_dot, _quiver
-    _fig, _ax = _plt.subplots(figsize=(7, 7))
-    _ax.plot(traj[:, 1], traj[:, 0], 'b-', lw=1.5, label='trajectory')
-    _ax.plot(traj[0, 1], traj[0, 0], 'go', ms=8, label='start')
-    _ax.plot(traj[-1, 1], traj[-1, 0], 'rs', ms=8, label='end')
-    y_r0, x0 = float(traj[0, 1]), float(traj[0, 0])
-    _robot_dot, = _ax.plot(y_r0, x0, 'ko', ms=10, label='robot', zorder=5)
-    _quiver = _ax.quiver([y_r0], [x0], [0.0], [0.2],
-                         scale=1.0, scale_units='xy', angles='xy',
-                         color='red', width=0.005, zorder=6)
-    _ax.set_xlabel('y  (right →, m)')
-    _ax.set_ylabel('x  (forward ↑, m)')
-    _ax.set_title('Pure Pursuit — live robot pose')
-    _ax.legend(loc='upper right')
-    _ax.set_aspect('equal')
-    _ax.grid(True, alpha=0.3)
+    import os
+    ys = [p[0] for p in _pose_history]
+    xs = [p[1] for p in _pose_history]
+    fig, ax = _plt.subplots(figsize=(8, 8))
+    ax.plot(traj[:, 1], traj[:, 0], 'b-', lw=1.5, label='desired trajectory')
+    if xs:
+        ax.plot(ys, xs, color='orange', lw=1.5, label='actual path')
+        ax.plot(ys[0], xs[0], 'k^', ms=8, label='robot start')
+        ax.plot(ys[-1], xs[-1], 'kx', ms=10, mew=2, label='robot end')
+    ax.plot(float(traj[0, 1]), float(traj[0, 0]), 'go', ms=8, label='traj start')
+    ax.plot(float(traj[-1, 1]), float(traj[-1, 0]), 'rs', ms=8, label='traj end')
+    ax.set_xlabel('y  (right →, m)')
+    ax.set_ylabel('x  (forward ↑, m)')
+    ax.set_title('Pure Pursuit — desired vs actual path')
+    ax.legend(loc='upper right')
+    ax.set_aspect('equal')
+    ax.grid(True, alpha=0.3)
     _plt.tight_layout()
-    _plt.pause(0.05)
-
-def _plot_update(x, y, heading):
-    # Kalman +y=left → plot +y_right=−y_kalman; heading CCW so arrow=(cos θ, −sin θ) in (y_right, x_fwd)
-    global _quiver
-    py, px = -y, x
-    _robot_dot.set_data([py], [px])
-    if _quiver is not None:
-        _quiver.remove()
-    L = 0.2
-    _quiver = _ax.quiver([py], [px], [-L * _sin(heading)], [L * _cos(heading)],
-                         scale=1.0, scale_units='xy', angles='xy',
-                         color='red', width=0.005, zorder=6)
-    _fig.canvas.flush_events()
-    _fig.canvas.draw_idle()
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'path_follow_result.png')
+    _plt.savefig(out, dpi=150)
+    _plt.close(fig)
+    print(f'% Plot saved → {out}')
 # ────────────────────────────────────────────────────────────────────────────
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -98,13 +91,11 @@ def drivePathFollow():
     _iter = 0
     while not service.stop:
         if state == 0:
-            if _PLOT:
-                _plot_setup(pursuit._traj)
             state = 1
         elif state == 1:
             path_follow.update()    # compute Pure Pursuit command and publish rc
             if _PLOT and _iter % 5 == 0:
-                _plot_update(path_follow._x, path_follow._y, path_follow._heading)
+                _pose_history.append((-path_follow._y, path_follow._x))
             if pursuit.at_end():
                 path_follow.pathControl(0)
                 service.send("robobot/cmd/ti", "rc 0.0 0.0")
@@ -122,8 +113,7 @@ def drivePathFollow():
         _iter += 1
         t.sleep(0.02)               # ~50 Hz control loop
     if _PLOT:
-        _plt.ioff()
-        _plt.show()
+        _plot_save(pursuit._traj)
     service.send("robobot/cmd/T0", "leds 16 0 0 0")
 
 # ═══════════════════════════════════════════════════════════════════════════
