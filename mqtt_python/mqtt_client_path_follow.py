@@ -48,7 +48,7 @@ def drivePathFollow():
     from skalman import kalman
     kalman.reset()                  # zero full Kalman state so heading=0 matches x=0, y=0
     service.send("robobot/cmd/T0", "leds 16 0 100 0")
-    path_follow.pathControl(0.3)    # arm: load trajectory.csv, set velocity 0.3 m/s
+    path_follow.pathControl(0.2)    # arm: load trajectory.csv, set velocity 0.2 m/s
     last_print = datetime.now()
     while not service.stop:
         if state == 0:
